@@ -1,0 +1,538 @@
+/* ============================================================
+   ENCORPEI BLOOM v2 — Design System
+   Light premium · cardio · sépia · acolhedor
+   Healthtech maternal — May 2026
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ============================================================
+       PALETA · Bloom v2
+       ============================================================ */
+    /* Brand — cardio quente */
+    --brand-cardio:       212 69% 39%;      /* #1F5FA9 — azul clínico */
+    --brand-cardio-dark:  212 67% 26%;      /* #16406F */
+    --brand-cardio-light: 212 54% 67%;      /* #7FA9D9 */
+    --brand-cardio-50:    212 62% 96%;      /* #EEF4FB */
+    --brand-cardio-100:   212 59% 91%;      /* #DCE8F6 */
+    --brand-rose:             0 64% 55%;        /* #D64545 — vermelho vital (coração) */
+    --brand-sepia:            196 45% 55%;      /* teal de apoio */
+    --brand-sepia-soft:       196 50% 94%;
+
+    /* Surfaces */
+    --background:           214 37% 96%;        /* #F3EAE2 — mesma cor de fundo da aba Mensagens do médico, 26/08/2026 */
+    --surface-warm:         212 60% 99%;        /* #FEF8F4 */
+    --surface-1:            214 37% 96%;        /* #F3EAE2 */
+    --surface-2:            0 0% 100%;         /* white card */
+    --surface-3:            212 62% 96%;        /* cardio-50 */
+    --surface-4:            212 45% 93%;        /* deeper warm */
+
+    /* Foreground */
+    --foreground:           220 18% 18%;       /* #1F2937 */
+    --foreground-soft:      220 15% 30%;
+    --card:                 0 0% 100%;         /* #FFFFFF */
+    --card-foreground:      220 18% 18%;
+    --popover:              0 0% 100%;
+    --popover-foreground:   220 18% 18%;
+
+    /* Semantic */
+    --primary:              212 69% 39%;          /* cardio */
+    --primary-foreground:   0 0% 100%;
+    --secondary:            212 62% 96%;
+    --secondary-foreground: 212 67% 26%;
+    --muted:                214 30% 94%;
+    --muted-foreground:     220 9% 46%;         /* #6B7280 */
+    --accent:               212 69% 39%;
+    --accent-foreground:    0 0% 100%;
+    --destructive:          0 73% 50%;          /* #DC2626 */
+    --destructive-foreground: 0 0% 100%;
+
+    /* Lines · Inputs */
+    --border:  214 32% 90%;                      /* #F1E7E4 */
+    --border-strong: 214 26% 84%;                /* #E8DCD8 */
+    --border-soft:   214 40% 95%;                /* #F5E9E4 */
+    --input:   214 32% 90%;
+    --ring:    212 69% 39%;
+
+    /* Status */
+    --status-success:      122 39% 49%;         /* #4CAF50 */
+    --status-warning:      38 92% 50%;          /* #F59E0B */
+    --status-danger:       0 73% 50%;           /* #DC2626 */
+    --status-info:         214 35% 47%;         /* #4A6FA5 */
+    --status-success-bg:   126 33% 94%;
+    --status-warning-bg:   38 92% 94%;
+    --status-danger-bg:    0 73% 96%;
+    --status-info-bg:      214 50% 95%;
+    /* Acompanhamento (pendências) — lilás suave, não emergência */
+    --status-accompany:    262 45% 58%;
+    --status-accompany-bg: 262 52% 96%;
+
+    /* Sidebar */
+    --sidebar-background:          0 0% 100%;
+    --sidebar-foreground:          220 9% 46%;
+    --sidebar-primary:             212 69% 39%;
+    --sidebar-primary-foreground:  0 0% 100%;
+    --sidebar-accent:              212 62% 96%;
+    --sidebar-accent-foreground:   212 67% 26%;
+    --sidebar-border:              214 32% 90%;
+    --sidebar-ring:                212 69% 39%;
+
+    /* Legacy brand aliases (compatibilidade) */
+    --brand-accent:        212 69% 39%;
+    --brand-accent-light:  212 54% 67%;
+    --brand-accent-dark:   212 67% 26%;
+    --brand-warm:          196 45% 55%;
+    --brand-warm-light:    196 50% 94%;
+    --brand-warm-dark:     196 55% 32%;
+    --brand-peach:         196 45% 55%;            /* alias to sepia */
+    --brand-success:       122 39% 49%;
+    --brand-warning:       38 92% 50%;
+    --brand-error:         0 73% 50%;
+    --brand-info:          214 35% 47%;
+    --rose-gold:           0 64% 55%;
+
+    /* Domain colors */
+    --domain-pressao:   212 69% 39%;
+    --domain-coracao:   0 64% 55%;
+    --domain-sono:      262 45% 58%;
+    --domain-atividade: 122 39% 49%;
+    --domain-body:      212 69% 39%;
+    --domain-mind:      262 45% 58%;
+    --domain-spirit:    196 45% 55%;
+    --domain-evolution: 122 39% 49%;
+
+    --overlay: 220 18% 18%;
+
+    /* ============================================================
+       RADIUS · sistema de cantos
+       ============================================================ */
+    --radius:        1rem;     /* 16px — input, badge */
+    --radius-sm:     0.625rem; /* 10px — small pills */
+    --radius-md:     0.875rem; /* 14px — buttons */
+    --radius-lg:     1rem;     /* 16px — inputs */
+    --radius-xl:     1.25rem;  /* 20px — cards (default) */
+    --radius-2xl:    1.5rem;   /* 24px — hero cards */
+    --radius-3xl:    1.75rem;  /* 28px — featured */
+    --radius-full:   9999px;
+
+    /* ============================================================
+       TIPOGRAFIA · escala bem definida
+       ============================================================ */
+    --font-display: 'Sora', 'Inter', system-ui, sans-serif;
+    --font-script:  'Sora', 'Inter', system-ui, sans-serif;
+    --font-sans:    'Inter', system-ui, -apple-system, sans-serif;
+
+    --text-2xs:  0.6875rem;  /* 11px */
+    --text-xs:   0.75rem;    /* 12px */
+    --text-sm:   0.8125rem;  /* 13px */
+    --text-base: 0.9375rem;  /* 15px */
+    --text-md:   1rem;       /* 16px */
+    --text-lg:   1.125rem;   /* 18px */
+    --text-xl:   1.375rem;   /* 22px */
+    --text-2xl:  1.75rem;    /* 28px */
+    --text-3xl:  2.25rem;    /* 36px */
+    --text-4xl:  3rem;       /* 48px */
+
+    /* ============================================================
+       PROFUNDIDADE · 5 níveis de elevação
+       ============================================================ */
+    /* tints (warm-toned shadow) */
+    --shadow-color:        14 40% 30%;
+
+    /* 0 — flat (sem sombra; cor de borda apenas) */
+    --shadow-flat:    0 0 0 1px hsl(var(--border));
+
+    /* 1 — resting card (default) */
+    --shadow-card:    0 1px 2px hsl(var(--shadow-color) / 0.04),
+                      0 2px 8px hsl(var(--shadow-color) / 0.04);
+
+    /* 2 — hover/raised */
+    --shadow-raised:  0 4px 6px hsl(var(--shadow-color) / 0.05),
+                      0 10px 24px hsl(var(--shadow-color) / 0.08);
+
+    /* 3 — floating (popover, FAB) */
+    --shadow-floating: 0 8px 12px hsl(var(--shadow-color) / 0.06),
+                       0 20px 40px hsl(var(--shadow-color) / 0.12);
+
+    /* 4 — sheet/modal */
+    --shadow-modal:   0 24px 48px hsl(var(--shadow-color) / 0.16),
+                      0 8px 16px hsl(var(--shadow-color) / 0.08);
+
+    /* Branded — colored shadow (primary button) */
+    --shadow-brand:   0 6px 16px hsl(var(--primary) / 0.28),
+                      0 2px 4px hsl(var(--primary) / 0.15);
+    --shadow-brand-lg: 0 12px 28px hsl(var(--primary) / 0.32),
+                       0 4px 8px hsl(var(--primary) / 0.18);
+
+    /* legacy aliases */
+    --shadow-xs: var(--shadow-flat);
+    --shadow-sm: var(--shadow-card);
+    --shadow-md: var(--shadow-raised);
+    --shadow-lg: var(--shadow-floating);
+    --shadow-xl: var(--shadow-modal);
+    --shadow-up: 0 -2px 12px hsl(var(--shadow-color) / 0.06);
+
+    /* ============================================================
+       MOTION · curves & durations
+       ============================================================ */
+    --ease-out-soft:    cubic-bezier(0.32, 0.72, 0.4, 1);
+    --ease-out-spring:  cubic-bezier(0.18, 0.89, 0.32, 1.28);
+    --ease-out-quart:   cubic-bezier(0.25, 1, 0.5, 1);
+    --ease-in-out:      cubic-bezier(0.65, 0, 0.35, 1);
+
+    --duration-fast:    140ms;
+    --duration-normal:  220ms;
+    --duration-soft:    320ms;
+    --duration-slow:    480ms;
+
+    /* ============================================================
+       SPACING SCALE · grid de 4px (Tailwind default já bom)
+       Apenas semantic helpers
+       ============================================================ */
+    --space-page-x:     1.25rem;  /* 20px mobile */
+    --space-page-y:     1.5rem;   /* 24px */
+    --space-section:    2.5rem;   /* 40px — between major sections */
+    --space-card:       1.25rem;  /* 20px — card padding */
+    --space-card-lg:    1.5rem;   /* 24px */
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  html, body, #root { min-height: 100%; min-height: 100dvh; }
+  html { color-scheme: light; }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+    font-size: 14.5px;
+    line-height: 1.55;
+    font-feature-settings: 'cv11', 'ss01', 'ss03';
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* ── Display headings ── */
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.025em;
+    @apply text-2xl text-foreground leading-tight;
+  }
+  h2 {
+    font-family: var(--font-sans);
+    @apply text-sm font-semibold text-foreground tracking-tight;
+  }
+  h3 {
+    font-family: var(--font-sans);
+    @apply text-sm font-semibold text-foreground tracking-tight;
+  }
+
+  /* ── Font utilities ── */
+  .font-display { font-family: var(--font-display); letter-spacing: -0.02em; }
+  .font-script  { font-family: var(--font-script); font-style: italic; }
+
+  /* Numeric tabular for clinical values */
+  .tabular-nums { font-variant-numeric: tabular-nums; }
+
+  /* Selection */
+  ::selection { background: hsl(var(--primary) / 0.22); color: hsl(var(--primary-foreground, var(--foreground))); }
+}
+
+/* ============================================================
+   UTILITIES · helpers Bloom v2
+   ============================================================ */
+@layer utilities {
+
+  /* ── Layout ── */
+  .touch-target { min-height: 44px; min-width: 44px; }
+  .mobile-only  { @apply block md:hidden; }
+  .desktop-only { @apply hidden md:block; }
+  .page-content {
+    @apply px-5 py-5 mx-auto w-full max-w-2xl md:max-w-4xl lg:max-w-6xl md:px-8 lg:px-10 md:py-7;
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+    overflow-x: hidden;
+  }
+
+  /**
+   * Variante full-width para hubs editoriais (ex: painel do médico).
+   * Remove a constraint de max-width, mantendo padding generoso nas laterais.
+   */
+  .page-content-wide {
+    @apply px-5 py-5 mx-auto w-full md:px-8 lg:px-12 xl:px-16 md:py-7;
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+    overflow-x: hidden;
+  }
+  @screen lg { .page-content { padding-bottom: 2.5rem; } }
+  .safe-area-bottom { padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px); }
+  .safe-area-top    { padding-top: env(safe-area-inset-top, 0px); }
+  .touch-scroll { -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; }
+  .content-container { @apply max-w-2xl md:max-w-4xl lg:max-w-6xl mx-auto px-5 md:px-8; }
+  .section-spacing { @apply py-7 md:py-10; }
+  .stats-grid { @apply grid grid-cols-2 md:grid-cols-4 gap-3; }
+
+  /* ── Surfaces · elevation system ── */
+  .surface-flat {
+    @apply bg-card rounded-2xl;
+    box-shadow: var(--shadow-flat);
+  }
+  .surface-card {
+    @apply bg-card rounded-2xl border border-border;
+    box-shadow: var(--shadow-card);
+  }
+  .surface-raised {
+    @apply bg-card rounded-2xl border border-border;
+    box-shadow: var(--shadow-raised);
+  }
+  .surface-floating {
+    @apply bg-card rounded-2xl;
+    box-shadow: var(--shadow-floating);
+  }
+  .surface-interactive {
+    @apply bg-card rounded-2xl border border-border cursor-pointer;
+    box-shadow: var(--shadow-card);
+    transition: box-shadow var(--duration-soft) var(--ease-out-soft),
+                transform var(--duration-normal) var(--ease-out-soft),
+                border-color var(--duration-normal) var(--ease-out-soft);
+  }
+  .surface-interactive:hover {
+    box-shadow: var(--shadow-raised);
+    transform: translateY(-2px);
+    border-color: hsl(var(--border-strong));
+  }
+  .surface-interactive:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow-card);
+  }
+  .surface-warm {
+    background: linear-gradient(135deg, hsl(var(--surface-warm)) 0%, hsl(var(--brand-cardio-50)) 100%);
+    @apply border border-border rounded-2xl;
+  }
+  .surface-rose {
+    background: linear-gradient(135deg, hsl(var(--brand-cardio-50)) 0%, hsl(var(--brand-rose)) 100%);
+    @apply border border-border rounded-2xl;
+  }
+
+  /* ── Clinical data typography ── */
+  .text-clinical-value {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.025em;
+    @apply text-2xl text-foreground;
+    font-variant-numeric: tabular-nums;
+  }
+  .text-clinical-label {
+    @apply text-xs font-medium text-muted-foreground;
+  }
+  .text-clinical-unit {
+    @apply text-xs text-muted-foreground ml-1;
+  }
+
+  /* ── Section headers ── */
+  .section-header {
+    @apply text-sm font-semibold tracking-tight text-foreground mb-3;
+  }
+  .section-eyebrow {
+    @apply text-[11px] font-bold tracking-[0.12em] uppercase text-primary mb-2;
+  }
+  .section-meta {
+    @apply text-xs text-muted-foreground;
+  }
+
+  /* ── Status helpers ── */
+  .status-success-bg { background-color: hsl(var(--status-success-bg)); color: hsl(var(--status-success)); }
+  .status-warning-bg { background-color: hsl(var(--status-warning-bg)); color: hsl(var(--status-warning)); }
+  .status-danger-bg  { background-color: hsl(var(--status-danger-bg));  color: hsl(var(--status-danger)); }
+  .status-info-bg    { background-color: hsl(var(--status-info-bg));    color: hsl(var(--status-info)); }
+
+  /* ── Gradients ── */
+  .gradient-bloom {
+    background: linear-gradient(135deg, hsl(var(--brand-cardio)) 0%, hsl(var(--brand-cardio-dark)) 100%);
+  }
+  .gradient-bloom-soft {
+    background: linear-gradient(135deg, hsl(var(--brand-cardio) / 0.85) 0%, hsl(var(--brand-cardio-dark) / 0.92) 100%);
+  }
+  .gradient-sepia {
+    background: linear-gradient(135deg, hsl(var(--brand-sepia)) 0%, hsl(var(--brand-cardio)) 100%);
+  }
+  .gradient-rose {
+    background: linear-gradient(135deg, hsl(var(--brand-rose)) 0%, hsl(var(--brand-cardio-50)) 100%);
+  }
+  .gradient-warm {
+    background: linear-gradient(135deg, hsl(var(--surface-warm)) 0%, hsl(var(--brand-cardio-50)) 100%);
+  }
+  .gradient-aura {
+    background: radial-gradient(ellipse at top, hsl(var(--brand-cardio-50)) 0%, hsl(var(--background)) 60%);
+  }
+  .text-gradient-brand {
+    background: linear-gradient(135deg, hsl(var(--brand-cardio)) 0%, hsl(var(--brand-cardio-dark)) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  /* legacy aliases */
+  .gradient-primary { background: linear-gradient(135deg, hsl(var(--brand-cardio)) 0%, hsl(var(--brand-cardio-dark)) 100%); }
+  .gradient-accent  { background: linear-gradient(135deg, hsl(var(--brand-sepia)) 0%, hsl(var(--brand-cardio)) 100%); }
+  .gradient-brand   { background: linear-gradient(135deg, hsl(var(--brand-cardio)) 0%, hsl(var(--brand-cardio-dark)) 100%); }
+  .gradient-premium { background: linear-gradient(135deg, hsl(var(--brand-cardio)) 0%, hsl(var(--brand-cardio-dark)) 100%); }
+  .gradient-peach   { background: linear-gradient(135deg, hsl(var(--brand-sepia)) 0%, hsl(var(--brand-cardio)) 100%); }
+
+  /* ── Glow effects · for premium hero cards ── */
+  .glow-bloom-soft {
+    box-shadow: 0 0 0 1px hsl(var(--brand-cardio) / 0.12),
+                0 8px 32px hsl(var(--brand-cardio) / 0.16),
+                0 2px 8px hsl(var(--brand-cardio) / 0.08);
+  }
+  .glow-bloom-medium {
+    box-shadow: 0 0 0 1px hsl(var(--brand-cardio) / 0.18),
+                0 12px 48px hsl(var(--brand-cardio) / 0.22),
+                0 4px 12px hsl(var(--brand-cardio) / 0.12);
+  }
+
+  /* ── Pulse animation for live indicators ── */
+  @keyframes bloom-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: 0.85; transform: scale(1.05); }
+  }
+  .animate-bloom-pulse { animation: bloom-pulse 2s var(--ease-in-out) infinite; }
+
+  /* ── Breathing animation for illustration ── */
+  @keyframes bloom-breathe {
+    0%, 100% { transform: scale(1) translateY(0); filter: drop-shadow(0 4px 12px hsl(var(--brand-cardio) / 0.22)); }
+    50%      { transform: scale(1.03) translateY(-1px); filter: drop-shadow(0 6px 18px hsl(var(--brand-cardio) / 0.30)); }
+  }
+  .animate-bloom-breathe { animation: bloom-breathe 4s var(--ease-in-out) infinite; }
+
+  /* ── Soft glow halo for hero week card ── */
+  @keyframes bloom-halo {
+    0%, 100% { opacity: 0.4; transform: scale(1); }
+    50%      { opacity: 0.7; transform: scale(1.08); }
+  }
+  .animate-bloom-halo { animation: bloom-halo 5s var(--ease-in-out) infinite; }
+
+  /* ── Skeleton shimmer ── */
+  @keyframes bloom-shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  .skeleton {
+    background: linear-gradient(90deg,
+      hsl(var(--muted)) 0%,
+      hsl(var(--surface-3)) 50%,
+      hsl(var(--muted)) 100%);
+    background-size: 200% 100%;
+    animation: bloom-shimmer 1.6s var(--ease-in-out) infinite;
+    border-radius: var(--radius-lg);
+  }
+
+  /* ── Slide-in transitions (page-level) ── */
+  @keyframes bloom-slide-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .animate-bloom-slide-up { animation: bloom-slide-up var(--duration-soft) var(--ease-out-soft) both; }
+
+  @keyframes bloom-fade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  .animate-bloom-fade { animation: bloom-fade var(--duration-normal) var(--ease-out-soft) both; }
+
+  /* ── Stagger helpers ── */
+  .stagger-1 { animation-delay: 0.05s; }
+  .stagger-2 { animation-delay: 0.10s; }
+  .stagger-3 { animation-delay: 0.15s; }
+  .stagger-4 { animation-delay: 0.20s; }
+  .stagger-5 { animation-delay: 0.25s; }
+  .stagger-6 { animation-delay: 0.30s; }
+
+  /* ── Float suave (floating cards do hero) ── */
+  @keyframes bloom-float {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-10px); }
+  }
+  .animate-float       { animation: bloom-float 6s var(--ease-in-out) infinite; }
+  .animate-float-slow  { animation: bloom-float 8s var(--ease-in-out) infinite; }
+  .animate-float-delay { animation: bloom-float 7s var(--ease-in-out) 1s infinite; }
+
+  /* ── Scroll reveal (fade-in elegante ao rolar) ── */
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.7s var(--ease-out-soft), transform 0.7s var(--ease-out-soft);
+    will-change: opacity, transform;
+  }
+  .reveal.in-view { opacity: 1; transform: translateY(0); }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { opacity: 1; transform: none; transition: none; }
+    .animate-float, .animate-float-slow, .animate-float-delay { animation: none; }
+  }
+}
+
+/* ============================================================
+   SCROLLBAR
+   ============================================================ */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+* { scrollbar-color: hsl(var(--border-strong)) transparent; scrollbar-width: thin; }
+*::-webkit-scrollbar { width: 6px; height: 6px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background-color: hsl(var(--border-strong)); border-radius: 9999px; }
+*::-webkit-scrollbar-thumb:hover { background-color: hsl(var(--muted-foreground) / 0.4); }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+
+/* ============================================================
+   FOCUS
+   ============================================================ */
+:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ============================================================
+   ACCESSIBILITY
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+@media print {
+  .no-print { display: none !important; }
+  body { background: white !important; color: black !important; }
+}
+
+/* ============================================================
+   LEGACY COMPAT (será removido na v3)
+   ============================================================ */
+.app-card {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-xl);
+  padding: 1.25rem 1.5rem;
+  box-shadow: var(--shadow-card);
+}
+.app-card-inner {
+  background: hsl(var(--surface-3));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  padding: 0.625rem 0.875rem;
+  margin-bottom: 0.5rem;
+}
+.app-card-inner:last-child { margin-bottom: 0; }
+.app-text-primary   { color: hsl(var(--foreground)); }
+.app-text-secondary { color: hsl(var(--muted-foreground)); }
+.app-text-muted     { color: hsl(var(--muted-foreground) / 0.7); }
+.app-border         { border-color: hsl(var(--border)); }

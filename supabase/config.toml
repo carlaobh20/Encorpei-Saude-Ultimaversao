@@ -1,0 +1,40 @@
+project_id = "lnlmmcghkcvxpjgqczba"
+
+[functions.scan-train]
+verify_jwt = false
+
+[functions.health-coach]
+verify_jwt = false
+
+[functions.calcular-score-evolucao]
+verify_jwt = false
+
+[functions.health]
+verify_jwt = false
+
+[functions.verificar-conquistas]
+verify_jwt = false
+
+[functions.streak-habitos]
+verify_jwt = false
+
+[functions.gerar-treino-ia]
+verify_jwt = false
+
+[functions.finalizar-sessao]
+verify_jwt = false
+
+[functions.extrair-exame]
+verify_jwt = false
+
+[functions.smart-api]
+verify_jwt = false
+
+[functions.create-checkout]
+verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.customer-portal]
+verify_jwt = false
