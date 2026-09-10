@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Loader2, Paperclip, MessageCircle, ChevronUp } from "lucide-react";
-import { useAllFeedback, useUpdateFeedback, useFeedbackReplies, getFeedbackAttachmentUrl, type FeedbackStatus, type FeedbackRow } from "@/hooks/useFeedback";
+import { useAllFeedback, useUpdateFeedback, useFeedbackReplyCounts, getFeedbackAttachmentUrl, type FeedbackStatus, type FeedbackRow } from "@/hooks/useFeedback";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -18,13 +18,12 @@ const STATUS_LABEL: Record<string, string> = {
 };
 const ROLE_LABEL: Record<string, string> = { patient: "Paciente", professional: "Médico" };
 
-function FeedbackCard({ item }: { item: FeedbackRow }) {
+function FeedbackCard({ item, respostas }: { item: FeedbackRow; respostas: number }) {
   const { user } = useAuth();
   const update = useUpdateFeedback();
   const [notes, setNotes] = useState(item.admin_notes ?? "");
   const [openingAttachment, setOpeningAttachment] = useState(false);
   const [showThread, setShowThread] = useState(false);
-  const { data: replies = [] } = useFeedbackReplies(item.id);
 
   const openAttachment = async () => {
     if (!item.attachment_path) return;
@@ -102,7 +101,7 @@ function FeedbackCard({ item }: { item: FeedbackRow }) {
           className="flex items-center gap-1.5 text-[11.5px] text-white/60 hover:text-white pt-2"
         >
           {showThread ? <ChevronUp className="h-3.5 w-3.5" /> : <MessageCircle className="h-3.5 w-3.5" />}
-          {showThread ? "Ocultar conversa" : replies.length > 0 ? `Ver conversa (${replies.length})` : "Responder"}
+          {showThread ? "Ocultar conversa" : respostas > 0 ? `Ver conversa (${respostas})` : "Responder"}
         </button>
         {showThread && (
           <div className="mt-2">
@@ -123,6 +122,8 @@ function FeedbackCard({ item }: { item: FeedbackRow }) {
 export default function AdminFeedbackPage() {
   const [statusFilter, setStatusFilter] = useState<FeedbackStatus | "all">("all");
   const { data: items = [], isLoading, isError, error } = useAllFeedback(statusFilter);
+  // Uma consulta para a lista toda, em vez de uma por cartão.
+  const contagens = useFeedbackReplyCounts(items.map((i) => i.id));
 
   return (
     <div className="px-5 md:px-8 py-6 md:py-8 max-w-[760px] mx-auto">
@@ -159,7 +160,7 @@ export default function AdminFeedbackPage() {
       )}
 
       <div className="space-y-3">
-        {items.map((item) => <FeedbackCard key={item.id} item={item} />)}
+        {items.map((item) => <FeedbackCard key={item.id} item={item} respostas={contagens[item.id] ?? 0} />)}
       </div>
     </div>
   );

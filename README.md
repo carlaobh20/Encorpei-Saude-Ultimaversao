@@ -1,8 +1,10 @@
 # Encorpei Cardio
 
 Acompanhamento cardiológico contínuo: **app do paciente** + **painel do cardiologista**.
-Derivado da base do Encorpei Mamãe, com o motor clínico trocado de gestação para
-doença cardiovascular.
+Derivado da base do app de obstetrícia que originou este projeto (Encorpei Mamãe),
+com o motor clínico trocado para doença cardiovascular. A proveniência explica o
+código; o produto atual é cardiológico — se algum texto de tela ainda falar de
+gestação, é resíduo e deve ser corrigido.
 
 - **Mapeamento clínico e de produto:** [`docs/MAPEAMENTO-CARDIO.md`](docs/MAPEAMENTO-CARDIO.md) — o que o cardiologista precisa. Leia primeiro.
 - **Engajamento:** [`docs/ENGAJAMENTO-CARDIO.md`](docs/ENGAJAMENTO-CARDIO.md) — por que o paciente volta. Leia em seguida.

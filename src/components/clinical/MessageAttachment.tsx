@@ -1,5 +1,5 @@
 /**
- * Anexo dentro de um balão de mensagem (médico e mamãe compartilham).
+ * Anexo dentro de um balão de mensagem (médico e paciente compartilham).
  * Imagem → miniatura clicável (abre em nova aba). PDF/documento → card com
  * ícone, nome, tamanho e "Visualizar". Recebe a URL já assinada (temporária)
  * gerada em usePatientMessages.

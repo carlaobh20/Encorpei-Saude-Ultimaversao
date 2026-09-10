@@ -19,7 +19,7 @@ export interface MyProfessional {
   clinic_name: string | null;
   registration_number: string;
   is_verified: boolean;
-  /** Telefone do consultório/médico (professional_profiles.phone) — usado no card de emergência (01/09/2026). */
+  /** Telefone do consultório (professional_profiles.clinic_phone) — usado no card de emergência. */
   phone: string | null;
 }
 
@@ -40,14 +40,21 @@ export function useMyProfessionals() {
       if (!links.length) return [];
 
       const proIds = links.map((l) => l.professional_id);
-      // `phone` existe no banco (verificado 01/09/2026) mas não nos types gerados.
-      const { data: profiles } = await (supabase as any)
+      // A coluna do telefone é `clinic_phone` (criada na migração de
+      // integração). `phone` NUNCA existiu em professional_profiles — e o
+      // PostgREST recusa a consulta INTEIRA quando um dos campos do select não
+      // existe. Como o erro desta chamada não era lido, o resultado era um
+      // cartão "Meu Cardiologista" em branco (sem nome, sem CRM, sem telefone)
+      // em vez de uma falha visível.
+      const { data: profiles, error: erroPerfis } = await (supabase as any)
         .from("professional_profiles")
-        .select("id, display_name, specialty, avatar_url, clinic_name, registration_number, is_verified, phone")
+        .select("id, display_name, specialty, avatar_url, clinic_name, registration_number, is_verified, clinic_phone")
         .in("id", proIds) as { data: {
           id: string; display_name: string | null; specialty: string | null; avatar_url: string | null;
-          clinic_name: string | null; registration_number: string | null; is_verified: boolean | null; phone: string | null;
-        }[] | null };
+          clinic_name: string | null; registration_number: string | null; is_verified: boolean | null;
+          clinic_phone: string | null;
+        }[] | null; error: unknown };
+      if (erroPerfis) throw erroPerfis;
 
       const profileMap = new Map(profiles?.map((p) => [p.id, p]) ?? []);
       return links.map((l): MyProfessional => {
@@ -63,7 +70,7 @@ export function useMyProfessionals() {
           clinic_name: p?.clinic_name ?? null,
           registration_number: p?.registration_number ?? "",
           is_verified: p?.is_verified ?? false,
-          phone: p?.phone ?? null,
+          phone: p?.clinic_phone ?? null,
         };
       });
     },

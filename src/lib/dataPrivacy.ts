@@ -1,126 +1,126 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
- * ══════════════════════════════════════════════════════════════════
+ * ══════════════════════════════════════════════════════════════════════════
  * LGPD — Portabilidade e exclusão de dados (art. 18)
- * ══════════════════════════════════════════════════════════════════
+ * ══════════════════════════════════════════════════════════════════════════
  *
- * Direito do titular de dados:
- *   - exportData()  → confirmação/acesso (art. 18, II e V): gera um
- *     JSON com todos os dados pessoais do paciente.
- *   - deleteAccountData() → eliminação (art. 18, VI): apaga em definitivo
- *     os dados do paciente de todas as tabelas (hard-delete).
+ * Este arquivo NÃO faz mais o trabalho. Ele chama duas edge functions e
+ * mostra o relatório que elas devolvem.
  *
- * Tudo roda sob a RLS do Supabase: cada query só alcança as linhas do
- * próprio usuário. Mesmo assim filtramos explicitamente por patient_user_id /
- * user_id como segunda camada de segurança.
+ * Por que a mudança
+ * -----------------
+ * A versão anterior exportava e excluía direto do navegador, sob a RLS do
+ * paciente. Auditoria mostrou três buracos, todos silenciosos:
  *
- * IMPORTANTE: a remoção do registro de auth (auth.users) precisa de
- * privilégio de service-role e deve ser feita por uma edge function
- * dedicada. Aqui apagamos todos os DADOS; a conta de login em si é
- * sinalizada para remoção e o usuário é deslogado.
+ *   · a exportação fazia `if (!error && rows)` — tabela que falhava sumia do
+ *     JSON, e o arquivo baixado ficava indistinguível de um arquivo completo;
+ *   · a exclusão tocava tabelas em que o paciente só tem SELECT
+ *     (cardio_targets, cardio_alerts, patient_messages). Um DELETE barrado
+ *     por RLS não é erro: afeta zero linhas e "dá certo". O app dizia
+ *     "apagado" e nada tinha sido apagado;
+ *   · `auth.users` e os arquivos no Storage nunca eram tocados — dava para
+ *     entrar de novo depois de excluir a conta.
+ *
+ * Nada disso é corrigível no cliente: exige service-role. Daí as funções
+ * `exportar-meus-dados` e `excluir-minha-conta`.
+ *
+ * A regra que orienta o arquivo inteiro: sucesso parcial nunca se apresenta
+ * como sucesso. Quem chama recebe o relatório e o estado real.
  */
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { supabase } from "@/integrations/supabase/client";
-import { auditLog } from "@/lib/auditLogger";
 
-/** Tabelas com dado clínico do paciente, chaveadas por `patient_user_id`. */
-const PATIENT_SCOPED_TABLES = [
-  "bp_readings",
-  "hr_readings",
-  "spo2_readings",
-  "weight_readings",
-  "glucose_readings",
-  "sleep_records",
-  "activity_records",
-  "symptom_reports",
-  "cardio_medications",
-  "medication_intakes",
-  "medication_titrations",
-  "lab_results",
-  "cardio_exams",
-  "cardio_alerts",
-  "cardio_targets",
-  "appointments",
-  "patient_messages",
-  "professional_notes",
-  "raw_device_data",
-  "registered_devices",
-  "capacity_tests",
-  "walk_sessions",
-  "sodium_entries",
-  "wellbeing_checkins",
-  "qol_responses",
-  "heart_age_snapshots",
-  "education_progress",
-  "caregiver_links",
-  "monitoring_plan",
-  "professional_patient_links",
-] as const;
+/** Palavra que a edge function exige no corpo — a trava do servidor. */
+export const CONFIRMACAO_EXCLUSAO = "EXCLUIR";
 
-/** Tabelas chaveadas diretamente por `user_id`. */
-const USER_SCOPED_TABLES = [
-  "profiles",
-  "user_roles",
-  "consent_records",
-  "feedback",
-  "beta_events",
-] as const;
-
-export interface ExportResult {
-  exportedAt: string;
-  userId: string;
-  patientId: string | null;
-  data: Record<string, unknown[]>;
+export interface FalhaLgpd {
+  tabela: string;
+  etapa: string;
+  motivo: string;
 }
 
-/** Busca o patient.id do usuário logado (se houver). */
-async function getPatientId(userId: string): Promise<string | null> {
-  const { data } = await supabase
-    .from("cardio_patients")
-    .select("id")
-    .eq("user_id", userId)
-    .maybeSingle();
-  return data?.id ?? null;
+/** Manifesto que vem no topo do JSON exportado. */
+export interface ManifestoExportacao {
+  gerado_em: string;
+  usuario_id: string;
+  email: string | null;
+  solicitacao_id: string | null;
+  status: "completo" | "parcial";
+  mensagem: string;
+  tabelas_consultadas: string[];
+  contagem_por_tabela: Record<string, number>;
+  tabelas_truncadas: string[];
+  teto_por_tabela: number;
+  falhas: FalhaLgpd[];
+  retencoes: { tabela: string; motivo: string }[];
+  duracao_ms: number;
+}
+
+export interface RespostaExportacao {
+  manifesto: ManifestoExportacao;
+  dados: Record<string, unknown[]>;
+  arquivos: Record<string, unknown[]>;
+}
+
+export interface RelatorioExclusao {
+  executado_em: string;
+  usuario_id: string;
+  email: string | null;
+  solicitacao_id: string | null;
+  status: "concluido" | "parcial";
+  mensagem: string;
+  usuario_auth_removido: boolean;
+  total_linhas_removidas: number;
+  total_arquivos_removidos: number;
+  linhas_por_tabela: Record<string, number>;
+  arquivos_por_bucket: Record<string, number>;
+  retencoes: { tabela: string; motivo: string }[];
+  falhas: FalhaLgpd[];
+  duracao_ms: number;
 }
 
 /**
- * Reúne todos os dados pessoais do usuário num único objeto.
- * Tabelas/colunas inexistentes são ignoradas silenciosamente — o
- * schema evolui, e a exportação não deve quebrar por causa disso.
+ * Traduz o erro de `functions.invoke` para algo legível.
+ *
+ * `FunctionsHttpError` esconde o corpo da resposta atrás de `context`; sem
+ * abrir esse corpo o usuário só veria "Edge Function returned a non-2xx
+ * status code", que não diz nada sobre o que aconteceu com os dados dele.
  */
-export async function collectUserData(userId: string): Promise<ExportResult> {
-  const patientId = await getPatientId(userId);
-  const data: Record<string, unknown[]> = {};
-
-  // Dados base do paciente
-  const { data: patientRow } = await supabase
-    .from("cardio_patients")
-    .select("*")
-    .eq("user_id", userId);
-  data.patients = patientRow ?? [];
-
-  for (const table of PATIENT_SCOPED_TABLES) {
-    const { data: rows, error } = await (supabase as any)
-      .from(table)
-      .select("*")
-      .eq("patient_user_id", userId);
-    if (!error && rows) data[table] = rows;
+async function mensagemDaFuncao(erro: unknown, padrao: string): Promise<string> {
+  const contexto = (erro as { context?: Response } | null)?.context;
+  if (contexto && typeof contexto.json === "function") {
+    try {
+      const corpo = await contexto.json();
+      if (corpo?.mensagem) return String(corpo.mensagem);
+    } catch {
+      // Corpo não-JSON: cai no padrão.
+    }
   }
+  if (erro instanceof Error && erro.message) return erro.message;
+  return padrao;
+}
 
-  for (const table of USER_SCOPED_TABLES) {
-    const { data: rows, error } = await supabase
-      .from(table)
-      .select("*")
-      .eq("user_id", userId);
-    if (!error && rows) data[table] = rows;
+/**
+ * Chama `exportar-meus-dados`.
+ *
+ * NÃO lança quando a exportação vem parcial: o titular tem direito ao que foi
+ * possível reunir. Quem chama decide o que fazer olhando
+ * `manifesto.status` — mas não pode dizer "exportado com sucesso" sem olhar.
+ */
+export async function solicitarExportacao(): Promise<RespostaExportacao> {
+  const { data, error } = await supabase.functions.invoke<RespostaExportacao>(
+    "exportar-meus-dados",
+    { body: {} },
+  );
+
+  if (error) {
+    throw new Error(await mensagemDaFuncao(error, "Não foi possível exportar agora."));
   }
-
-  return {
-    exportedAt: new Date().toISOString(),
-    userId,
-    patientId,
-    data,
-  };
+  if (!data?.manifesto) {
+    throw new Error("A exportação voltou sem manifesto — não dá para confirmar o que foi lido.");
+  }
+  return data;
 }
 
 /** Dispara o download do JSON no navegador. */
@@ -138,59 +138,71 @@ export function downloadJson(payload: unknown, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-/** Conveniência: coleta + baixa em um passo. */
-export async function exportData(userId: string): Promise<void> {
-  const payload = await collectUserData(userId);
-  const stamp = new Date().toISOString().slice(0, 10);
-  downloadJson(payload, `encorpei-cardio-meus-dados-${stamp}.json`);
-  auditLog(
-    "lgpd:data_exported",
-    {
-      description: "Titular exportou os próprios dados (LGPD art. 18)",
-      patientId: payload.patientId ?? undefined,
-    },
-    { id: userId, role: "patient" },
-  );
+/**
+ * Exporta e baixa em um passo. Devolve o manifesto para a tela mostrar a
+ * cobertura real — inclusive quando ela é parcial.
+ *
+ * O arquivo baixado carrega o manifesto DENTRO dele: se o titular guardar o
+ * JSON por um ano e for conferir, a informação de que a exportação foi
+ * parcial está no próprio arquivo, não só num toast que já sumiu.
+ */
+export async function exportarMeusDados(): Promise<ManifestoExportacao> {
+  const resposta = await solicitarExportacao();
+  const carimbo = new Date().toISOString().slice(0, 10);
+  const sufixo = resposta.manifesto.status === "parcial" ? "-PARCIAL" : "";
+  downloadJson(resposta, `encorpei-cardio-meus-dados-${carimbo}${sufixo}.json`);
+  return resposta.manifesto;
 }
 
 /**
- * Apaga em definitivo todos os dados do paciente (hard-delete).
- * Ordem: filhos primeiro (patient-scoped), depois user-scoped, por fim patients.
- * Falhas individuais são coletadas mas não interrompem o processo —
- * o objetivo é remover o máximo possível.
+ * Chama `excluir-minha-conta`.
+ *
+ * A função responde 200 mesmo quando a exclusão sai parcial, de propósito: o
+ * corpo É o relatório, e o titular precisa poder ler o que ficou para trás.
+ * Por isso o retorno normal aqui pode ter `status: 'parcial'` — quem chama
+ * TEM que checar antes de dizer que a conta foi apagada.
  */
-export async function deleteAccountData(
-  userId: string,
-): Promise<{ deleted: string[]; failed: string[] }> {
-  const deleted: string[] = [];
-  const failed: string[] = [];
-  const patientId = await getPatientId(userId);
-
-  // Audita ANTES de apagar — depois do delete o vínculo já não existe.
-  auditLog(
-    "lgpd:data_deleted",
-    {
-      description: "Titular solicitou exclusão definitiva da conta (LGPD art. 18, VI)",
-      patientId: patientId ?? undefined,
-    },
-    { id: userId, role: "patient" },
+export async function excluirMinhaConta(): Promise<RelatorioExclusao> {
+  const { data, error } = await supabase.functions.invoke<RelatorioExclusao>(
+    "excluir-minha-conta",
+    { body: { confirmacao: CONFIRMACAO_EXCLUSAO } },
   );
 
-  for (const table of PATIENT_SCOPED_TABLES) {
-    const { error } = await (supabase as any).from(table).delete().eq("patient_user_id", userId);
-    (error ? failed : deleted).push(table);
+  if (error) {
+    throw new Error(await mensagemDaFuncao(error, "Não foi possível excluir agora."));
   }
-
-  for (const table of USER_SCOPED_TABLES) {
-    const { error } = await (supabase as any).from(table).delete().eq("user_id", userId);
-    (error ? failed : deleted).push(table);
+  if (!data?.status) {
+    throw new Error("A exclusão voltou sem relatório — não dá para confirmar o que foi apagado.");
   }
+  return data;
+}
 
-  // patients por último (é o pai de tudo)
-  {
-    const { error } = await (supabase as any).from("cardio_patients").delete().eq("user_id", userId);
-    (error ? failed : deleted).push("patients");
-  }
+/**
+ * Histórico de solicitações do titular (data_requests).
+ *
+ * É o que separa "solicitado" de "concluído" na tela: a linha nasce quando o
+ * pedido chega e só ganha `concluido_em` quando termina. Sem isso, uma
+ * execução interrompida não deixaria vestígio nenhum.
+ */
+export interface SolicitacaoLgpd {
+  id: string;
+  tipo: "export" | "delete";
+  status: "requested" | "running" | "completed" | "failed";
+  solicitado_em: string;
+  concluido_em: string | null;
+  relatorio: Record<string, unknown> | null;
+}
 
-  return { deleted, failed };
+export async function listarSolicitacoes(userId: string): Promise<SolicitacaoLgpd[]> {
+  // `as any`: data_requests nasce na migração 20260914000000_lgpd.sql e ainda
+  // não está em src/integrations/supabase/types.ts (escrito à mão). Some
+  // quando os tipos forem regerados.
+  const { data, error } = await (supabase as any)
+    .from("data_requests")
+    .select("id, tipo, status, solicitado_em, concluido_em, relatorio")
+    .eq("user_id", userId)
+    .order("solicitado_em", { ascending: false })
+    .limit(20);
+  if (error) throw error;
+  return (data ?? []) as unknown as SolicitacaoLgpd[];
 }

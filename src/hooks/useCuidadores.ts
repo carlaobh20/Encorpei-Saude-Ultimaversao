@@ -176,21 +176,39 @@ export function useDeQuemCuido() {
     },
   });
 
+  /**
+   * Aceite do convite de cuidador — via RPC, igual ao `claim_invite` do
+   * vínculo médico-paciente.
+   *
+   * O UPDATE direto que existia aqui deixou de funcionar quando a migração de
+   * segurança removeu a política `caregiver_self_accept` (ela permitia a
+   * QUALQUER usuário reivindicar convites de cuidador pendentes, do mesmo
+   * jeito que os convites de médico). Sem essa política a RLS não barrava com
+   * erro: o UPDATE apenas atingia ZERO linhas. O `.select("id")` devolvia
+   * lista vazia, então o app pelo menos avisava "código não encontrado" — mas
+   * nenhum código, nem o correto, jamais funcionaria.
+   *
+   * `aceitar_convite_cuidador` é SECURITY DEFINER, exige o código, recusa
+   * código já usado ou revogado e impede o paciente de ser o próprio cuidador.
+   */
   const aceitarConvite = useMutation({
     mutationFn: async (codigo: string) => {
       if (demo) { toast.info("Modo demo: o convite não é aceito."); return; }
-      const { data, error } = await (supabase as any)
-        .from("caregiver_links")
-        .update({
-          caregiver_user_id: user!.id,
-          status: "active",
-          aceito_em: new Date().toISOString(),
-        })
-        .eq("invite_code", codigo.trim().toUpperCase())
-        .eq("status", "pending")
-        .select("id");
+      const { data, error } = await (supabase as any).rpc("aceitar_convite_cuidador", {
+        p_code: codigo.trim(),
+      });
       if (error) throw error;
-      if (!data || data.length === 0) throw new Error("Código não encontrado ou já usado.");
+      const r = (data ?? {}) as { ok?: boolean; error?: string };
+      if (!r.ok) {
+        const motivo: Record<string, string> = {
+          not_authenticated: "Você precisa entrar na sua conta para usar o código.",
+          invalid_code: "Código não encontrado.",
+          code_already_used: "Esse código já foi usado por outra pessoa.",
+          code_revoked: "Esse convite foi cancelado por quem convidou.",
+          self_link: "Esse código é do seu próprio cadastro.",
+        };
+        throw new Error(motivo[r.error ?? ""] ?? "Não consegui usar esse código.");
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["souCuidador"] });

@@ -16,6 +16,12 @@ import { toastError } from "@/lib/errorHandler";
 import { DEMO_ALERTS, DEMO_APPOINTMENTS, DEMO_CAREGIVERS, DEMO_MESSAGES, DEMO_PRO_PATIENTS, type DemoPatientRow } from "@/lib/demoData";
 import type { CardioAlert, CaregiverLink, RiskLevel } from "@/types/cardio";
 import type { ProfessionalProfileRow } from "@/integrations/supabase/types";
+import {
+  agregarCarteira, agregadoDemo, classificarEstado, motivoDaFila, ultimaInformacao,
+  AGREGADO_VAZIO, DIAS_ADESAO, DIAS_JANELA_MEDIDAS, DIAS_SEM_DADOS,
+  type AgregadoPaciente, type EstadoFila,
+} from "@/hooks/useCarteiraIndicadores";
+import { idadeEmAnos } from "@/lib/clinical/scores";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -88,9 +94,45 @@ export interface FilaItem {
   nextAppointment: string | null;
   status: "active" | "pending";
   inviteCode: string | null;
+
+  // ── Acrescentado na correção da auditoria ──────────────────────────
+  // Os campos acima continuam existindo com o mesmo significado porque
+  // ProMensagensPage, ProAgendaPage, ProExamesPage, ProRelatoriosPage e
+  // ProShell já os consomem. A diferença é que agora, fora do demo, eles vêm
+  // preenchidos de verdade em vez de `null`.
+
+  /** Estado explícito da fila — inclui `sem_dados_recentes`. */
+  estado: EstadoFila;
+  /** Uma frase respondendo "por que este paciente está aqui?". */
+  motivo: string;
+  /** "Pressão há 2 dias · digitado" — a última informação confiável. */
+  ultimaInfo: string;
+  /** Indicadores com valor, n, período e origem. */
+  indicadores: AgregadoPaciente;
+  /**
+   * Tem pendência administrativa: convite não aceito ou alerta aberto sem
+   * ninguém responsável. É filtro próprio porque é trabalho de secretaria, não
+   * decisão clínica — e misturar os dois faz o médico perder tempo.
+   */
+  pendencia: boolean;
 }
 
 const ORDEM_RISCO: Record<RiskLevel, number> = { red: 0, yellow: 1, green: 2 };
+
+/**
+ * Ordem da fila.
+ *
+ * `sem_dados_recentes` entra em segundo lugar, à frente de "atenção": o
+ * amarelo tem número por trás e pode esperar a tarde; o silêncio de uma semana
+ * não tem nada por trás e é onde o médico está cego.
+ */
+const ORDEM_ESTADO: Record<EstadoFila, number> = {
+  prioridade: 0,
+  sem_dados_recentes: 1,
+  atencao: 2,
+  estavel: 3,
+  convite_pendente: 4,
+};
 
 export function useProfessionalPatients() {
   const { profile } = useProfessionalProfile();
@@ -103,23 +145,46 @@ export function useProfessionalPatients() {
     staleTime: 60_000,
     queryFn: async (): Promise<FilaItem[]> => {
       if (demo) {
-        return (DEMO_PRO_PATIENTS as DemoPatientRow[]).map((p, i) => ({
-          patient_user_id: p.patient_user_id,
-          link_id: `demo-link-${i}`,
-          full_name: p.full_name,
-          age: p.age,
-          condition: p.condition,
-          risk: p.risk,
-          headline: p.headline,
-          lastReadingAt: p.lastReadingAt,
-          bpAvg: p.bpAvg,
-          restingHr: p.restingHr,
-          adherence: p.adherence,
-          openAlerts: p.openAlerts,
-          nextAppointment: p.nextAppointment,
-          status: "active" as const,
-          inviteCode: null,
-        }));
+        // O demo passa pelas MESMAS funções de classificação e formatação do
+        // caminho real (`agregadoDemo` só reconstrói a procedência que a linha
+        // resumida do demo não guarda). Consequência desejada: Rita Camargo,
+        // que em demoData.ts tem a última leitura há 11 dias, cai sozinha em
+        // `sem_dados_recentes` — sem nenhuma marcação especial no arquivo de
+        // demo. Se a regra dos 7 dias mudar, o demo muda junto.
+        return (DEMO_PRO_PATIENTS as DemoPatientRow[]).map((p, i) => {
+          const indicadores = agregadoDemo(p);
+          const estado = classificarEstado({
+            status: "active",
+            risk: p.risk,
+            ultimaMedidaEm: indicadores.ultimaMedidaEm,
+          });
+          return {
+            patient_user_id: p.patient_user_id,
+            link_id: `demo-link-${i}`,
+            full_name: p.full_name,
+            age: p.age,
+            condition: p.condition,
+            risk: p.risk,
+            headline: p.headline,
+            lastReadingAt: p.lastReadingAt,
+            bpAvg: p.bpAvg,
+            restingHr: p.restingHr,
+            adherence: p.adherence,
+            openAlerts: p.openAlerts,
+            nextAppointment: p.nextAppointment,
+            status: "active" as const,
+            inviteCode: null,
+            estado,
+            motivo: motivoDaFila({
+              estado,
+              headlineAlerta: p.headline,
+              ultimaMedidaEm: indicadores.ultimaMedidaEm,
+            }),
+            ultimaInfo: ultimaInformacao(indicadores),
+            indicadores,
+            pendencia: p.openAlerts > 0,
+          };
+        });
       }
 
       const { data: links, error } = await (supabase as any)
@@ -131,7 +196,7 @@ export function useProfessionalPatients() {
 
       const ids = (links ?? []).map((l: any) => l.patient_user_id).filter(Boolean) as string[];
       if (ids.length === 0) {
-        return (links ?? []).map((l: any) => ({
+        return (links ?? []).map((l: any): FilaItem => ({
           patient_user_id: l.patient_user_id ?? "",
           link_id: l.id,
           full_name: "Convite pendente",
@@ -140,16 +205,77 @@ export function useProfessionalPatients() {
           lastReadingAt: null, bpAvg: null, restingHr: null, adherence: null,
           openAlerts: 0, nextAppointment: null,
           status: l.status as "active" | "pending", inviteCode: l.invite_code,
+          estado: "convite_pendente",
+          motivo: "Aguardando o paciente aceitar o convite.",
+          ultimaInfo: "Nenhuma medida registrada.",
+          indicadores: AGREGADO_VAZIO,
+          pendencia: true,
         }));
       }
 
-      // Uma consulta por domínio, não uma por paciente: com 60 pacientes,
-      // N+1 aqui derruba o tempo de abertura do painel.
-      const [pacientes, alertas, consultas] = await Promise.all([
+      // ── As consultas da carteira ─────────────────────────────────────
+      //
+      // REGRA INEGOCIÁVEL: nenhuma consulta dentro de `.map()`. Tudo o que a
+      // fila mostra sai de um número FIXO de consultas — 8 — cada uma com
+      // `.in('patient_user_id', ids)`, independente de a carteira ter 3 ou 300
+      // pacientes. Cinco delas são as agregações de indicador acrescentadas
+      // agora (bp, hr, peso, doses, prescrições); as outras três já existiam.
+      //
+      // Esta tela já foi derrubada por N+1: uma versão anterior disparava ~4
+      // consultas por paciente e, com 60 pacientes, a tela que vende o produto
+      // abria carregando milhares de linhas. O custo de fazer certo é agregar
+      // em memória — O(linhas), em `agregarCarteira`, sem rede no meio.
+      //
+      // As janelas vão na cláusula `gte` e não no cliente: trazer 12 meses de
+      // pressão de 300 pacientes para descartar 11 no navegador seria trocar
+      // N+1 por transferência inútil.
+      const desdeMedidas = new Date(Date.now() - DIAS_JANELA_MEDIDAS * 86_400_000).toISOString();
+      const desdeAdesao = new Date(Date.now() - (DIAS_ADESAO - 1) * 86_400_000).toISOString().slice(0, 10);
+
+      const [pacientes, alertas, consultas, pa, fc, peso, doses, prescricoes] = await Promise.all([
         (supabase as any).from("cardio_patients").select("*").in("user_id", ids),
-        (supabase as any).from("cardio_alerts").select("patient_user_id, severity, is_read, is_dismissed, title, trigger_value, triggered_at").in("patient_user_id", ids).eq("is_dismissed", false),
+        (supabase as any).from("cardio_alerts").select("patient_user_id, severity, is_read, is_dismissed, title, trigger_value, triggered_at, workflow_status, assigned_to").in("patient_user_id", ids).eq("is_dismissed", false),
         (supabase as any).from("appointments").select("patient_user_id, scheduled_at, status").in("patient_user_id", ids).eq("status", "scheduled"),
+        // PA: trazemos também as não-validadas para poder DIZER quantas ficaram
+        // de fora da média, em vez de filtrar no banco e o médico ver um "sem
+        // medidas suficientes" inexplicável num paciente que mede todo dia.
+        (supabase as any)
+          .from("bp_readings")
+          .select("patient_user_id, systolic, diastolic, recorded_at, cuff_validated, validation_status, source_type")
+          .in("patient_user_id", ids)
+          .gte("recorded_at", desdeMedidas),
+        (supabase as any)
+          .from("hr_readings")
+          .select("patient_user_id, bpm, recorded_at, context, validation_status, source_type")
+          .in("patient_user_id", ids)
+          .eq("context", "resting")
+          .gte("recorded_at", desdeMedidas),
+        (supabase as any)
+          .from("weight_readings")
+          .select("patient_user_id, value, recorded_at, validation_status, source_type")
+          .in("patient_user_id", ids)
+          .gte("recorded_at", desdeMedidas),
+        (supabase as any)
+          .from("medication_intakes")
+          .select("patient_user_id, taken, intake_date")
+          .in("patient_user_id", ids)
+          .gte("intake_date", desdeAdesao),
+        // O denominador da adesão vem da PRESCRIÇÃO, não das linhas de tomada:
+        // ver o comentário longo em `agregarCarteira`.
+        (supabase as any)
+          .from("cardio_medications")
+          .select("patient_user_id, schedule, started_at, suspended_at, status")
+          .in("patient_user_id", ids)
+          .eq("status", "active"),
       ]);
+
+      const indicadoresPorPaciente = agregarCarteira(ids, {
+        bp: pa.data ?? [],
+        hr: fc.data ?? [],
+        weight: peso.data ?? [],
+        intakes: doses.data ?? [],
+        medications: prescricoes.data ?? [],
+      });
 
       const porPaciente = new Map<string, any>();
       for (const p of pacientes.data ?? []) porPaciente.set(p.user_id, p);
@@ -175,29 +301,67 @@ export function useProfessionalPatients() {
         const risk: RiskLevel = critico ? "red" : atencao ? "yellow" : "green";
         const maisRecente = [...meus].sort((a, b) => (a.triggered_at < b.triggered_at ? 1 : -1))[0];
 
+        const ind = (l.patient_user_id ? indicadoresPorPaciente.get(l.patient_user_id) : null) ?? AGREGADO_VAZIO;
+        const headline = maisRecente
+          ? `${maisRecente.title} — ${maisRecente.trigger_value ?? ""}`.trim()
+          : "";
+
+        const estado = classificarEstado({
+          status: l.status,
+          risk,
+          ultimaMedidaEm: ind.ultimaMedidaEm,
+        });
+
+        // Alerta aberto sem responsável é pendência de fila de trabalho. Um
+        // alerta já em avaliação por alguém não é: aparece na tela de alertas,
+        // não no filtro de pendências do painel.
+        const semResponsavel = meus.filter(
+          (a: any) => !a.assigned_to && (a.workflow_status ?? "open") === "open",
+        ).length;
+
         return {
           patient_user_id: l.patient_user_id ?? "",
           link_id: l.id,
           full_name: p?.full_name ?? "Convite pendente",
-          age: null,
+          // Idade sai de `birth_date` — nunca de um campo `age` gravado, que
+          // envelheceria errado e teria que ser recalculado por alguém.
+          age: idadeEmAnos(p?.birth_date),
           condition: resumirCondicao(p),
           risk,
-          headline: maisRecente ? `${maisRecente.title} — ${maisRecente.trigger_value ?? ""}`.trim() : "Sem alertas abertos.",
-          lastReadingAt: null,
-          bpAvg: null,
-          restingHr: null,
-          adherence: null,
+          headline: headline || "Sem alertas abertos.",
+          lastReadingAt: ind.ultimaMedidaEm,
+          // `bpAvg` / `restingHr` / `adherence` continuam no formato antigo
+          // (string "132/81", bpm, fração 0..1) porque outras telas já leem
+          // assim; o detalhe com n e origem vive em `indicadores`.
+          bpAvg: ind.pa.valor,
+          restingHr: ind.fcRepouso.valor ? parseInt(ind.fcRepouso.valor, 10) : null,
+          adherence: ind.adesao.percentual,
           openAlerts: meus.filter((a) => !a.is_read).length,
           nextAppointment: l.patient_user_id ? proximaConsulta.get(l.patient_user_id) ?? null : null,
           status: l.status,
           inviteCode: l.invite_code,
+          estado,
+          motivo: motivoDaFila({ estado, headlineAlerta: headline || null, ultimaMedidaEm: ind.ultimaMedidaEm }),
+          ultimaInfo: ultimaInformacao(ind),
+          indicadores: ind,
+          pendencia: l.status === "pending" || semResponsavel > 0,
         };
       });
     },
   });
 
+  // Ordenação por ESTADO, não por risco puro: com o estado explícito, um
+  // paciente em silêncio há 9 dias sobe acima de um amarelo com alerta de
+  // ontem. `ORDEM_RISCO` continua como critério de desempate dentro do mesmo
+  // estado (dois "prioridade" ainda se ordenam entre si).
   const fila = useMemo(
-    () => [...(query.data ?? [])].sort((a, b) => ORDEM_RISCO[a.risk] - ORDEM_RISCO[b.risk] || b.openAlerts - a.openAlerts),
+    () =>
+      [...(query.data ?? [])].sort(
+        (a, b) =>
+          ORDEM_ESTADO[a.estado] - ORDEM_ESTADO[b.estado] ||
+          ORDEM_RISCO[a.risk] - ORDEM_RISCO[b.risk] ||
+          b.openAlerts - a.openAlerts,
+      ),
     [query.data]
   );
 
@@ -223,9 +387,18 @@ export function useProfessionalPatients() {
     pendentes: fila.filter((p) => p.status === "pending"),
     contagem: {
       total: fila.length,
+      // As três primeiras contagens continuam por RISCO porque ProAccountPage
+      // já as consome; as de estado são as que a fila usa agora.
       vermelho: fila.filter((p) => p.risk === "red").length,
       amarelo: fila.filter((p) => p.risk === "yellow").length,
       verde: fila.filter((p) => p.risk === "green").length,
+      prioridade: fila.filter((p) => p.estado === "prioridade").length,
+      atencao: fila.filter((p) => p.estado === "atencao").length,
+      /** O número que a tela escondia: silêncio de mais de 7 dias. */
+      semDadosRecentes: fila.filter((p) => p.estado === "sem_dados_recentes").length,
+      estaveis: fila.filter((p) => p.estado === "estavel").length,
+      comPendencia: fila.filter((p) => p.pendencia).length,
+      diasSemDados: DIAS_SEM_DADOS,
     },
     isLoading: query.isLoading,
     refetch: query.refetch,
@@ -249,8 +422,63 @@ function resumirCondicao(p: any): string {
 
 // ── Alertas do médico ────────────────────────────────────────────────
 
+/**
+ * Fluxo de trabalho do alerta (migração 20260913000000_alertas_workflow).
+ *
+ * `is_read`/`is_dismissed` respondiam "alguém olhou?". Não respondiam "quem
+ * assumiu?", "o paciente foi contatado?" e "por que foi encerrado?" — que são
+ * as perguntas de qualquer revisão de evento adverso. O gatilho no banco mantém
+ * as flags antigas coerentes com o fluxo, então nada que já lia `is_read`
+ * quebra.
+ */
+export type AlertWorkflowStatus = "open" | "reviewing" | "contacted" | "resolved";
+
+export const ORDEM_WORKFLOW: AlertWorkflowStatus[] = ["open", "reviewing", "contacted", "resolved"];
+
+export const LABEL_WORKFLOW: Record<AlertWorkflowStatus, string> = {
+  open: "Aberto",
+  reviewing: "Em avaliação",
+  contacted: "Contato realizado",
+  resolved: "Resolvido",
+};
+
+/**
+ * `CardioAlert` mora em `@/types/cardio` e ainda não conhece as colunas novas.
+ * Estendemos aqui, com campos opcionais, em vez de alargar o tipo do domínio:
+ * assim uma linha vinda de um banco ainda sem a migração aplicada continua
+ * sendo um `CardioAlert` válido, e o código trata `undefined` como `"open"`.
+ */
+export interface AlertaComFluxo extends CardioAlert {
+  workflow_status?: AlertWorkflowStatus | null;
+  assigned_to?: string | null;
+  resolution_note?: string | null;
+  resolved_at?: string | null;
+  resolved_by?: string | null;
+}
+
+export function fluxoDoAlerta(a: AlertaComFluxo): AlertWorkflowStatus {
+  return (a.workflow_status as AlertWorkflowStatus) ?? (a.is_dismissed ? "resolved" : a.is_read ? "reviewing" : "open");
+}
+
+/**
+ * Risco clínico × atraso operacional.
+ *
+ * `adesao_baixa` e `sem_dados` não descrevem o coração do paciente: descrevem a
+ * relação dele com o tratamento e com o app. Misturados aos alertas de PA e de
+ * ritmo, eles inflam a fila crítica e treinam o médico a ignorar a lista — que
+ * é o pior desfecho possível para uma tela de alerta. Separados, viram trabalho
+ * de secretaria (ligar, reagendar, ensinar o app) e param de competir com
+ * decisão clínica.
+ */
+const REGRAS_OPERACIONAIS = new Set(["adesao_baixa", "sem_dados"]);
+
+export function ehOperacional(a: CardioAlert): boolean {
+  return REGRAS_OPERACIONAIS.has(a.rule_code);
+}
+
 export function useProfessionalAlerts() {
   const { profile } = useProfessionalProfile();
+  const { user } = useAuth();
   const demo = getDevBypass()?.role === "medico";
   const qc = useQueryClient();
 
@@ -258,17 +486,35 @@ export function useProfessionalAlerts() {
     queryKey: queryKeys.alerts.doMedico,
     enabled: !!profile || demo,
     staleTime: 30_000,
-    queryFn: async (): Promise<CardioAlert[]> => {
-      if (demo) return DEMO_ALERTS;
+    queryFn: async (): Promise<AlertaComFluxo[]> => {
+      if (demo) {
+        // O demo precisa mostrar o fluxo cheio, senão a demonstração ensina que
+        // alerta só tem dois estados. Derivamos daqui — e não de campos novos
+        // em demoData.ts — pela mesma razão da fila: uma verdade, um lugar.
+        return DEMO_ALERTS.map((a, i): AlertaComFluxo => {
+          const status: AlertWorkflowStatus = a.is_read ? (i % 2 === 0 ? "contacted" : "reviewing") : "open";
+          return {
+            ...a,
+            workflow_status: status,
+            assigned_to: status === "open" ? null : "demo-user-medico-001",
+            resolution_note: null,
+            resolved_at: null,
+            resolved_by: null,
+          };
+        });
+      }
       const { data, error } = await (supabase as any)
         .from("cardio_alerts")
         .select("*")
         .eq("professional_id", profile!.id)
+        // Continuamos filtrando por `is_dismissed` e não por `workflow_status`:
+        // o gatilho garante que resolvido ⇒ dispensado, e assim a consulta
+        // segue usando o índice parcial que já existe no baseline.
         .eq("is_dismissed", false)
         .order("triggered_at", { ascending: false })
         .limit(100);
       if (error) throw error;
-      return (data ?? []) as CardioAlert[];
+      return (data ?? []) as AlertaComFluxo[];
     },
   });
 
@@ -291,14 +537,59 @@ export function useProfessionalAlerts() {
     onError: (e: unknown) => toastError(e, "Não consegui dispensar o alerta."),
   });
 
+  /**
+   * Avançar o alerta no fluxo. Resolver EXIGE justificativa — a tela não
+   * oferece botão sem nota, e aqui a exigência é repetida porque a mutation é
+   * chamável de fora dela. Um "resolvido" sem por quê é indistinguível de um
+   * alerta que alguém fechou para limpar a tela.
+   */
+  const mover = useMutation({
+    mutationFn: async (input: { id: string; para: AlertWorkflowStatus; justificativa?: string }) => {
+      if (input.para === "resolved" && !input.justificativa?.trim()) {
+        throw new Error("Escreva o que foi verificado antes de resolver o alerta.");
+      }
+      if (demo) { toast.info("Modo demo: nada é salvo."); return; }
+      const agora = new Date().toISOString();
+      const patch: Record<string, unknown> = {
+        workflow_status: input.para,
+        // Quem move o alerta assume o alerta. Estado "em avaliação" sem
+        // responsável é o mesmo buraco de antes, com nome novo.
+        assigned_to: user?.id ?? null,
+      };
+      if (input.para === "resolved") {
+        patch.resolution_note = input.justificativa!.trim();
+        patch.resolved_at = agora;
+        patch.resolved_by = user?.id ?? null;
+      }
+      const { error } = await (supabase as any).from("cardio_alerts").update(patch).eq("id", input.id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: queryKeys.alerts.all });
+      qc.invalidateQueries({ queryKey: queryKeys.professional.all });
+      toast.success(`Alerta marcado como "${LABEL_WORKFLOW[v.para].toLowerCase()}".`);
+    },
+    onError: (e: unknown) => toastError(e, "Não consegui atualizar o alerta."),
+  });
+
   const alerts = query.data ?? [];
+  const clinicos = alerts.filter((a) => !ehOperacional(a));
+  const operacionais = alerts.filter(ehOperacional);
+
   return {
     alerts,
+    /** Risco clínico: PA, ritmo, peso, sintoma, exame. */
+    clinicos,
+    /** Atraso operacional: adesão e ausência de registro. */
+    operacionais,
     naoLidos: alerts.filter((a) => !a.is_read).length,
     criticos: alerts.filter((a) => a.severity === "critical" || a.severity === "emergency"),
+    /** Sem ninguém responsável — a fila de trabalho de verdade. */
+    semResponsavel: alerts.filter((a) => fluxoDoAlerta(a) === "open").length,
     isLoading: query.isLoading,
     marcarLido,
     dispensar,
+    mover,
   };
 }
 

@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, dev]
+  push:
+  workflow_dispatch:
+
+jobs:
+  verificar:
+    name: Typecheck · Lint · Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Preparar Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint (catraca de warnings — só desce, nunca sobe)
+        run: npm run lint
+
+      # Não há suíte de testes automatizados neste projeto ainda. Um passo
+      # `npm test` apontando para script inexistente deixava o CI vermelho em
+      # todo commit — e CI cronicamente vermelho é CI que ninguém lê. Quando
+      # existir suíte de verdade, este passo volta.
+
+      - name: Build de produção
+        run: npm run build

@@ -34,6 +34,43 @@ export function useCardioPatient(patientUserId?: string) {
   });
 }
 
+/**
+ * Nome dos pacientes de uma lista de vínculos — em UMA consulta.
+ *
+ * Existe para o seletor do cuidador, que renderiza um chip por paciente
+ * acompanhado. Cada chip chamava `useCardioPatient` por conta própria: uma
+ * consulta por item de lista, o padrão N+1. Devolve um mapa
+ * `patient_user_id → full_name` e nada mais — é tudo o que o chip usa.
+ */
+export function useNomesDePacientes(patientUserIds: string[]) {
+  const demo = !!getDevBypass();
+  // Ordenado para a chave não mudar só porque a lista veio noutra ordem.
+  const ids = [...new Set(patientUserIds.filter(Boolean))].sort();
+
+  const { data } = useQuery({
+    queryKey: [...queryKeys.patient.all, "nomes", ids.join(",")],
+    enabled: ids.length > 0 || demo,
+    staleTime: 5 * 60_000,
+    queryFn: async (): Promise<Record<string, string>> => {
+      if (demo) {
+        return { [DEV_PATIENT.user_id]: DEV_PATIENT.full_name };
+      }
+      const { data, error } = await (supabase as any)
+        .from("cardio_patients")
+        .select("user_id, full_name")
+        .in("user_id", ids);
+      if (error) throw error;
+      const mapa: Record<string, string> = {};
+      for (const linha of (data ?? []) as { user_id: string; full_name: string | null }[]) {
+        if (linha.full_name) mapa[linha.user_id] = linha.full_name;
+      }
+      return mapa;
+    },
+  });
+
+  return data ?? {};
+}
+
 export function useSalvarCardioPatient() {
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -92,6 +129,19 @@ export function useTargets(patientUserId?: string) {
     targets: query.data ?? sugeridas,
     /** true quando são só sugestões — a tela mostra "aguardando seu médico". */
     ehSugestao: !query.data,
+    /**
+     * true só quando existe linha gravada E ela tem um profissional atrás.
+     *
+     * Distinção que `ehSugestao` sozinho não faz e que a tela do paciente
+     * precisa fazer: desde a migração de segurança (§3), o próprio paciente
+     * planta uma linha de referência ao entrar no app — com os valores PADRÃO,
+     * forçados pelo gatilho `proteger_metas`, e `professional_id` nulo. Essa
+     * linha EXISTE, portanto `ehSugestao` é false, mas ela não é prescrição de
+     * ninguém. Chamá-la de "o que seu médico definiu" seria inventar um médico.
+     */
+    ehPrescricao: !!query.data && !!query.data.professional_id,
+    /** Quando a prescrição foi definida — `null` enquanto for só referência. */
+    definidoEm: query.data?.updated_at ?? null,
     isLoading: query.isLoading,
   };
 }

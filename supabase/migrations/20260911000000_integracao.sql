@@ -399,18 +399,16 @@ create policy monitoring_plan_doctor on public.monitoring_plan for all
   using (public.is_linked_professional(patient_user_id, auth.uid()))
   with check (public.is_linked_professional(patient_user_id, auth.uid()));
 
--- Plano padrão para quem já está vinculado (o médico ajusta depois).
-insert into public.monitoring_plan (patient_user_id, professional_id, metric, frequency, times_per_day, preferred_time)
-select l.patient_user_id, l.professional_id, m.metric, m.freq, m.tpd, m.hora
-  from public.professional_patient_links l
-  cross join (values
-    ('bp','twice_daily',2,'any'),
-    ('weight','daily',1,'morning'),
-    ('medication','daily',1,'any'),
-    ('wellbeing','daily',1,'evening')
-  ) as m(metric, freq, tpd, hora)
- where l.status = 'active' and l.patient_user_id is not null
-on conflict (patient_user_id, metric) do nothing;
+-- DECISÃO: NÃO semeamos plano automático.
+--
+-- A tentação era criar quatro itens padrão para todo vínculo ativo. Mas o
+-- app do paciente escreve "Definido pelo seu médico" em cima do que vem
+-- desta tabela — e um item que o médico nunca escolheu, exibido como
+-- prescrição dele, é mentira com aparência de recurso. Sem plano, o app cai
+-- no conjunto sugerido e DIZ que é sugestão (ver usePlanoMonitoramento.ts).
+-- O médico prescreve na tela do paciente, em dez segundos, e aí sim vira
+-- prescrição de verdade.
+
 
 -- ── 5. beta_events (chamada pelo código, nunca criada) ───────────────
 
@@ -443,9 +441,35 @@ alter table public.feedback add column if not exists author_name     text;
 alter table public.feedback add column if not exists author_email    text;
 alter table public.feedback add column if not exists screen          text;
 alter table public.feedback add column if not exists message         text;
-alter table public.feedback add column if not exists importance      smallint;
 alter table public.feedback add column if not exists attachment_path text;
 alter table public.feedback add column if not exists updated_at      timestamptz not null default now();
+
+-- `importance` é TEXTO, não smallint. O app manda 'nice_to_have' /
+-- 'important' / 'essential' (FeedbackImportance em src/hooks/useFeedback.ts);
+-- com a coluna smallint todo envio de feedback morria no servidor com
+-- "invalid input syntax for type smallint" — para paciente e para médico.
+alter table public.feedback add column if not exists importance text;
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+     where table_schema = 'public' and table_name = 'feedback'
+       and column_name = 'importance' and data_type = 'smallint'
+  ) then
+    alter table public.feedback alter column importance type text using importance::text;
+  end if;
+end $$;
+
+-- Nota interna do admin. A tela de feedback do admin já escrevia nela; a
+-- coluna nunca existiu, então o botão "salvar nota" sempre errava.
+alter table public.feedback add column if not exists admin_notes text;
+
+-- `status`: o app trabalha com new / in_review / resolved / archived
+-- (FeedbackStatus). O default herdado era 'open', que não existe em nenhum
+-- filtro da tela — feedback novo nascia num estado que o admin não conseguia
+-- listar nem exibir no seletor.
+alter table public.feedback alter column status set default 'new';
+update public.feedback set status = 'new' where status = 'open';
 
 -- `body` era not null e o app nunca manda: migra o conteúdo e libera.
 update public.feedback set message = coalesce(message, body) where message is null;

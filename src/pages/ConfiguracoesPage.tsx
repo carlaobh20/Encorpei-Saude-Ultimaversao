@@ -65,9 +65,22 @@ function ToggleRow({
 }
 
 /**
- * Configurações — preferências do app. Sem dado clínico aqui (guardado só
- * no navegador do paciente); exportar/apagar dados continua vivendo em
- * Minha Conta > Privacidade, onde estão as regras de LGPD.
+ * PREFERÊNCIAS — como o app se comporta com este paciente.
+ *
+ * ── Por que esta tela mudou de nome (auditoria de setembro/2026) ───────
+ * Existiam "Minha Conta" e "Configurações", e o paciente não tinha como
+ * saber qual das duas guardava o quê: os dois nomes prometem "o lugar dos
+ * meus ajustes". A divisão passou a ser por PERGUNTA, não por tradição de
+ * software:
+ *   /conta         → "quem eu sou e o que é meu" (cadastro + privacidade)
+ *   /configuracoes → "como o app se comporta comigo" (esta tela)
+ *
+ * Nada saiu do app. Exportar/apagar dados continua sendo executado só em
+ * Minha conta, onde estão as regras de LGPD; aqui embaixo há apenas um
+ * atalho, escrito como atalho ("fica em Minha conta") e não como se fosse
+ * uma segunda cópia da função.
+ *
+ * Nenhuma preferência daqui é dado clínico — por isso vivem no navegador.
  */
 export default function ConfiguracoesPage() {
   const navigate = useNavigate();
@@ -91,10 +104,10 @@ export default function ConfiguracoesPage() {
 
   return (
     <div className="max-w-2xl mx-auto py-6 px-4 space-y-6">
-      <PageHeader title="Configurações" subtitle="Preferências do app" />
+      <PageHeader title="Preferências" subtitle="Notificações, aparência e acessibilidade" />
 
       <div>
-        <h2 className="font-display text-base font-medium tracking-tight text-foreground mb-2 px-1">Lembretes</h2>
+        <h2 className="font-display text-base font-medium tracking-tight text-foreground mb-2 px-1">Notificações e lembretes</h2>
         <SurfaceCard className="divide-y divide-border p-0 px-4">
           <ToggleRow
             icon={Pill}
@@ -114,7 +127,7 @@ export default function ConfiguracoesPage() {
       </div>
 
       <div>
-        <h2 className="font-display text-base font-medium tracking-tight text-foreground mb-2 px-1">Leitura na tela</h2>
+        <h2 className="font-display text-base font-medium tracking-tight text-foreground mb-2 px-1">Aparência e leitura</h2>
         <SurfaceCard className="divide-y divide-border p-0 px-4">
           <ToggleRow
             icon={Type}
@@ -134,15 +147,17 @@ export default function ConfiguracoesPage() {
       </div>
 
       <div>
+        {/* Atalho, não segunda casa: a função mora em Minha conta. O texto
+            diz para onde leva, para o paciente não procurar aqui de novo. */}
         <h2 className="font-display text-base font-medium tracking-tight text-foreground mb-2 px-1">Seus dados</h2>
-        <SurfaceCard variant="interactive" onClick={() => navigate("/conta#privacidade")} ariaLabel="Privacidade e dados">
+        <SurfaceCard variant="interactive" onClick={() => navigate("/conta#privacidade")} ariaLabel="Privacidade e dados, em Minha conta">
           <div className="flex items-center gap-3.5">
             <div className="h-10 w-10 rounded-2xl bg-secondary grid place-items-center text-primary shrink-0">
               <Shield className="h-4.5 w-4.5" strokeWidth={1.75} />
             </div>
             <div className="flex-1 min-w-0 text-left">
               <p className="text-sm font-semibold text-foreground">Privacidade e dados</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Exportar ou apagar seus dados</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Exportar ou apagar seus dados — fica em Minha conta</p>
             </div>
             <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
           </div>

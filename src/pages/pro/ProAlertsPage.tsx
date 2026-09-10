@@ -1,21 +1,47 @@
 /**
- * ALERTAS — todos os alertas da carteira, agrupados por severidade e por
- * paciente, com filtro de não lidos, marcar lido / dispensar, e o limiar
- * que disparou cada um ao lado do valor (docs §2.6).
+ * ALERTAS — fila de trabalho, não caixa de entrada.
+ *
+ * Duas mudanças estruturais em relação à versão anterior:
+ *
+ * 1. RISCO CLÍNICO ≠ ATRASO OPERACIONAL. Antes, "adesão < 80%" e "sem dados"
+ *    disputavam a mesma lista com "PA em crise" e "ritmo irregular". O efeito
+ *    prático de misturar é conhecido: a lista incha de coisa administrativa, o
+ *    médico aprende que a maioria dos alertas não exige nada dele, e passa a
+ *    ignorar a lista inteira — inclusive a linha que importava. Agora são duas
+ *    seções, com contagens próprias. As duas exigem trabalho; só uma exige
+ *    trabalho DO MÉDICO.
+ *
+ * 2. FLUXO em vez de "lido/dispensado". Aberto → em avaliação → contato
+ *    realizado → resolvido, com responsável e justificativa. "Dispensado" sem
+ *    justificativa era o buraco de rastreabilidade: numa revisão de evento
+ *    adverso, a pergunta é "o alerta disparou — o que foi feito?", e a resposta
+ *    era um booleano.
+ *
+ * `is_read`/`is_dismissed` continuam existindo (o gatilho da migração os mantém
+ * coerentes), então o badge do shell e o app do paciente não mudam.
  */
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, Check, Archive, AlertTriangle, Clock, Info, Siren } from "lucide-react";
+import {
+  Bell, Archive, AlertTriangle, Clock, Info, Siren, HeartPulse, ClipboardList,
+  UserCheck, PhoneCall, CheckCircle2,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { SectionHeader } from "@/components/shell/SectionHeader";
 import { EmptyState } from "@/components/shell/EmptyState";
 import { ListSkeleton } from "@/components/shell/Skeletons";
+import { AppModal } from "@/components/shell/AppModal";
 import { Button } from "@/components/ui/button";
-import { useProfessionalAlerts, useProfessionalPatients } from "@/hooks/useProfessional";
-import type { CardioAlert, Severity } from "@/types/cardio";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  useProfessionalAlerts, useProfessionalPatients, fluxoDoAlerta,
+  LABEL_WORKFLOW, type AlertWorkflowStatus, type AlertaComFluxo,
+} from "@/hooks/useProfessional";
+import { tempoRelativo } from "@/hooks/useCarteiraIndicadores";
+import type { Severity } from "@/types/cardio";
 
-type Filter = "todos" | "nao_lidos";
+type Filter = "abertos" | "todos";
 
 const SEVERITY_META: Record<Severity, { label: string; icon: typeof Bell; tone: string; bg: string }> = {
   emergency: { label: "Emergência", icon: Siren, tone: "text-error", bg: "bg-error-bg" },
@@ -25,44 +51,109 @@ const SEVERITY_META: Record<Severity, { label: string; icon: typeof Bell; tone: 
 };
 const SEVERITY_ORDER: Record<Severity, number> = { emergency: 0, critical: 1, warning: 2, info: 3 };
 
-function relTime(iso: string): string {
-  const ms = Date.now() - new Date(iso).getTime();
-  const min = Math.floor(ms / 60000);
-  if (min < 60) return `há ${min} min`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return `há ${h}h`;
-  const d = Math.floor(h / 24);
-  return `há ${d} dia${d > 1 ? "s" : ""}`;
+/**
+ * Tom do estado do fluxo. "Aberto" é o único que grita: é o único que significa
+ * que ninguém pegou o alerta. "Contato realizado" é verde-claro e não verde
+ * cheio — falar com o paciente não encerra o caso, só tira o alerta do limbo.
+ */
+const WORKFLOW_META: Record<AlertWorkflowStatus, { tone: string; icon: typeof Bell }> = {
+  open: { tone: "bg-error-bg text-error", icon: Bell },
+  reviewing: { tone: "bg-warning-bg text-warning", icon: UserCheck },
+  contacted: { tone: "bg-info-bg text-info", icon: PhoneCall },
+  resolved: { tone: "bg-success-bg text-success", icon: CheckCircle2 },
+};
+
+/** Próximo passo do fluxo — a tela oferece UM botão, não quatro. Fluxo com
+ *  quatro botões simultâneos vira "escolha um estado", e não fluxo. */
+const PROXIMO: Record<AlertWorkflowStatus, AlertWorkflowStatus | null> = {
+  open: "reviewing",
+  reviewing: "contacted",
+  contacted: "resolved",
+  resolved: null,
+};
+
+/** Filtra pelo estado do fluxo e ordena por gravidade, depois por recência.
+ *  Fora do componente porque não depende de nada dele — e assim o `useMemo`
+ *  que a chama tem lista de dependências honesta. */
+function preparar(lista: AlertaComFluxo[], filter: Filter): AlertaComFluxo[] {
+  return lista
+    .filter((a) => (filter === "abertos" ? fluxoDoAlerta(a) !== "resolved" : true))
+    .sort(
+      (a, b) =>
+        SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] ||
+        b.triggered_at.localeCompare(a.triggered_at),
+    );
 }
 
-function AlertRow({ a, patientName, onOpen, onRead, onDismiss }: {
-  a: CardioAlert; patientName: string; onOpen: () => void; onRead: () => void; onDismiss: () => void;
+function AlertRow({ a, patientName, onOpen, onAvancar, onResolver, onDispensar }: {
+  a: AlertaComFluxo;
+  patientName: string;
+  onOpen: () => void;
+  onAvancar: (para: AlertWorkflowStatus) => void;
+  onResolver: () => void;
+  onDispensar: () => void;
 }) {
   const meta = SEVERITY_META[a.severity];
+  const fluxo = fluxoDoAlerta(a);
+  const wf = WORKFLOW_META[fluxo];
+  const proximo = PROXIMO[fluxo];
+
   return (
-    <div className={cn("flex items-start gap-3 p-4 border-b border-border last:border-0", !a.is_read && "bg-primary/[0.03]")}>
+    <div className={cn(
+      "flex flex-col sm:flex-row sm:items-start gap-3 p-4 border-b border-border last:border-0",
+      fluxo === "open" && "bg-primary/[0.03]",
+    )}>
       <div className={cn("h-9 w-9 rounded-xl grid place-items-center shrink-0", meta.bg, meta.tone)}>
         <meta.icon className="h-4 w-4" />
       </div>
+
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap">
           <button onClick={onOpen} className="text-sm font-semibold text-foreground hover:text-primary truncate">{patientName}</button>
           <span className={cn("text-[10px] font-bold uppercase tracking-wider", meta.tone)}>{meta.label}</span>
-          {!a.is_read && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
+          <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider", wf.tone)}>
+            <wf.icon className="h-3 w-3" /> {LABEL_WORKFLOW[fluxo]}
+          </span>
         </div>
+
         <p className="text-sm text-foreground mt-0.5">{a.title}</p>
         {a.description && <p className="text-xs text-muted-foreground mt-0.5">{a.description}</p>}
+
         <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5 text-[11px] text-muted-foreground">
-          <span>valor: <b className="text-foreground tabular-nums">{a.trigger_value ?? "—"}</b></span>
-          <span>limiar: {a.threshold_value ?? "—"}</span>
-          <span>{relTime(a.triggered_at)}</span>
+          <span>valor: <b className="text-foreground tabular-nums">{a.trigger_value ?? "sem valor registrado"}</b></span>
+          <span>limiar: {a.threshold_value ?? "sem limiar registrado"}</span>
+          <span>{tempoRelativo(a.triggered_at)}</span>
+          {/* Responsável é informação de primeira classe: "em avaliação" sem
+              nome é a mesma névoa que "lido" era. */}
+          <span>{a.assigned_to ? "responsável definido" : "sem responsável"}</span>
         </div>
-      </div>
-      <div className="flex items-center gap-1 shrink-0">
-        {!a.is_read && (
-          <Button variant="ghost" size="sm" onClick={onRead} title="Marcar como lido"><Check className="h-3.5 w-3.5" /></Button>
+
+        {a.resolution_note && (
+          <p className="text-[11px] text-muted-foreground mt-1.5 border-l-2 border-border pl-2">
+            Justificativa: <span className="text-foreground">{a.resolution_note}</span>
+            {a.resolved_at && ` · ${tempoRelativo(a.resolved_at)}`}
+          </p>
         )}
-        <Button variant="ghost" size="sm" onClick={onDismiss} title="Dispensar"><Archive className="h-3.5 w-3.5" /></Button>
+      </div>
+
+      <div className="flex items-center gap-1 shrink-0 flex-wrap">
+        {proximo === "resolved" ? (
+          // Resolver abre o modal: a justificativa é obrigatória, então não
+          // pode existir um caminho de um clique até "resolvido".
+          <Button variant="ghost" size="sm" onClick={onResolver}>
+            <CheckCircle2 className="h-3.5 w-3.5" /> Resolver
+          </Button>
+        ) : proximo ? (
+          <Button variant="ghost" size="sm" onClick={() => onAvancar(proximo)}>
+            {proximo === "reviewing" ? <UserCheck className="h-3.5 w-3.5" /> : <PhoneCall className="h-3.5 w-3.5" />}
+            {LABEL_WORKFLOW[proximo]}
+          </Button>
+        ) : null}
+        {fluxo !== "resolved" && (
+          <Button variant="ghost" size="sm" onClick={onDispensar} title="Dispensar sem tratar (compatibilidade)">
+            <Archive className="h-3.5 w-3.5" />
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -70,10 +161,11 @@ function AlertRow({ a, patientName, onOpen, onRead, onDismiss }: {
 
 export default function ProAlertsPage() {
   const navigate = useNavigate();
-  const { alerts, isLoading, marcarLido, dispensar } = useProfessionalAlerts();
+  const { alerts, clinicos, operacionais, semResponsavel, isLoading, dispensar, mover } = useProfessionalAlerts();
   const { patients } = useProfessionalPatients();
-  const [filter, setFilter] = useState<Filter>("todos");
-  const [groupBy, setGroupBy] = useState<"severidade" | "paciente">("severidade");
+  const [filter, setFilter] = useState<Filter>("abertos");
+  const [resolvendo, setResolvendo] = useState<AlertaComFluxo | null>(null);
+  const [justificativa, setJustificativa] = useState("");
 
   const nameOf = useMemo(() => {
     const m = new Map<string, string>();
@@ -81,95 +173,142 @@ export default function ProAlertsPage() {
     return m;
   }, [patients]);
 
-  const filtered = useMemo(
-    () => alerts.filter((a) => (filter === "nao_lidos" ? !a.is_read : true)),
-    [alerts, filter],
+  /**
+   * "Abertos" agora significa "ainda dão trabalho", não "não lidos" — a
+   * distinção é o ponto do fluxo: um alerta lido e abandonado continua sendo
+   * trabalho pendente.
+   */
+  const listaClinica = useMemo(() => preparar(clinicos, filter), [clinicos, filter]);
+  const listaOperacional = useMemo(() => preparar(operacionais, filter), [operacionais, filter]);
+
+  const confirmarResolucao = () => {
+    if (!resolvendo || !justificativa.trim()) return;
+    mover.mutate(
+      { id: resolvendo.id, para: "resolved", justificativa },
+      { onSuccess: () => { setResolvendo(null); setJustificativa(""); } },
+    );
+  };
+
+  const linha = (a: AlertaComFluxo) => (
+    <AlertRow
+      key={a.id}
+      a={a}
+      patientName={nameOf.get(a.patient_user_id) ?? "Paciente"}
+      onOpen={() => navigate(`/pro/pacientes/${a.patient_user_id}`)}
+      onAvancar={(para) => mover.mutate({ id: a.id, para })}
+      onResolver={() => { setResolvendo(a); setJustificativa(""); }}
+      onDispensar={() => dispensar.mutate(a.id)}
+    />
   );
 
-  const groups = useMemo(() => {
-    if (groupBy === "severidade") {
-      const bySev = new Map<Severity, CardioAlert[]>();
-      for (const a of filtered) {
-        const list = bySev.get(a.severity) ?? [];
-        list.push(a);
-        bySev.set(a.severity, list);
-      }
-      return [...bySev.entries()]
-        .sort(([a], [b]) => SEVERITY_ORDER[a] - SEVERITY_ORDER[b])
-        .map(([sev, list]) => ({
-          key: sev,
-          title: SEVERITY_META[sev].label,
-          list: list.sort((a, b) => b.triggered_at.localeCompare(a.triggered_at)),
-        }));
-    }
-    const byPatient = new Map<string, CardioAlert[]>();
-    for (const a of filtered) {
-      const list = byPatient.get(a.patient_user_id) ?? [];
-      list.push(a);
-      byPatient.set(a.patient_user_id, list);
-    }
-    return [...byPatient.entries()]
-      .sort(([, la], [, lb]) => lb.length - la.length)
-      .map(([uid, list]) => ({
-        key: uid,
-        title: nameOf.get(uid) ?? "Paciente",
-        list: list.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] || b.triggered_at.localeCompare(a.triggered_at)),
-      }));
-  }, [filtered, groupBy, nameOf]);
-
-  const naoLidos = alerts.filter((a) => !a.is_read).length;
+  const vazio = listaClinica.length === 0 && listaOperacional.length === 0;
 
   return (
     <div className="mx-auto w-full max-w-[1200px] px-5 md:px-8 lg:px-10 py-6 md:py-8">
       <PageHeader
         title="Alertas"
-        subtitle={naoLidos > 0 ? `${naoLidos} não lido${naoLidos > 1 ? "s" : ""}` : "Tudo revisado"}
+        subtitle={semResponsavel > 0
+          ? `${semResponsavel} sem responsável — ninguém assumiu ainda`
+          : "Todos os alertas abertos já têm responsável"}
       />
 
       <div className="flex flex-wrap items-center gap-2 mb-5">
-        {(["todos", "nao_lidos"] as Filter[]).map((f) => (
+        {(["abertos", "todos"] as Filter[]).map((f) => (
           <button key={f} onClick={() => setFilter(f)}
             className={cn("px-3 h-9 rounded-xl text-xs font-semibold border transition-colors",
               filter === f ? "bg-primary text-primary-foreground border-primary" : "bg-card text-muted-foreground border-border hover:border-border-strong")}>
-            {f === "todos" ? `Todos (${alerts.length})` : `Não lidos (${naoLidos})`}
+            {f === "abertos" ? `Em aberto (${alerts.filter((a) => fluxoDoAlerta(a) !== "resolved").length})` : `Todos (${alerts.length})`}
           </button>
         ))}
-        <div className="ml-auto flex items-center gap-1 text-xs">
-          <span className="text-muted-foreground mr-1">Agrupar por</span>
-          {(["severidade", "paciente"] as const).map((g) => (
-            <button key={g} onClick={() => setGroupBy(g)}
-              className={cn("px-2.5 h-8 rounded-lg border capitalize", groupBy === g ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border text-muted-foreground")}>
-              {g}
-            </button>
-          ))}
-        </div>
       </div>
 
       {isLoading ? (
         <ListSkeleton rows={5} />
-      ) : filtered.length === 0 ? (
-        <EmptyState icon={Bell} title="Nenhum alerta" description={filter === "nao_lidos" ? "Nada não lido no momento." : "Quando um limiar disparar, aparece aqui."} variant="card" />
+      ) : vazio ? (
+        <EmptyState
+          icon={Bell}
+          title="Nenhum alerta"
+          description={filter === "abertos" ? "Nada em aberto no momento." : "Quando um limiar disparar, aparece aqui."}
+          variant="card"
+        />
       ) : (
-        <div className="space-y-5">
-          {groups.map((g) => (
-            <div key={g.key}>
-              <SectionHeader title={g.title} subtitle={`${g.list.length} alerta${g.list.length > 1 ? "s" : ""}`} />
-              <div className="rounded-2xl bg-card border border-border overflow-hidden">
-                {g.list.map((a) => (
-                  <AlertRow
-                    key={a.id}
-                    a={a}
-                    patientName={nameOf.get(a.patient_user_id) ?? "Paciente"}
-                    onOpen={() => navigate(`/pro/pacientes/${a.patient_user_id}`)}
-                    onRead={() => marcarLido.mutate(a.id)}
-                    onDismiss={() => dispensar.mutate(a.id)}
-                  />
-                ))}
+        <div className="space-y-6">
+          {/* ── RISCO CLÍNICO ─────────────────────────────────────────── */}
+          <section>
+            <SectionHeader
+              title="Risco clínico"
+              subtitle="pressão, ritmo, peso, sintoma e exame — exige avaliação médica"
+            />
+            {listaClinica.length === 0 ? (
+              <div className="rounded-2xl bg-card border border-border p-4 flex items-center gap-2">
+                <HeartPulse className="h-4 w-4 text-success shrink-0" />
+                <p className="text-xs text-muted-foreground">
+                  Nenhum alerta de risco clínico em aberto. Isso vale para quem está medindo —
+                  pacientes sem dados recentes aparecem no painel, não aqui.
+                </p>
               </div>
-            </div>
-          ))}
+            ) : (
+              <div className="rounded-2xl bg-card border border-error-bg overflow-hidden">
+                {listaClinica.map(linha)}
+              </div>
+            )}
+          </section>
+
+          {/* ── ATRASO OPERACIONAL ────────────────────────────────────── */}
+          <section>
+            <SectionHeader
+              title="Atraso operacional"
+              subtitle="adesão e falta de registro — trabalho de contato, não conduta clínica"
+            />
+            {listaOperacional.length === 0 ? (
+              <div className="rounded-2xl bg-card border border-border p-4 flex items-center gap-2">
+                <ClipboardList className="h-4 w-4 text-muted-foreground shrink-0" />
+                <p className="text-xs text-muted-foreground">Nenhuma pendência operacional em aberto.</p>
+              </div>
+            ) : (
+              <div className="rounded-2xl bg-card border border-border overflow-hidden">
+                {listaOperacional.map(linha)}
+              </div>
+            )}
+          </section>
         </div>
       )}
+
+      {/* Resolver EXIGE justificativa. Um "resolvido" em branco é
+          indistinguível de um alerta fechado para limpar a tela. */}
+      <AppModal open={!!resolvendo} onOpenChange={(o) => { if (!o) { setResolvendo(null); setJustificativa(""); } }} title="Resolver alerta">
+        <div className="space-y-3">
+          <div className="rounded-xl bg-muted/50 p-3">
+            <p className="text-xs font-semibold text-foreground">{resolvendo?.title}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              {resolvendo ? nameOf.get(resolvendo.patient_user_id) ?? "Paciente" : ""} · valor {resolvendo?.trigger_value ?? "não registrado"}
+            </p>
+          </div>
+          <div>
+            <label htmlFor="justificativa" className="text-xs font-semibold text-foreground">
+              O que foi verificado e qual foi o desfecho?
+            </label>
+            <Textarea
+              id="justificativa"
+              value={justificativa}
+              onChange={(e) => setJustificativa(e.target.value)}
+              rows={4}
+              placeholder="Ex.: paciente contatado por telefone, refez as medidas com o aparelho de braço, valores dentro do alvo. Reavaliação na consulta de 12/10."
+              className="mt-1"
+            />
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Fica registrado com o seu nome e a data. É o que responde, meses depois,
+              o que foi feito quando este alerta disparou.
+            </p>
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="ghost" onClick={() => { setResolvendo(null); setJustificativa(""); }}>Voltar</Button>
+            <Button onClick={confirmarResolucao} disabled={!justificativa.trim() || mover.isPending}>
+              {mover.isPending ? "Salvando…" : "Resolver alerta"}
+            </Button>
+          </div>
+        </div>
+      </AppModal>
     </div>
   );
 }

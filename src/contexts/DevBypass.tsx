@@ -1,7 +1,8 @@
 /**
  * MODO DEMO — exploração pública do app, sem cadastro.
  *
- * Herdado do Encorpei Mamãe e mantido pelo mesmo motivo: é o que permite
+ * Herdado do app de obstetrícia que originou este projeto e mantido pelo
+ * mesmo motivo: é o que permite
  * mostrar o produto a um cardiologista em 30 segundos, no celular dele,
  * sem criar conta. Regras:
  *  - funciona em produção, de propósito;

@@ -11,6 +11,7 @@ import {
   ArrowLeft, MessageSquare, Pencil, Pill, FlaskConical, HeartPulse,
   Activity, Moon, Scale, ClipboardList, StickyNote, AlertTriangle, Info,
   TrendingUp, Gauge, Footprints, Salad, Smile, HelpCircle, UserCheck, Siren, Target,
+  HeartHandshake,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -35,6 +36,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 
 import { useCardioPatient, useTargets, useSalvarTargets } from "@/hooks/useCardioPatient";
+import { useMetasPaciente } from "@/hooks/useMetasPaciente";
 import {
   useBloodPressure, useHeartRate, useWeight, useSleep, useActivity, useSpo2,
 } from "@/hooks/useCardioReadings";
@@ -117,6 +119,11 @@ export default function ProPatientDetailPage() {
   const { risk, isLoading: loadingRisk } = useRiskAssessment(patientId);
   const { targets, ehSugestao } = useTargets(patientId);
   const salvarTargets = useSalvarTargets();
+  // Metas de COMPORTAMENTO que o paciente definiu para si (`patient_goals`).
+  // Uma consulta, no topo da tela, pelo id que já está na rota. Nunca dentro
+  // de `.map()`: o N+1 já derrubou as telas do médico antes, e aqui seria
+  // ainda mais fácil recair nele, já que o dado é "um por paciente".
+  const metasDoPaciente = useMetasPaciente(patientId);
 
   const bp = useBloodPressure(patientId);
   const hr = useHeartRate(patientId);
@@ -346,6 +353,7 @@ export default function ProPatientDetailPage() {
               action={<Button variant="outline" size="sm" onClick={() => setTargetsOpen(true)}><Pencil className="h-3.5 w-3.5" /> Editar metas</Button>}
             />
             <TargetsGrid targets={targets} mrpa={mrpa} restingHr={hr.repouso[0]?.bpm ?? null} weightNow={weight.ultimo?.value ?? null} ldl={ultimoPorMarcador.get("ldl")?.value_num ?? null} stepsAvg={activity.passosMedia} sleepHours={sleep.mediaMinutos != null ? sleep.mediaMinutos / 60 : null} />
+            <MetasCombinadasCard metas={metasDoPaciente.metas} />
           </div>
 
           {/* Gráficos */}
@@ -500,6 +508,61 @@ function TargetsGrid({ targets, mrpa, restingHr, weightNow, ldl, stepsAvg, sleep
       <MetaRow meta={avaliarMeta("Sono", sleepHours != null ? +sleepHours.toFixed(1) : null, targets.sleep_hours, "", false)} unit="h" />
       {targets.dry_weight_kg != null && (
         <MetaRow meta={avaliarMeta("Peso (seco)", weightNow, targets.dry_weight_kg, "", true, 0.03)} unit=" kg" />
+      )}
+    </div>
+  );
+}
+
+/**
+ * METAS COMBINADAS PELO PACIENTE — autorrelato, não prescrição.
+ *
+ * Fica colado em "Alvos vs. atual" porque é ali que a comparação rende: se o
+ * médico prescreveu 8000 passos e o paciente combinou 4000 consigo mesmo, isso
+ * não é falha de adesão — é uma conversa que vale 30 segundos de consulta.
+ *
+ * Duas coisas que este bloco NÃO faz, e não por esquecimento:
+ *  · não é editável pelo médico. Escrever em `patient_goals` é direito do
+ *    paciente (RLS `patient_goals_own`); o médico só lê. Um campo editável
+ *    aqui inverteria os papéis que a migração de segurança separou.
+ *  · não dispara alerta nem entra em escore. É intenção declarada, não medida.
+ */
+function MetasCombinadasCard({ metas }: { metas: ReturnType<typeof useMetasPaciente>["metas"] }) {
+  const itens: { rotulo: string; valor: string }[] = [];
+  if (metas?.steps_per_day != null) itens.push({ rotulo: "Passos/dia", valor: `${metas.steps_per_day}` });
+  if (metas?.mvpa_minutes_week != null) itens.push({ rotulo: "Exercício/semana", valor: `${metas.mvpa_minutes_week} min` });
+  if (metas?.sleep_hours != null) itens.push({ rotulo: "Sono", valor: `${metas.sleep_hours} h` });
+  if (metas?.sodium_mg_day != null) itens.push({ rotulo: "Sódio/dia", valor: `${metas.sodium_mg_day} mg` });
+
+  return (
+    <div className="mt-3 rounded-xl border border-dashed border-border p-3">
+      <div className="flex items-center gap-2 mb-2">
+        <HeartHandshake className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        <p className="text-xs font-medium text-foreground">Metas que o paciente combinou consigo</p>
+        <Badge variant="outline" className="text-[10px] font-normal">autorrelato</Badge>
+        {metas?.updated_at && (
+          <span className="text-[10px] text-muted-foreground">· {fmtDate(metas.updated_at)}</span>
+        )}
+      </div>
+
+      {itens.length === 0 && !metas?.observacao ? (
+        <p className="text-[11px] text-muted-foreground">
+          O paciente ainda não definiu metas de comportamento próprias.
+        </p>
+      ) : (
+        <>
+          {itens.length > 0 && (
+            <div className="flex flex-wrap gap-x-5 gap-y-1">
+              {itens.map((i) => (
+                <p key={i.rotulo} className="text-[11px] text-muted-foreground">
+                  {i.rotulo}: <b className="text-foreground tabular-nums">{i.valor}</b>
+                </p>
+              ))}
+            </div>
+          )}
+          {metas?.observacao && (
+            <p className="text-[11px] text-muted-foreground mt-2 italic">“{metas.observacao}”</p>
+          )}
+        </>
       )}
     </div>
   );
@@ -942,10 +1005,15 @@ function TempoNoAlvoCard({ tempoNoAlvo }: { tempoNoAlvo: ReturnType<typeof useTe
   );
   return (
     <SurfaceCard variant="highlight">
+      {/* Rótulo técnico mantido de propósito: o médico está acostumado com
+          "tempo no alvo" da literatura. O paciente lê o mesmo número com
+          outro nome ("Medidas na meta"), porque a conta é sobre amostras e
+          não sobre tempo — ver timeInRange.ts. O subtítulo diz isso para que
+          ninguém pense que são duas métricas diferentes. */}
       <SectionHeader
-        title="Tempo no Alvo"
+        title="Medidas de PA na meta"
         icon={Target}
-        subtitle="percentual de medidas de pressão dentro do alvo — o mesmo número que o paciente vê"
+        subtitle="percentual de medidas de pressão dentro do alvo — o paciente vê este mesmo número como “Medidas na meta”"
       />
       {isLoading ? (
         <p className="text-xs text-muted-foreground py-4">Carregando…</p>
@@ -957,6 +1025,9 @@ function TempoNoAlvoCard({ tempoNoAlvo }: { tempoNoAlvo: ReturnType<typeof useTe
               <p className="text-3xl font-bold tabular-nums text-primary">
                 {mes.percentual != null ? `${mes.percentual}%` : "—"}
               </p>
+              {/* Percentual sem denominador não decide conduta: 100% sobre 2
+                  medidas e 100% sobre 60 são coisas diferentes. */}
+              <p className="text-[10px] text-muted-foreground">n={mes.total} medida{mes.total === 1 ? "" : "s"} validada{mes.total === 1 ? "" : "s"}</p>
               {mes.variacao != null && (
                 <p className={cn("text-[11px] font-medium", mes.variacao >= 0 ? "text-success" : "text-error")}>
                   {mes.variacao >= 0 ? "+" : ""}{mes.variacao} p.p. vs. mês anterior

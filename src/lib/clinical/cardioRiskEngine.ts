@@ -9,7 +9,7 @@
  * Função pura: sem rede, sem React, sem Date.now() implícito (a data de
  * referência é parâmetro). É isso que permite testar cada limiar.
  *
- * Substitui o riskEngine gestacional do Encorpei Mamãe.
+ * Substitui o motor de risco obstétrico do app que originou este projeto.
  */
 
 import {

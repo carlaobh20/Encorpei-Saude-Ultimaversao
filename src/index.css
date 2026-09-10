@@ -1,7 +1,8 @@
 /* ============================================================
-   ENCORPEI BLOOM v2 — Design System
-   Light premium · cardio · sépia · acolhedor
-   Healthtech maternal — May 2026
+   ENCORPEI CARDIO — Design System
+   Light premium · clínico · acolhedor · legível para 60–75 anos
+   Derivado do design system do app de obstetrícia que originou o projeto;
+   a paleta e a escala tipográfica foram refeitas para o público cardíaco.
    ============================================================ */
 
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
@@ -65,6 +66,13 @@
     --status-warning:      38 92% 50%;          /* #F59E0B */
     --status-danger:       0 73% 50%;           /* #DC2626 */
     --status-info:         214 35% 47%;         /* #4A6FA5 */
+    /*
+     * O amarelo de aviso (#F59E0B) tem contraste ~2:1 sobre branco — serve
+     * para preencher forma, nunca para escrever. Este é o par escuro dele,
+     * criado na auditoria de acessibilidade: mesma família, ~6:1 sobre
+     * branco e ~5:1 sobre o fundo de aviso. Use-o em TEXTO e ícone de aviso.
+     */
+    --status-warning-fg:   32 81% 27%;
     --status-success-bg:   126 33% 94%;
     --status-warning-bg:   38 92% 94%;
     --status-danger-bg:    0 73% 96%;
@@ -128,12 +136,20 @@
     --font-script:  'Sora', 'Inter', system-ui, sans-serif;
     --font-sans:    'Inter', system-ui, -apple-system, sans-serif;
 
-    --text-2xs:  0.6875rem;  /* 11px */
-    --text-xs:   0.75rem;    /* 12px */
-    --text-sm:   0.8125rem;  /* 13px */
-    --text-base: 0.9375rem;  /* 15px */
-    --text-md:   1rem;       /* 16px */
-    --text-lg:   1.125rem;   /* 18px */
+    /*
+     * Escala revista na auditoria de legibilidade (set/2026).
+     * Meta de produto: corpo de texto entre 16 e 18px para um paciente de
+     * 60–75 anos, e NADA que ele precise ler abaixo de 12px. Os degraus
+     * pequenos subiram (o antigo 11px virou 12px, o 13px virou 14px); o
+     * `--text-2xs` sobrevive só como piso legal para rótulo decorativo,
+     * nunca para informação clínica.
+     */
+    --text-2xs:  0.75rem;    /* 12px — piso absoluto */
+    --text-xs:   0.8125rem;  /* 13px */
+    --text-sm:   0.9375rem;  /* 15px */
+    --text-base: 1.0625rem;  /* 17px — corpo */
+    --text-md:   1.125rem;   /* 18px */
+    --text-lg:   1.25rem;    /* 20px */
     --text-xl:   1.375rem;   /* 22px */
     --text-2xl:  1.75rem;    /* 28px */
     --text-3xl:  2.25rem;    /* 36px */
@@ -210,8 +226,11 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: var(--font-sans);
-    font-size: 14.5px;
-    line-height: 1.55;
+    /* 16px é o piso de corpo de texto que o navegador móvel também usa para
+       decidir se dá zoom automático em campo de formulário. Abaixo disso o
+       iOS amplia a tela sozinho ao focar um input — e o paciente se perde. */
+    font-size: 16px;
+    line-height: 1.6;
     font-feature-settings: 'cv11', 'ss01', 'ss03';
     -webkit-tap-highlight-color: transparent;
     -webkit-font-smoothing: antialiased;
@@ -253,6 +272,59 @@
 
   /* ── Layout ── */
   .touch-target { min-height: 44px; min-width: 44px; }
+
+  /* ============================================================
+     LEITURA DO PACIENTE  ·  auditoria de legibilidade, set/2026
+     ============================================================
+     Aplicada na casca do app do PACIENTE (AppShell) e nas folhas que ele
+     abre. NÃO é global de propósito: as telas do médico são densas por
+     contrato (docs/CONTRATO-DE-CODIGO.md, "Tom de escrita") e subir a fonte
+     lá tiraria informação da primeira dobra de quem precisa de informação.
+
+     O que ela faz:
+       1. Corpo em 17px (meta: 16–18px).
+       2. Reescala os degraus pequenos do Tailwind — text-xs e text-sm são
+          usados às centenas nas telas do paciente e valiam 12/14px.
+       3. Impõe um PISO de 12px sobre os tamanhos avulsos que já existiam no
+          código (`text-[10px]`, `text-[11px]`): em vez de caçar cada um,
+          a folha corrige todos de uma vez, e novos casos entram corrigidos.
+       4. Garante 44px de alvo em botão e linha clicável.
+     ============================================================ */
+  .leitura-paciente { font-size: 1.0625rem; line-height: 1.6; }
+
+  .leitura-paciente .text-2xs      { font-size: 0.75rem;   }  /* 12px — piso */
+  .leitura-paciente .text-xs       { font-size: 0.8125rem; }  /* 13px */
+  .leitura-paciente .text-sm       { font-size: 1rem;      }  /* 16px */
+  .leitura-paciente .text-base     { font-size: 1.0625rem; }  /* 17px */
+  .leitura-paciente .text-lg       { font-size: 1.1875rem; }  /* 19px */
+  .leitura-paciente h2,
+  .leitura-paciente h3             { font-size: 1.0625rem; }  /* 17px */
+
+  /* Piso para os tamanhos avulsos herdados. Escapamos os colchetes porque
+     eles fazem parte do nome da classe que o Tailwind gera. */
+  .leitura-paciente .text-\[10px\] { font-size: 0.75rem;   }  /* 12px */
+  .leitura-paciente .text-\[11px\] { font-size: 0.8125rem; }  /* 13px */
+  .leitura-paciente .text-\[12px\] { font-size: 0.8125rem; }  /* 13px */
+  .leitura-paciente .text-\[13px\] { font-size: 0.9375rem; }  /* 15px */
+
+  /*
+   * Alvo de toque. `min-height` não tem efeito em elemento inline, então
+   * esta regra engorda botão e link em bloco (menu, cartão clicável) sem
+   * deformar link no meio de um parágrafo — que é exatamente o que
+   * queremos. Botão de ícone continua quadrado porque também ganha largura.
+   */
+  .leitura-paciente button,
+  .leitura-paciente [role="button"],
+  .leitura-paciente a[class*="rounded"] { min-height: 44px; }
+
+  /* Foco visível reforçado: no app do paciente ele precisa aparecer mesmo
+     sobre fundo colorido (cartão primário, botão de emergência). */
+  .leitura-paciente :focus-visible {
+    outline: 3px solid hsl(var(--primary));
+    outline-offset: 2px;
+  }
+  .leitura-paciente .bg-error :focus-visible,
+  .leitura-paciente.bg-error :focus-visible { outline-color: hsl(var(--foreground)); }
   .mobile-only  { @apply block md:hidden; }
   .desktop-only { @apply hidden md:block; }
   .page-content {
@@ -347,6 +419,9 @@
   }
 
   /* ── Status helpers ── */
+  /* Texto/ícone de aviso com contraste suficiente (ver --status-warning-fg). */
+  .text-warning-forte { color: hsl(var(--status-warning-fg)); }
+
   .status-success-bg { background-color: hsl(var(--status-success-bg)); color: hsl(var(--status-success)); }
   .status-warning-bg { background-color: hsl(var(--status-warning-bg)); color: hsl(var(--status-warning)); }
   .status-danger-bg  { background-color: hsl(var(--status-danger-bg));  color: hsl(var(--status-danger)); }

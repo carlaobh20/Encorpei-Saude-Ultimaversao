@@ -17,7 +17,7 @@ export function ProtectedRoute() {
   // Auditoria 26/08/2026 — defesa em profundidade: o bloqueio principal fica
   // na tela de login (AuthPage.tsx), mas uma sessão de médico já autenticada
   // ANTES dessa correção pode ainda estar salva no navegador de alguém. Sem
-  // isso, "sem cadastro de paciente" cairia direto no onboarding da mamãe
+  // isso, "sem cadastro de paciente" cairia direto no onboarding do paciente
   // (linha `if (patient === null)` abaixo) e deixaria a conta de médico
   // terminar o onboarding errado. Só dispara quando realmente vamos precisar
   // da resposta — não pesa a navegação normal de quem já é paciente.

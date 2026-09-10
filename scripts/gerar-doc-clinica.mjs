@@ -1,10 +1,23 @@
+/**
+ * Gerador do documento de regras clínicas — escreve o Markdown em stdout
+ * (uso: `node scripts/gerar-doc-clinica.mjs > docs/REGRAS-CLINICAS.md`).
+ *
+ * ── ATENÇÃO (auditoria de setembro/2026) ──────────────────────────────
+ * Este script NÃO roda hoje. Ele importa `src/domain/clinical-rules/`, um
+ * diretório que veio do app de obstetrícia que originou este projeto e que
+ * não existe aqui — e não há script `doc:clinico` no package.json. Só o
+ * título foi corrigido ("Encorpei Mamãe" → "Encorpei Cardio") para não
+ * espalhar o resíduo caso o registro de regras seja portado para o Cardio.
+ * Enquanto `src/domain/clinical-rules/` não existir, rodar isto falha com
+ * ERR_MODULE_NOT_FOUND — é dívida conhecida, não um bug novo.
+ */
 import { REGRAS_CLINICAS, regrasAtivas, regrasCriticas, regrasSemOrigem, regrasOrfas } from "../src/domain/clinical-rules/registry.ts";
 import { TODAS_AS_CONSTANTES, DIVERGENCIAS_CONHECIDAS } from "../src/domain/clinical-rules/constants.ts";
 const CLASSE = { informativa:"Informativa", monitoramento:"Monitoramento", alerta:"Alerta", urgencia:"Urgência", critica:"Crítica" };
 const RISCO = { baixo:"Baixo", medio:"Médio", alto:"Alto", critico:"Crítico" };
 const STATUS = { ativa:"Ativa", orfa:"Órfã (não executa)", duplicada:"Duplicada", removida:"Removida" };
 const L=[];
-L.push("# Regras Clínicas — Encorpei Mamãe","",
+L.push("# Regras Clínicas — Encorpei Cardio","",
 "> **Documento gerado a partir do código.** Não edite este arquivo à mão: ele é",
 "> produzido por `npm run doc:clinico` a partir de `src/domain/clinical-rules/`.",
 "> Se a documentação e o código divergirem, o código é a verdade — e o teste",

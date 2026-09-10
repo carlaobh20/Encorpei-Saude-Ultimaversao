@@ -1,9 +1,15 @@
 /**
- * Cliente Web Bluetooth para a pulseira H59.
+ * Cliente Web Bluetooth para a pulseira do paciente.
+ *
+ * HIPÓTESE NÃO CONFIRMADA (docs §4): a ficha que temos do aparelho — modelo,
+ * MCU, sensores, app companheiro — veio de anúncio de fornecedor, não de manual
+ * nem de documento de protocolo. Os prefixos de nome e os UUIDs proprietários
+ * em `h59Protocol.ts` são palpite informado, e é justamente por isso que existe
+ * `diagnosticarPulseira()`: quem responde o que este hardware expõe é o teste no
+ * aparelho, não a ficha. Nenhuma tela deve afirmar modelo ao paciente.
  *
  * Funciona em Chrome/Edge (Android, Windows, macOS, Linux). NÃO funciona em
  * iOS — lá o caminho é HealthKit via app nativo ou importação de arquivo.
- * Ver docs/MAPEAMENTO-CARDIO.md §4.
  *
  * Este módulo é deliberadamente burro: conecta, escuta FC e bateria, entrega
  * amostras por callback. Normalização e gravação ficam em `normalize.ts` e nos

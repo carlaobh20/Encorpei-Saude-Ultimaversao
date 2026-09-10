@@ -21,6 +21,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { getDevBypass } from "@/contexts/DevBypass";
+import { queryKeys } from "@/lib/queryKeys";
 import {
   useBloodPressure, useWeight, useHeartRate, useSpo2, useGlucose, useSleep, useActivity,
 } from "@/hooks/useCardioReadings";
@@ -81,7 +82,7 @@ export function usePlanoMonitoramento(patientUserId?: string) {
   const alvo = patientUserId ?? user?.id;
 
   const { data: plano = [], isLoading } = useQuery({
-    queryKey: ["monitoring_plan", alvo],
+    queryKey: queryKeys.monitoringPlan.ativos(alvo ?? "demo"),
     queryFn: async (): Promise<ItemPlano[]> => {
       if (demo) return PLANO_SUGERIDO;
       const { data, error } = await (supabase as any)

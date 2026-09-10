@@ -161,7 +161,7 @@ export default function OnboardingPage() {
         try {
           await acceptInvite.mutateAsync(codigo.trim().toUpperCase());
         } catch {
-          toast.info("Não consegui vincular ao médico agora — você pode tentar de novo em Minha Conta.");
+          toast.info("Não consegui vincular ao médico agora — você pode tentar de novo em Minha conta.");
         }
       }
 
@@ -369,7 +369,7 @@ export default function OnboardingPage() {
                 <StepShell eyebrow="Médico" title={<>Seu <span className="text-primary">cardiologista</span></>}>
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     Se o seu médico já usa o Encorpei Cardio, ele te passa um código para vincular sua conta.
-                    Se não tiver o código agora, pode continuar sem — dá para vincular depois em Minha Conta.
+                    Se não tiver o código agora, pode continuar sem — dá para vincular depois em Minha conta.
                   </p>
 
                   {!quisCodigo ? (

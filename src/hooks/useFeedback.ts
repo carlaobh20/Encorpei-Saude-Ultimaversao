@@ -174,6 +174,42 @@ export function useFeedbackReplies(feedbackId: string | null | undefined) {
   });
 }
 
+/**
+ * Quantas respostas tem cada feedback — em UMA consulta para a lista inteira.
+ *
+ * A lista de feedbacks só precisa do NÚMERO de respostas para escrever
+ * "Ver resposta da equipe (2)" no cartão fechado. Antes cada cartão chamava
+ * `useFeedbackReplies(item.id)` por conta própria: uma consulta por linha,
+ * o padrão N+1 que já derrubou o painel do médico. A conversa inteira
+ * continua sendo carregada por `useFeedbackReplies`, mas só quando alguém
+ * ABRE aquele feedback — aí é uma consulta, sob demanda, e não N.
+ */
+export function useFeedbackReplyCounts(feedbackIds: string[]) {
+  const { user } = useAuth();
+  // Ordenado para a chave não mudar só porque a lista veio noutra ordem.
+  const ids = [...feedbackIds].filter(Boolean).sort();
+  const chave = ids.join(",");
+
+  const { data } = useQuery({
+    queryKey: [...queryKeys.feedback.all, "replyCounts", chave],
+    enabled: !!user && ids.length > 0,
+    queryFn: async (): Promise<Record<string, number>> => {
+      const { data, error } = await supabase
+        .from("feedback_replies" as any)
+        .select("feedback_id")
+        .in("feedback_id", ids);
+      if (error) throw error;
+      const contagem: Record<string, number> = {};
+      for (const linha of (data ?? []) as unknown as { feedback_id: string }[]) {
+        contagem[linha.feedback_id] = (contagem[linha.feedback_id] ?? 0) + 1;
+      }
+      return contagem;
+    },
+  });
+
+  return data ?? {};
+}
+
 /** Envia uma resposta na conversa de um feedback — usado pelo admin e por quem enviou o feedback. */
 export function useSendFeedbackReply() {
   const qc = useQueryClient();
@@ -196,6 +232,9 @@ export function useSendFeedbackReply() {
     },
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: queryKeys.feedback.replies(variables.feedbackId) });
+      // O contador da lista é outra consulta: sem isto o cartão continuaria
+      // dizendo "(1)" logo depois de a segunda resposta ser enviada.
+      qc.invalidateQueries({ queryKey: [...queryKeys.feedback.all, "replyCounts"] });
     },
   });
 }

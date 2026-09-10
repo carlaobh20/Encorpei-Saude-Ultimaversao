@@ -46,16 +46,29 @@ export default defineConfig(({ mode }) => ({
       manifest: {
         name: "Encorpei Cardio — Acompanhamento cardiológico",
         short_name: "Encorpei Cardio",
-        description: "Cuidar de você transforma tudo. Acompanhamento pré-natal acolhedor para gestantes e obstetras.",
+        // A descrição anterior era literalmente a do Encorpei Mamãe ("pré-natal
+        // acolhedor para gestantes e obstetras"). Ficava visível na loja/instalação
+        // do PWA: o paciente cardíaco instalava um app que se anunciava como
+        // pré-natal. Trocada pelo que o app de fato faz.
+        description:
+          "Acompanhamento cardiológico contínuo: pressão, batimentos, peso, sono, remédios e canal direto com seu cardiologista.",
         theme_color: "#F2F5F9",
-        background_color: "#FAF7F5",
+        // background_color acompanha o background real do app (colors.ts).
+        // Era #FAF7F5 — o sépia da marca de maternidade — e produzia um flash
+        // bege na tela de splash antes do app pintar o azul-claro.
+        background_color: "#F2F5F9",
         display: "standalone",
         orientation: "portrait",
         scope: "/",
-        start_url: "/minha-semana",
+        // Era "/minha-semana", nome da tela de semana gestacional. A rota ainda
+        // existe só como redirect (appRoutes.tsx); apontar o start_url direto
+        // para /hoje evita um salto de rota em toda abertura do PWA instalado.
+        start_url: "/hoje",
         lang: "pt-BR",
         dir: "ltr",
-        categories: ["health", "medical", "lifestyle"],
+        // "lifestyle" saiu: isso aqui é acompanhamento clínico prescrito por
+        // médico, não app de bem-estar, e a categoria muda onde a loja indexa.
+        categories: ["health", "medical"],
         icons: [
           { src: "/pwa-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
           { src: "/pwa-512.png", sizes: "512x512", type: "image/png", purpose: "any" },

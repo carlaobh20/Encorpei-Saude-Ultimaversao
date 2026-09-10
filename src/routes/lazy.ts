@@ -14,6 +14,7 @@ export const PlansPage        = lazy(() => import("@/pages/PlansPage"));
 export const HojePage         = lazy(() => import("@/pages/HojePage"));
 export const PressaoPage      = lazy(() => import("@/pages/PressaoPage"));
 export const PesoPage         = lazy(() => import("@/pages/PesoPage"));
+export const GlicemiaPage     = lazy(() => import("@/pages/GlicemiaPage"));
 export const AtividadePage    = lazy(() => import("@/pages/AtividadePage"));
 export const SonoPage         = lazy(() => import("@/pages/SonoPage"));
 export const RemediosPage     = lazy(() => import("@/pages/RemediosPage"));

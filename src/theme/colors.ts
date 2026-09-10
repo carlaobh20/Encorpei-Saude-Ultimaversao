@@ -4,7 +4,7 @@
  * ══════════════════════════════════════════════════════════════════════
  *
  * Fonte única de verdade para cores (hex) do Encorpei Cardio.
- * Light healthtech maternal · cardio · sépia · acolhedor.
+ * Paleta light healthtech · cardio · sépia · acolhedora.
  */
 
 export const colors = {

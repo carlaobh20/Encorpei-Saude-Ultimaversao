@@ -57,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         monitor.setUser(session?.user?.id ?? null);
 
         // Conquista "Primeira Pegada" (herança do Encorpei Saúde) removida:
-        // inseria uma linha em `conquistas` a cada login, sem uso no Mamãe.
+        // inseria uma linha em `conquistas` a cada login, sem uso aqui.
       }
     );
 

@@ -1,16 +1,24 @@
 /**
  * DASHBOARD — "seus pacientes, e quem precisa de você hoje" (docs §5.1).
  *
- * Contagem por semáforo como filtros clicáveis, fila de risco em cartões
- * densos, alertas críticos abertos, indicadores da carteira e convite de
- * paciente. Esta tela é o principal argumento de venda: tem que provar em
- * 10 segundos que o app diz ao médico quem precisa de atenção — e por quê.
+ * A fila responde, nesta ordem e nesta hierarquia visual:
+ *   1. QUEM precisa de avaliação  → o estado (prioridade / sem dados / atenção)
+ *   2. POR QUÊ                    → `motivo`, uma frase
+ *   3. QUAL A ÚLTIMA INFORMAÇÃO CONFIÁVEL → `ultimaInfo` + os indicadores com
+ *      valor, n, período e origem
+ *
+ * A mudança mais importante em relação à versão anterior é o estado
+ * `sem_dados_recentes`. Antes, quem não tinha alerta era pintado de verde — e
+ * paciente que parou de medir não gera alerta, porque alerta nasce de número.
+ * Ou seja: a tela pintava de "estável" exatamente o paciente sobre quem não se
+ * sabia nada. Silêncio não é sinal de saúde, e agora tem cor, contagem, filtro
+ * e lugar próprio na ordenação.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Users, AlertTriangle, Bell, Target, Activity, Clock, ChevronRight,
-  UserPlus, Copy, Check, Ticket,
+  Users, AlertTriangle, Bell, Activity, ChevronRight, Search,
+  UserPlus, Copy, Check, Ticket, EyeOff, ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -20,75 +28,120 @@ import { StatCard } from "@/components/shell/StatCard";
 import { EmptyState } from "@/components/shell/EmptyState";
 import { ListSkeleton, GridSkeleton } from "@/components/shell/Skeletons";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   useProfessionalPatients, useProfessionalAlerts, useIndicadoresDaCarteira, type FilaItem,
 } from "@/hooks/useProfessional";
+import {
+  LABEL_ESTADO, TOM_ESTADO, DIAS_SEM_DADOS, DIAS_JANELA_MEDIDAS, DIAS_ADESAO,
+  legendaAdesao, legendaIndicador, textoAdesao, textoIndicador,
+} from "@/hooks/useCarteiraIndicadores";
 import { useInviteCode } from "@/hooks/useInviteCode";
-import { RISK_LABEL } from "@/lib/clinical/cardioRiskEngine";
-import type { RiskLevel } from "@/types/cardio";
-
-const RISK_DOT: Record<RiskLevel, string> = {
-  red: "bg-error", yellow: "bg-warning", green: "bg-success",
-};
-const RISK_BORDER: Record<RiskLevel, string> = {
-  red: "border-l-error", yellow: "border-l-warning", green: "border-l-success",
-};
-const RISK_BADGE: Record<RiskLevel, string> = {
-  red: "bg-error-bg text-error", yellow: "bg-warning-bg text-warning", green: "bg-success-bg text-success",
-};
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]).join("").toUpperCase();
 }
 
-function relTime(iso: string | null): string {
-  if (!iso) return "sem registro";
-  const ms = Date.now() - new Date(iso).getTime();
-  if (!Number.isFinite(ms) || ms < 0) return "agora";
-  const min = Math.floor(ms / 60000);
-  if (min < 60) return `há ${min} min`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return `há ${h}h`;
-  const d = Math.floor(h / 24);
-  return d === 1 ? "ontem" : `há ${d} dias`;
+/** Filtros da fila. "Condição" é texto livre porque o campo é texto livre. */
+type FiltroEstado = "todos" | "prioridade" | "sem_dados_recentes" | "pendencia";
+
+/**
+ * Um indicador da carteira, sempre com a legenda embaixo.
+ *
+ * O componente não aceita a opção de esconder o n e o período: se um número
+ * pode aparecer sem procedência, alguém vai fazê-lo aparecer sem procedência.
+ */
+function Indicador({ rotulo, valor, legenda, alerta }: {
+  rotulo: string; valor: string; legenda: string; alerta?: boolean;
+}) {
+  const semDado = valor === "sem medidas suficientes" || valor === "sem doses esperadas no período";
+  return (
+    <div className="min-w-0">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{rotulo}</p>
+      <p className={cn(
+        "text-sm tabular-nums leading-tight",
+        // Frase de ausência fica em itálico e apagada: é texto, não medida.
+        semDado ? "italic text-muted-foreground text-xs" : "font-semibold text-foreground",
+        alerta && !semDado && "text-warning",
+      )}>
+        {valor}
+      </p>
+      <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">{legenda}</p>
+    </div>
+  );
 }
 
-function PatientQueueCard({ p, onOpen }: { p: FilaItem; onOpen: () => void }) {
-  const semDados = !p.lastReadingAt || Date.now() - new Date(p.lastReadingAt).getTime() > 10 * 86400000;
+function CartaoDaFila({ p, onOpen }: { p: FilaItem; onOpen: () => void }) {
+  const tom = TOM_ESTADO[p.estado];
+  const semDados = p.estado === "sem_dados_recentes";
+
   return (
     <button
       onClick={onOpen}
       className={cn(
         "w-full text-left rounded-2xl bg-card border border-border border-l-4 p-4 shadow-sm hover:border-border-strong transition-colors",
-        RISK_BORDER[p.risk],
+        tom.borda,
+        // Fundo levemente listrado no silêncio: o cartão tem que PARECER
+        // incompleto, não tem que parecer calmo.
+        semDados && "bg-muted/30",
       )}
     >
       <div className="flex items-start gap-3">
-        <div className="h-10 w-10 shrink-0 rounded-full grid place-items-center text-white text-xs font-semibold bg-gradient-to-br from-primary to-cardio-dark">
-          {initials(p.full_name)}
+        <div className={cn(
+          "h-10 w-10 shrink-0 rounded-full grid place-items-center text-white text-xs font-semibold",
+          semDados ? "bg-muted-foreground" : "bg-gradient-to-br from-primary to-cardio-dark",
+        )}>
+          {semDados ? <EyeOff className="h-4 w-4" /> : initials(p.full_name)}
         </div>
+
         <div className="min-w-0 flex-1">
+          {/* 1. QUEM */}
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-semibold text-foreground truncate">{p.full_name}</span>
             {p.age != null && <span className="text-xs text-muted-foreground shrink-0">{p.age}a</span>}
-            <span className={cn("ml-auto inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider shrink-0", RISK_BADGE[p.risk])}>
-              {RISK_LABEL[p.risk]}
+            <span className={cn(
+              "ml-auto inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider shrink-0",
+              tom.badge,
+            )}>
+              {LABEL_ESTADO[p.estado]}
             </span>
           </div>
           {p.condition && <p className="text-xs text-muted-foreground mt-0.5 truncate">{p.condition}</p>}
-          <p className="text-sm text-foreground mt-1.5 leading-snug">{p.headline}</p>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2.5 text-[11px] text-muted-foreground">
-            <span className="tabular-nums">PA méd. {p.bpAvg ?? "—"}</span>
-            <span className="tabular-nums">{p.restingHr != null ? `${p.restingHr} bpm` : "FC —"}</span>
-            <span className="tabular-nums">Adesão {p.adherence != null ? `${Math.round(p.adherence * 100)}%` : "—"}</span>
-            <span className={cn(semDados && "text-warning font-medium")}>{relTime(p.lastReadingAt)}</span>
-            {p.openAlerts > 0 && (
-              <span className="inline-flex items-center gap-1 text-error font-medium">
-                <Bell className="h-3 w-3" /> {p.openAlerts} alerta{p.openAlerts > 1 ? "s" : ""}
-              </span>
-            )}
+          {/* 2. POR QUÊ */}
+          <p className={cn("text-sm mt-1.5 leading-snug", semDados ? "text-muted-foreground" : "text-foreground")}>
+            {p.motivo}
+          </p>
+
+          {/* 3. ÚLTIMA INFORMAÇÃO CONFIÁVEL */}
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Última informação: <span className="text-foreground">{p.ultimaInfo}</span>
+          </p>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 mt-2.5">
+            <Indicador
+              rotulo="Pressão média"
+              valor={textoIndicador(p.indicadores.pa)}
+              legenda={legendaIndicador(p.indicadores.pa)}
+            />
+            <Indicador
+              rotulo="FC repouso"
+              valor={textoIndicador(p.indicadores.fcRepouso)}
+              legenda={legendaIndicador(p.indicadores.fcRepouso)}
+            />
+            <Indicador
+              rotulo="Adesão autorrelatada"
+              valor={textoAdesao(p.indicadores.adesao)}
+              legenda={legendaAdesao(p.indicadores.adesao)}
+              alerta={(p.indicadores.adesao.percentual ?? 1) < 0.8}
+            />
           </div>
+
+          {p.openAlerts > 0 && (
+            <p className="inline-flex items-center gap-1 text-error font-medium text-[11px] mt-2">
+              <Bell className="h-3 w-3" /> {p.openAlerts} alerta{p.openAlerts > 1 ? "s" : ""} não lido{p.openAlerts > 1 ? "s" : ""}
+            </p>
+          )}
         </div>
         <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
       </div>
@@ -138,54 +191,86 @@ function InviteCard() {
   );
 }
 
-/**
- * A fila (`useProfessionalPatients`) não traz Tempo no Alvo nem cuidador —
- * esses hooks são por paciente (`patientUserId`). Para não inventar um
- * número agregado, buscamos cada paciente ativo carregado individualmente,
- * em um componente invisível, e só então calculamos a média.
- */
 export default function ProDashboardPage() {
   const navigate = useNavigate();
   const { patients, contagem, isLoading: loadingPatients } = useProfessionalPatients();
-  const { criticos, alerts, isLoading: loadingAlerts } = useProfessionalAlerts();
-  const [filtroRisco, setFiltroRisco] = useState<RiskLevel | null>(null);
+  const { criticos, clinicos, operacionais, alerts, isLoading: loadingAlerts } = useProfessionalAlerts();
+
+  const [busca, setBusca] = useState("");
+  const [filtro, setFiltro] = useState<FiltroEstado>("todos");
+  const [condicao, setCondicao] = useState<string>("todas");
 
   const ativos = useMemo(() => patients.filter((p) => p.status === "active"), [patients]);
 
-  // Indicadores agregados: três consultas para a carteira toda, não três por
-  // paciente (ver useIndicadoresDaCarteira).
-  const idsAtivos = useMemo(
-    () => ativos.map((p) => p.patient_user_id).filter(Boolean),
-    [ativos],
-  );
+  const idsAtivos = useMemo(() => ativos.map((p) => p.patient_user_id).filter(Boolean), [ativos]);
   const carteira = useIndicadoresDaCarteira(idsAtivos);
 
-  const fila = useMemo(
-    () => (filtroRisco ? ativos.filter((p) => p.risk === filtroRisco) : ativos),
-    [ativos, filtroRisco],
-  );
+  /**
+   * Condições vêm de `resumirCondicao` como "HAS · DM2 · dislipidemia".
+   * Quebramos no separador para o filtro operar por comorbidade, e não pela
+   * combinação exata — filtrar por "HAS · DM2" não serviria a ninguém.
+   */
+  const condicoes = useMemo(() => {
+    const set = new Set<string>();
+    ativos.forEach((p) => p.condition.split("·").map((c) => c.trim()).filter(Boolean).forEach((c) => set.add(c)));
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [ativos]);
 
+  const fila = useMemo(() => {
+    const q = busca.trim().toLowerCase();
+    return ativos.filter((p) => {
+      if (q && !p.full_name.toLowerCase().includes(q)) return false;
+      if (condicao !== "todas" && !p.condition.toLowerCase().includes(condicao.toLowerCase())) return false;
+      if (filtro === "prioridade" && p.estado !== "prioridade") return false;
+      if (filtro === "sem_dados_recentes" && p.estado !== "sem_dados_recentes") return false;
+      if (filtro === "pendencia" && !p.pendencia) return false;
+      return true;
+    });
+  }, [ativos, busca, condicao, filtro]);
+
+  /**
+   * Indicadores da carteira, agora com denominador visível.
+   *
+   * "68% no alvo" sem dizer sobre quantos pacientes é uma frase que soa a
+   * relatório e não significa nada: 68% de 3 pacientes com medida numa carteira
+   * de 40 é um número perigoso de se olhar sozinho.
+   */
   const daFila = useMemo(() => {
-    const comPa = ativos.filter((p) => p.bpAvg);
+    const comPa = ativos.filter((p) => p.indicadores.pa.valor);
     const noAlvo = comPa.filter((p) => {
-      const [s, d] = (p.bpAvg ?? "").split("/").map(Number);
+      const [s, d] = (p.indicadores.pa.valor ?? "").split("/").map(Number);
       return Number.isFinite(s) && Number.isFinite(d) && s <= 130 && d <= 80;
     });
-    const comAdesao = ativos.filter((p) => p.adherence != null);
+    const comAdesao = ativos.filter((p) => p.indicadores.adesao.percentual != null);
     const adesaoMedia = comAdesao.length
-      ? comAdesao.reduce((s, p) => s + (p.adherence ?? 0), 0) / comAdesao.length
+      ? comAdesao.reduce((s, p) => s + (p.indicadores.adesao.percentual ?? 0), 0) / comAdesao.length
       : null;
-    const semRegistro10d = ativos.filter(
-      (p) => !p.lastReadingAt || Date.now() - new Date(p.lastReadingAt).getTime() > 10 * 86400000,
-    ).length;
+    const medidasPa = comPa.reduce((s, p) => s + p.indicadores.pa.n, 0);
     return {
       percentualNoAlvo: comPa.length ? Math.round((noAlvo.length / comPa.length) * 100) : null,
+      pacientesComPa: comPa.length,
+      medidasPa,
       adesaoMedia: adesaoMedia != null ? Math.round(adesaoMedia * 100) : null,
-      semRegistro10d,
+      pacientesComAdesao: comAdesao.length,
     };
   }, [ativos]);
 
   const loading = loadingPatients || loadingAlerts;
+
+  const botaoFiltro = (valor: FiltroEstado, texto: string, contador?: number, tomAtivo?: string) => (
+    <button
+      key={valor}
+      onClick={() => setFiltro(valor)}
+      className={cn(
+        "px-3 h-10 rounded-xl text-xs font-semibold border transition-colors shrink-0",
+        filtro === valor
+          ? tomAtivo ?? "bg-primary text-primary-foreground border-primary"
+          : "bg-card text-muted-foreground border-border hover:border-border-strong",
+      )}
+    >
+      {texto}{contador != null && ` (${contador})`}
+    </button>
+  );
 
   return (
     <div className="mx-auto w-full max-w-[1320px] px-5 md:px-8 lg:px-10 py-6 md:py-8">
@@ -198,17 +283,24 @@ export default function ProDashboardPage() {
         <GridSkeleton count={4} />
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
-          <button onClick={() => setFiltroRisco(null)} className="text-left">
-            <StatCard label="Carteira" value={ativos.length} icon={Users} className={cn(!filtroRisco && "ring-2 ring-primary/40")} />
+          <button onClick={() => setFiltro("todos")} className="text-left">
+            <StatCard label="Carteira" value={ativos.length} icon={Users} className={cn(filtro === "todos" && "ring-2 ring-primary/40")} />
           </button>
-          <button onClick={() => setFiltroRisco("red")} className="text-left">
-            <StatCard label="Prioridade" value={contagem.vermelho} icon={AlertTriangle} iconColor="hsl(var(--error))" className={cn(filtroRisco === "red" && "ring-2 ring-error/40")} />
+          <button onClick={() => setFiltro("prioridade")} className="text-left">
+            <StatCard label="Prioridade" value={contagem.prioridade} icon={AlertTriangle} iconColor="hsl(var(--error))" className={cn(filtro === "prioridade" && "ring-2 ring-error/40")} />
           </button>
-          <button onClick={() => setFiltroRisco("yellow")} className="text-left">
-            <StatCard label="Atenção" value={contagem.amarelo} icon={Clock} iconColor="hsl(var(--warning))" className={cn(filtroRisco === "yellow" && "ring-2 ring-warning/40")} />
+          {/* O cartão que a tela não tinha. Ele existe para que o número de
+              pacientes invisíveis nunca mais fique invisível. */}
+          <button onClick={() => setFiltro("sem_dados_recentes")} className="text-left">
+            <StatCard
+              label={`Sem dados há +${DIAS_SEM_DADOS} dias`}
+              value={contagem.semDadosRecentes}
+              icon={EyeOff}
+              className={cn(filtro === "sem_dados_recentes" && "ring-2 ring-muted-foreground/40")}
+            />
           </button>
-          <button onClick={() => setFiltroRisco("green")} className="text-left">
-            <StatCard label="Estáveis" value={contagem.verde} icon={Target} iconColor="hsl(var(--success))" className={cn(filtroRisco === "green" && "ring-2 ring-success/40")} />
+          <button onClick={() => setFiltro("pendencia")} className="text-left">
+            <StatCard label="Com pendência" value={contagem.comPendencia} icon={ClipboardList} iconColor="hsl(var(--warning))" className={cn(filtro === "pendencia" && "ring-2 ring-warning/40")} />
           </button>
         </div>
       )}
@@ -217,23 +309,55 @@ export default function ProDashboardPage() {
         {/* Fila */}
         <div>
           <SectionHeader
-            title="Fila de risco"
-            subtitle={filtroRisco ? `filtrando por ${RISK_LABEL[filtroRisco].toLowerCase()}` : "ordenada por quem precisa de você"}
-            action={filtroRisco && <Button variant="ghost" size="sm" onClick={() => setFiltroRisco(null)}>Limpar filtro</Button>}
+            title="Fila de avaliação"
+            subtitle="quem precisa de você, por quê, e qual foi a última informação confiável"
           />
+
+          {/* Busca visível — não escondida atrás de ícone. Em carteira de 40
+              pacientes, procurar um nome é a ação mais frequente da tela. */}
+          <div className="flex flex-wrap items-center gap-2.5 mb-4">
+            <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-3 h-10 flex-1 min-w-[200px]">
+              <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+              <Input
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder="Buscar paciente pelo nome…"
+                aria-label="Buscar paciente pelo nome"
+                className="border-0 bg-transparent focus-visible:ring-0 px-1 h-8"
+              />
+            </div>
+            <div className="flex items-center gap-2 overflow-x-auto -mx-1 px-1 pb-0.5">
+              {botaoFiltro("todos", "Todos", ativos.length)}
+              {botaoFiltro("prioridade", "Prioridade", contagem.prioridade, "bg-error text-white border-error")}
+              {botaoFiltro("sem_dados_recentes", "Sem dados recentes", contagem.semDadosRecentes, "bg-muted-foreground text-white border-muted-foreground")}
+              {botaoFiltro("pendencia", "Pendência", contagem.comPendencia, "bg-warning text-white border-warning")}
+            </div>
+            {condicoes.length > 0 && (
+              <select
+                value={condicao}
+                onChange={(e) => setCondicao(e.target.value)}
+                aria-label="Filtrar por condição"
+                className="h-10 rounded-xl border border-border bg-card px-3 text-xs font-semibold text-muted-foreground"
+              >
+                <option value="todas">Qualquer condição</option>
+                {condicoes.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            )}
+          </div>
+
           {loading ? (
             <ListSkeleton rows={4} />
           ) : fila.length === 0 ? (
             <EmptyState
               icon={Users}
               title={ativos.length === 0 ? "Nenhum paciente ainda" : "Nada nesse filtro"}
-              description={ativos.length === 0 ? "Convide seu primeiro paciente para começar o acompanhamento." : "Ninguém nessa faixa de risco no momento."}
+              description={ativos.length === 0 ? "Convide seu primeiro paciente para começar o acompanhamento." : "Ajuste a busca ou os filtros."}
               variant="card"
             />
           ) : (
             <div className="space-y-2.5">
               {fila.map((p) => (
-                <PatientQueueCard key={p.link_id} p={p} onOpen={() => navigate(`/pro/pacientes/${p.patient_user_id}`)} />
+                <CartaoDaFila key={p.link_id} p={p} onOpen={() => navigate(`/pro/pacientes/${p.patient_user_id}`)} />
               ))}
             </div>
           )}
@@ -244,7 +368,7 @@ export default function ProDashboardPage() {
           <SurfaceCard>
             <div className="flex items-center gap-2 mb-3">
               <AlertTriangle className="h-4 w-4 text-error" />
-              <h3 className="text-sm font-semibold text-foreground">Alertas críticos abertos</h3>
+              <h3 className="text-sm font-semibold text-foreground">Risco clínico aberto</h3>
             </div>
             {criticos.length === 0 ? (
               <p className="text-xs text-muted-foreground py-2">Nenhum alerta crítico agora.</p>
@@ -267,9 +391,17 @@ export default function ProDashboardPage() {
                 })}
               </div>
             )}
+            {/* Atraso operacional aparece separado até no resumo: se voltar a
+                dividir espaço com risco clínico, volta a competir com ele. */}
+            {operacionais.length > 0 && (
+              <p className="text-[11px] text-muted-foreground mt-3 pt-2 border-t border-border">
+                Além destes, {operacionais.length} pendência{operacionais.length > 1 ? "s" : ""} operacional
+                {operacionais.length > 1 ? "is" : ""} (adesão / falta de registro) — não é risco clínico medido.
+              </p>
+            )}
             {alerts.length > criticos.length && (
               <Button variant="ghost" size="sm" className="w-full mt-2" onClick={() => navigate("/pro/alertas")}>
-                Ver todos os alertas <ChevronRight className="h-3.5 w-3.5" />
+                Ver todos os alertas ({clinicos.length} clínicos · {operacionais.length} operacionais) <ChevronRight className="h-3.5 w-3.5" />
               </Button>
             )}
           </SurfaceCard>
@@ -279,37 +411,69 @@ export default function ProDashboardPage() {
               <Activity className="h-4 w-4 text-primary" />
               <h3 className="text-sm font-semibold text-foreground">Indicadores da carteira</h3>
             </div>
-            <dl className="space-y-2.5 text-sm">
-              <div className="flex items-center justify-between">
-                <dt className="text-muted-foreground">No alvo de pressão</dt>
-                <dd className="font-semibold tabular-nums">{daFila.percentualNoAlvo != null ? `${daFila.percentualNoAlvo}%` : "—"}</dd>
+            {/* Cada linha traz denominador e período. Um indicador de carteira
+                sem n é uma opinião com aparência de métrica. */}
+            <dl className="space-y-3 text-sm">
+              <div>
+                <div className="flex items-center justify-between">
+                  <dt className="text-muted-foreground">No alvo de pressão</dt>
+                  <dd className="font-semibold tabular-nums">
+                    {daFila.percentualNoAlvo != null
+                      ? `${daFila.percentualNoAlvo}%`
+                      : <span className="text-xs italic font-normal text-muted-foreground">sem medidas suficientes</span>}
+                  </dd>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  {daFila.pacientesComPa} de {ativos.length} pacientes · n={daFila.medidasPa} medidas de manguito · {DIAS_JANELA_MEDIDAS} dias
+                </p>
               </div>
-              <div className="flex items-center justify-between">
-                <dt className="text-muted-foreground">Adesão média</dt>
-                <dd className="font-semibold tabular-nums">{daFila.adesaoMedia != null ? `${daFila.adesaoMedia}%` : "—"}</dd>
+
+              <div>
+                <div className="flex items-center justify-between">
+                  <dt className="text-muted-foreground">Adesão autorrelatada média</dt>
+                  <dd className="font-semibold tabular-nums">
+                    {daFila.adesaoMedia != null
+                      ? `${daFila.adesaoMedia}%`
+                      : <span className="text-xs italic font-normal text-muted-foreground">sem doses esperadas</span>}
+                  </dd>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  {daFila.pacientesComAdesao} de {ativos.length} pacientes · {DIAS_ADESAO} dias · marcado pelo paciente, ninguém confere
+                </p>
               </div>
-              <div className="flex items-center justify-between">
-                <dt className="text-muted-foreground">Sem registro há +10 dias</dt>
-                <dd className={cn("font-semibold tabular-nums", daFila.semRegistro10d > 0 && "text-warning")}>{daFila.semRegistro10d}</dd>
+
+              <div>
+                <div className="flex items-center justify-between">
+                  <dt className="text-muted-foreground">Sem dados recentes</dt>
+                  <dd className={cn("font-semibold tabular-nums", contagem.semDadosRecentes > 0 && "text-warning")}>
+                    {contagem.semDadosRecentes}
+                  </dd>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  nenhuma medida de nenhum tipo há mais de {DIAS_SEM_DADOS} dias
+                </p>
               </div>
-              <div className="flex items-center justify-between">
-                <dt className="text-muted-foreground">Tempo no Alvo médio (mês)</dt>
-                <dd className="font-semibold tabular-nums">
-                  {carteira.tempoNoAlvoMedio != null ? `${carteira.tempoNoAlvoMedio}%` : "—"}
-                </dd>
+
+              <div>
+                <div className="flex items-center justify-between">
+                  <dt className="text-muted-foreground">Medidas de PA na meta (média)</dt>
+                  <dd className="font-semibold tabular-nums">
+                    {carteira.tempoNoAlvoMedio != null
+                      ? `${carteira.tempoNoAlvoMedio}%`
+                      : <span className="text-xs italic font-normal text-muted-foreground">sem medidas suficientes</span>}
+                  </dd>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  {carteira.pacientesComMedida} de {ativos.length} pacientes · 30 dias · manguito validado
+                </p>
               </div>
+
               <div className="flex items-center justify-between">
                 <dt className="text-muted-foreground">Com cuidador ativo</dt>
                 <dd className="font-semibold tabular-nums">
                   {ativos.length > 0 ? `${carteira.comCuidador} de ${ativos.length}` : "—"}
                 </dd>
               </div>
-              {carteira.tempoNoAlvoMedio != null && carteira.pacientesComMedida < ativos.length && (
-                <p className="text-[10px] text-muted-foreground pt-0.5">
-                  Tempo no Alvo calculado sobre {carteira.pacientesComMedida} de {ativos.length} pacientes —
-                  os demais não têm medidas suficientes no período.
-                </p>
-              )}
             </dl>
           </SurfaceCard>
 

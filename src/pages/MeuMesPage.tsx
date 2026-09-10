@@ -17,7 +17,7 @@ import { useBloodPressure, useActivity, useSleep } from "@/hooks/useCardioReadin
 import { useCardioMedications } from "@/hooks/useCardioMedications";
 import { useSymptoms, useCardioExams } from "@/hooks/useCardioClinical";
 import { useCapacidade, useIdadeDoCoracao, useSodio } from "@/hooks/useEngajamento";
-import { calcularTempoNoAlvo } from "@/lib/clinical/timeInRange";
+import { calcularTempoNoAlvo, ROTULO_MEDIDAS_NA_META_CURTO } from "@/lib/clinical/timeInRange";
 import { DOMAIN_COLORS } from "@/theme/colors";
 import type { SymptomType } from "@/types/cardio";
 
@@ -209,7 +209,10 @@ export default function MeuMesPage() {
           <SurfaceCard variant="stat">
             <div className="flex items-center gap-2 mb-1">
               <Gauge className="h-4 w-4" style={{ color: DOMAIN_COLORS.pressao }} />
-              <p className="text-xs text-muted-foreground">Tempo no alvo</p>
+              {/* "Tempo no alvo" era mentira de rótulo: a conta é sobre AMOSTRAS
+                  de pressão, não sobre tempo monitorado (ver timeInRange.ts).
+                  O rótulo vem da constante para não divergir de novo. */}
+              <p className="text-xs text-muted-foreground">{ROTULO_MEDIDAS_NA_META_CURTO}</p>
             </div>
             <p className="text-2xl font-bold text-foreground">
               {tempoNoAlvoMes.percentual != null ? `${tempoNoAlvoMes.percentual}%` : "—"}

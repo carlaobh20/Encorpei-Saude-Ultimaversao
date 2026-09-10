@@ -2,8 +2,8 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Heart, Activity, ShieldCheck, ArrowRight, Check, ChevronRight,
-  ListOrdered, FileText, Pill, Watch, Users, Bell, AlertTriangle,
-  Stethoscope, Smartphone, Moon, Footprints, Wind, Gauge,
+  ListOrdered, FileText, Pill, Watch, Users, AlertTriangle,
+  Stethoscope, Smartphone, Moon, Footprints, Wind, Gauge, Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PLANS } from "@/config/plans";
@@ -28,17 +28,26 @@ const PROVAS = [
   },
   {
     icon: Pill,
-    title: "Titulação em 1 clique",
-    text: "Mudou a dose aqui, o paciente recebe no celular dele agora. Fica registrado o que mudou, quando e por quê.",
+    title: "Titulação registrada",
+    // Antes: "o paciente recebe no celular dele agora" — o que implica push, e
+    // o envio de push não existe (lib/notifications.ts só registra a assinatura
+    // no cliente; não há backend que dispare). O que existe de verdade é a
+    // titulação gravada e visível no app do paciente na próxima abertura.
+    text: "Mudou a dose aqui, o app do paciente já mostra a dose nova para ele. Fica registrado o que mudou, quando e por quê.",
   },
   {
     icon: FileText,
-    title: "Relatório em PDF",
-    text: "Resumo do período com a origem de cada número, pronto para colar no prontuário ou enviar ao convênio.",
+    title: "Relatório para impressão",
+    // "Enviar ao convênio" saiu: não há envio nenhum, nem integração de
+    // faturamento. O que existe é a tela de relatório com window.print().
+    text: "Resumo do período com a origem de cada número, pronto para imprimir, salvar em PDF ou colar no prontuário.",
   },
   {
     icon: Watch,
-    title: "Pulseira com a marca da sua clínica",
+    // Não existe programa de pulseira com marca de clínica — nada no código,
+    // nem operação de hardware por trás. O que existe é a importação dos dados
+    // da pulseira, e é só isso que a landing pode afirmar.
+    title: "Dados da pulseira sem digitação",
     text: "Frequência cardíaca, oxigenação, sono e passos entram sozinhos — sem depender do paciente lembrar de digitar.",
   },
 ];
@@ -52,7 +61,7 @@ const COMO_FUNCIONA = [
   {
     icon: Activity,
     title: "O paciente registra, a pulseira envia",
-    text: "Pressão manual quando ele mede, frequência cardíaca e sono automáticos pela pulseira — sem esforço no dia a dia dele.",
+    text: "Pressão manual quando ele mede, frequência cardíaca e sono importados da pulseira — sem esforço no dia a dia dele.",
   },
   {
     icon: Gauge,
@@ -91,6 +100,16 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const goMedico = () => navigate("/pro/auth");
   const goPaciente = () => navigate("/auth");
+  /**
+   * "Falar com comercial" mandava para /pro/auth — o mesmo cadastro do botão
+   * de contratar. Fingir um funil comercial que não existe é pior do que não
+   * ter funil: vira mailto para uma pessoa de verdade (mesmo endereço já
+   * publicado nos Termos).
+   */
+  const falarComercial = () => {
+    const assunto = encodeURIComponent("Encorpei Cardio — quero conversar");
+    window.location.href = `mailto:contato@encorpei.com?subject=${assunto}`;
+  };
   const verDemo = () => {
     setDevBypass("medico");
     navigate("/pro/dashboard");
@@ -169,8 +188,11 @@ export default function LandingPage() {
                   </div>
                   <span className="text-[13px] font-semibold tracking-tight">Fila de risco</span>
                 </div>
+                {/* "Atualizado agora" com pacientes e números inventados lia
+                    como painel real de alguém. É um mock de interface — passa a
+                    dizer isso, porque os nomes e as métricas abaixo são fictícios. */}
                 <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                  <span className="h-1.5 w-1.5 rounded-full bg-success" /> Atualizado agora
+                  <span className="h-1.5 w-1.5 rounded-full bg-success" /> Exemplo ilustrativo
                 </div>
               </div>
 
@@ -350,7 +372,7 @@ export default function LandingPage() {
             <div className="absolute -inset-4 bg-gradient-to-br from-primary/15 to-cardio-light/15 rounded-[40px] blur-2xl -z-10" />
             <div className="rounded-[32px] bg-card border border-border shadow-2xl overflow-hidden p-7">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-muted-foreground">Pulseira H59 · Antônio R.</span>
+                <span className="text-xs font-semibold text-muted-foreground">Pulseira H59 · exemplo ilustrativo</span>
                 <Watch className="h-4 w-4 text-primary" />
               </div>
               <div className="grid grid-cols-2 gap-4 mt-6">
@@ -420,21 +442,50 @@ export default function LandingPage() {
                     </>
                   )}
                 </div>
-                <ul className="space-y-2.5 mb-7 flex-1">
-                  {plan.features.slice(0, 6).map((f) => (
-                    <li key={f.label} className="flex items-start gap-2 text-sm">
-                      <Check className={cn("h-4 w-4 shrink-0 mt-0.5", f.included ? "text-primary" : "text-muted-foreground/40")} />
-                      <span className={f.included ? "text-foreground" : "text-muted-foreground/60"}>{f.label}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  variant={plan.highlighted ? "default" : "outline"}
-                  className="w-full rounded-full touch-target"
-                  onClick={goMedico}
-                >
-                  {plan.price === -1 ? "Falar com comercial" : "Começar"}
-                </Button>
+                {/* A lista de 6 itens saiu daqui.
+                    Motivo: ela vinha direto de config/plans.ts com um Check em
+                    cada linha — inclusive em "Alertas por push + SMS", "Equipe
+                    multidisciplinar", "Multiunidade" e "API + PEP/HIS", que não
+                    existem no produto. Marcar item por item aqui exigiria
+                    duplicar a lista de pendências que vive em PlansPage; a
+                    landing não precisa dela. Aqui fica o resumo do que já está
+                    no ar, e /planos mostra a oferta completa com o que ainda
+                    está em desenvolvimento devidamente marcado. */}
+                <div className="mb-7 flex-1">
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    Já no ar: fila de risco, plano de monitoramento, alertas, mensagens com o
+                    paciente, exames, relatórios e importação dos dados da pulseira.
+                  </p>
+                  <a
+                    href="/planos"
+                    className="inline-flex items-center gap-1 text-sm text-primary font-medium hover:underline mt-3"
+                  >
+                    Ver a lista completa e o que está em desenvolvimento
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </a>
+                </div>
+                {plan.price === -1 ? (
+                  <Button
+                    variant="outline"
+                    className="w-full rounded-full touch-target"
+                    onClick={falarComercial}
+                  >
+                    <Mail className="h-4 w-4" /> Escrever para o comercial
+                  </Button>
+                ) : (
+                  <Button
+                    variant={plan.highlighted ? "default" : "outline"}
+                    className="w-full rounded-full touch-target"
+                    onClick={goMedico}
+                  >
+                    Criar conta de cardiologista
+                  </Button>
+                )}
+                <p className="text-[11px] text-muted-foreground mt-2 text-center">
+                  {plan.price === -1
+                    ? "Abre seu e-mail. Nenhuma contratação acontece no app."
+                    : "Sem cartão. O cadastro não cobra nada."}
+                </p>
               </div>
             ))}
           </div>

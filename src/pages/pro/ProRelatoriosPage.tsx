@@ -212,7 +212,7 @@ export default function ProRelatoriosPage() {
           <table className="w-full text-sm mb-2">
             <tbody>
               <tr className="border-b border-border">
-                <td className="py-1 text-muted-foreground">Tempo no Alvo do período</td>
+                <td className="py-1 text-muted-foreground">Medidas de PA na meta no período</td>
                 <td className="py-1 text-right font-medium">
                   {tempoNoAlvoPeriodo.percentual != null ? `${tempoNoAlvoPeriodo.percentual}% (n=${tempoNoAlvoPeriodo.total})` : "sem medidas suficientes"}
                 </td>

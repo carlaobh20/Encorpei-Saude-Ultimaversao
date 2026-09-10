@@ -5,12 +5,32 @@
  * Este é o único lugar onde um dado de pulseira vira registro clínico — e é
  * por isso que a marcação de "estimativa" é aplicada aqui, uma vez, em vez de
  * ficar espalhada por telas.
+ *
+ * ── A regra de validação, corrigida ────────────────────────────────────
+ *
+ * A coluna `validation_status` tem DEFAULT 'validated' no banco (ver
+ * `supabase/migrations/…_cardio_baseline.sql`). Isso significa que omitir o
+ * campo não é neutro: é afirmar que o dado foi validado. E até aqui o
+ * normalizador estava carimbando `'validated'` em FC, SpO₂, sono e passos sem
+ * nenhuma comprovação do aparelho.
+ *
+ * O aparelho tem exatamente dois sensores — um PPG óptico e um acelerômetro
+ * (docs §4.1). Nada que sai deles tem validação clínica. Então a regra passa a
+ * ser, sem exceção:
+ *
+ *   PPG ou acelerômetro           → 'estimated'
+ *   digitado pelo paciente/médico → 'validated'  (fora deste arquivo)
+ *   manguito validado             → 'validated'  (fora deste arquivo)
+ *
+ * `'estimated'` não é um detalhe cosmético: `podeDispararAlerta()` e a média de
+ * MRPA olham para ele. Marcar errado para baixo custa um alerta perdido;
+ * marcar errado para cima faz o motor clínico decidir em cima de PPG — que é o
+ * risco regulatório do §6. Preferimos o primeiro erro.
  */
 
 import type {
   BloodPressureReading,
   HeartRateReading,
-  HrvReading,
   Spo2Reading,
   ActivityReading,
   SleepReading,
@@ -26,52 +46,74 @@ export interface DeviceContext {
 
 type Novo<T> = Omit<T, "id" | "created_at">;
 
-const base = (ctx: DeviceContext, at: string) => ({
+/**
+ * Linha de `hr_readings`. A tabela guarda rmssd/sdnn nas MESMAS colunas da
+ * frequência — não existe tabela `hrv_readings`. Por isso a HRV viaja junto da
+ * batida em vez de virar um registro separado que nunca teria onde ser gravado.
+ */
+export type NovaLeituraFc = Novo<HeartRateReading> & {
+  rmssd: number | null;
+  sdnn: number | null;
+};
+
+const base = (ctx: DeviceContext, at: string, sourceType: "device" | "import") => ({
   patient_user_id: ctx.patientUserId,
   recorded_at: at,
-  source_type: "device" as const,
+  source_type: sourceType,
   source_device_id: ctx.deviceId ?? null,
   source_device_name: ctx.deviceName,
   entered_by: "device" as const,
   entered_by_user_id: null,
 });
 
+/** Nota que acompanha toda PA de pulseira. Texto de médico, não de paciente. */
+export const NOTA_PA_ESTIMADA =
+  "Estimativa por sensor óptico de pulso — sem manguito, sem validação clínica. Não usar para decisão terapêutica nem para média de MRPA.";
+
+/**
+ * Amostra ao vivo do Bluetooth → linha de `hr_readings`.
+ *
+ * `contactDetected === false` significa que o próprio sensor avisou que o pulso
+ * saiu da pele: aí a leitura é 'suspect', que é pior que 'estimated' e some das
+ * médias. Com contato, continua sendo PPG: 'estimated'.
+ */
 export function amostraParaLeituras(
   s: WearableSample,
   ctx: DeviceContext
-): { heartRate: Novo<HeartRateReading>; hrv: Novo<HrvReading> | null } {
-  const heartRate: Novo<HeartRateReading> = {
-    ...base(ctx, s.at),
+): { heartRate: NovaLeituraFc } {
+  const heartRate: NovaLeituraFc = {
+    ...base(ctx, s.at, "device"),
     vital_type: "heart_rate",
-    bpm: s.bpm,
+    bpm: Math.round(s.bpm),
     context: "resting",
     irregular_flag: null,
-    // FC por PPG é medida de sensor aceita para tendência: validated.
-    validation_status: s.contactDetected === false ? "suspect" : "validated",
+    rmssd: s.rmssd,
+    sdnn: s.sdnn,
+    validation_status: s.contactDetected === false ? "suspect" : "estimated",
   };
 
-  const hrv: Novo<HrvReading> | null =
-    s.rmssd != null || s.sdnn != null
-      ? {
-          ...base(ctx, s.at),
-          vital_type: "hrv",
-          rmssd: s.rmssd,
-          sdnn: s.sdnn,
-          validation_status: "validated",
-        }
-      : null;
-
-  return { heartRate, hrv };
+  return { heartRate };
 }
 
 export interface LeiturasImportadas {
-  heartRate: Novo<HeartRateReading>[];
+  heartRate: NovaLeituraFc[];
   spo2: Novo<Spo2Reading>[];
   bloodPressure: Novo<BloodPressureReading>[];
   activity: Novo<ActivityReading>[];
   sleep: Novo<SleepReading>[];
 }
 
+/**
+ * Linhas do arquivo → leituras dos cinco domínios.
+ *
+ * Cada tipo preserva o `recorded_at` da própria linha (inclusive a SpO₂, que
+ * antes perdia o horário e caía no `now()` do banco — o médico via toda a
+ * oxigenação importada empilhada no minuto da importação).
+ *
+ * `sleep_records` e `activity_records` também têm `recorded_at` além da data do
+ * dia; preenchemos os dois: a data é a chave natural, o timestamp é a
+ * rastreabilidade.
+ */
 export function linhasParaLeituras(
   linhas: LinhaImportada[],
   ctx: DeviceContext
@@ -79,19 +121,22 @@ export function linhasParaLeituras(
   const out: LeiturasImportadas = { heartRate: [], spo2: [], bloodPressure: [], activity: [], sleep: [] };
 
   for (const l of linhas) {
-    const b = { ...base(ctx, l.recordedAt), source_type: "import" as const };
+    const b = base(ctx, l.recordedAt, "import");
     const dia = l.recordedAt.slice(0, 10);
 
     if (l.heartRate != null) {
       out.heartRate.push({
         ...b, vital_type: "heart_rate", bpm: l.heartRate,
-        context: "resting", irregular_flag: null, validation_status: "validated",
+        context: "resting", irregular_flag: null,
+        rmssd: null, sdnn: null,
+        validation_status: "estimated",
       });
     }
     if (l.spo2 != null) {
       out.spo2.push({
         ...b, vital_type: "spo2", value: l.spo2, context: "spot",
-        time_below_90_pct: null, validation_status: "validated",
+        time_below_90_pct: null,
+        validation_status: "estimated",
       });
     }
     if (l.systolic != null && l.diastolic != null) {
@@ -104,11 +149,12 @@ export function linhasParaLeituras(
         context: "random",
         position: null,
         arm: null,
-        // A regra do §4, aplicada de uma vez só:
+        // Os dois campos andam juntos, sempre. `cuff_validated: false` sozinho
+        // não bastava: o DEFAULT da coluna de validação é 'validated', então a
+        // PA de pulseira entrava no banco como validada e podia disparar alerta.
         cuff_validated: false,
         validation_status: "estimated",
-        validation_note:
-          "Estimativa por sensor óptico da pulseira — sem manguito, sem validação clínica. Não usar para decisão terapêutica.",
+        validation_note: NOTA_PA_ESTIMADA,
       });
     }
     if (l.steps != null || l.calories != null) {
@@ -117,7 +163,8 @@ export function linhasParaLeituras(
         steps: l.steps ?? null, calories: l.calories ?? null,
         distance_km: null, moderate_minutes: null, vigorous_minutes: null,
         avg_heart_rate: l.heartRate ?? null, max_heart_rate: null,
-        validation_status: "validated",
+        // Acelerômetro: contagem aproximada, calorias mais aproximada ainda.
+        validation_status: "estimated",
       });
     }
     if (l.sleepMinutes != null) {
@@ -128,7 +175,8 @@ export function linhasParaLeituras(
         light_minutes: l.lightMinutes ?? null,
         rem_minutes: null, awake_minutes: null, awakenings: null,
         efficiency_pct: null, min_heart_rate: null, min_spo2: null,
-        validation_status: "validated",
+        // Actigrafia por movimento, não polissonografia (docs §4.2).
+        validation_status: "estimated",
       });
     }
   }

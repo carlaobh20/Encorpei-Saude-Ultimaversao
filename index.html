@@ -27,13 +27,23 @@
 
     <!-- Social -->
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Encorpei Cardio" />
+    <meta property="og:locale" content="pt_BR" />
     <meta property="og:title" content="Encorpei Cardio — Seu coração acompanhado todos os dias" />
     <meta property="og:description" content="Pressão, batimentos, sono, atividade e remédios — acompanhados pelo seu cardiologista." />
     <meta property="og:image" content="/logo-full.png" />
+    <!-- Dimensões declaradas porque a logo-full foi redesenhada para 1200x630
+         (a antiga era quadrada, da marca de maternidade, e o Facebook/WhatsApp
+         recortava o wordmark). Sem width/height o primeiro compartilhamento
+         renderiza sem imagem enquanto o crawler não baixa o arquivo. -->
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Encorpei Cardio — coração com traçado de eletrocardiograma" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Encorpei Cardio — Seu coração acompanhado todos os dias" />
     <meta name="twitter:description" content="Acompanhamento cardiológico para pacientes e cardiologistas." />
     <meta name="twitter:image" content="/logo-full.png" />
+    <meta name="twitter:image:alt" content="Encorpei Cardio — coração com traçado de eletrocardiograma" />
   </head>
   <body>
     <div id="root"></div>

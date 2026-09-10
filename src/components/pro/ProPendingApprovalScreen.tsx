@@ -49,7 +49,7 @@ export function ProPendingApprovalScreen({ onLogoClick, onSignOut }: {
         <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-black/25" />
 
         <a href="/landing" onClick={onLogoClick} className="relative flex items-center gap-3 w-fit">
-          <img src="/logo-symbol.png" alt="Encorpei Mamãe" width={60} height={60} className="object-contain shrink-0" style={{ width: 60, height: 60 }} />
+          <img src="/logo-symbol.png" alt="Encorpei Cardio" width={60} height={60} className="object-contain shrink-0" style={{ width: 60, height: 60 }} />
           <div className="leading-tight">
             <div className="font-display text-2xl font-medium tracking-tight text-white">Encorpei</div>
             <div className="font-script text-xl text-white/90 -mt-0.5">Médico</div>
@@ -72,7 +72,7 @@ export function ProPendingApprovalScreen({ onLogoClick, onSignOut }: {
           <div>
             <p className="text-[13px] font-semibold text-white">Seguro e confidencial</p>
             <p className="text-[12px] text-white/75 mt-0.5 leading-snug">
-              Seus dados e os de suas pacientes protegidos com segurança.
+              Seus dados e os de seus pacientes protegidos com segurança.
             </p>
           </div>
         </div>
@@ -84,7 +84,7 @@ export function ProPendingApprovalScreen({ onLogoClick, onSignOut }: {
           <div className="w-full max-w-lg text-center">
             {/* Logo — só mobile (o painel esquerdo já mostra no desktop) */}
             <a href="/landing" onClick={onLogoClick} className="lg:hidden flex items-center gap-3 mb-10 justify-center w-fit mx-auto">
-              <img src="/logo-symbol.png" alt="Encorpei Mamãe" width={56} height={56} className="object-contain shrink-0" style={{ width: 56, height: 56 }} />
+              <img src="/logo-symbol.png" alt="Encorpei Cardio" width={56} height={56} className="object-contain shrink-0" style={{ width: 56, height: 56 }} />
               <div className="leading-tight">
                 <div className="font-display text-xl font-medium tracking-tight">Encorpei</div>
                 <div className="font-script text-lg text-primary -mt-0.5">Médico</div>
@@ -129,7 +129,7 @@ export function ProPendingApprovalScreen({ onLogoClick, onSignOut }: {
             <div className="mt-9 rounded-2xl bg-primary/5 border border-primary/10 p-5 flex items-start gap-3.5 text-left">
               <Heart className="h-5 w-5 text-primary shrink-0 mt-0.5" strokeWidth={2} />
               <p className="text-sm text-foreground/80 leading-relaxed">
-                Enquanto isso, fique à vontade para conhecer mais sobre o Encorpei e nossas soluções para você e suas pacientes.
+                Enquanto isso, fique à vontade para conhecer mais sobre o Encorpei e nossas soluções para você e seus pacientes.
               </p>
             </div>
 

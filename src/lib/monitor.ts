@@ -195,15 +195,29 @@ class Monitor {
       const scrubbedMessage = scrub(entry.message);
       const scrubbedStack = entry.error?.stack ? scrub(entry.error.stack) : null;
 
-      await (supabase as any).from("audit_logs").insert({
-        action: "frontend_error",
-        risk_level: "low",
-        actor_id: this.userId,
-        actor_role: "sistema",
-        description: scrubbedMessage.slice(0, 500),
-        resource_type: entry.scope ?? "frontend",
-        metadata: { stack: scrubbedStack?.slice(0, 2000) ?? null },
-        contexto: entry.context ? JSON.parse(JSON.stringify(entry.context)) : null,
+      // `audit_logs` só tem política de SELECT para admin: o INSERT direto
+      // que estava aqui era barrado pela RLS, afetava zero linhas e NÃO
+      // retornava erro — todo erro de frontend em produção era descartado em
+      // silêncio, e o `catch` abaixo nem chegava a ser acionado.
+      //
+      // A RPC `log_audit_event` é SECURITY DEFINER e existe justamente para
+      // isso. Ela DERIVA autor e papel da sessão (por isso não há mais
+      // actor_id/actor_role a passar) e é a única via de escrita concedida a
+      // `authenticated`.
+      await (supabase as any).rpc("log_audit_event", {
+        p_action: "frontend_error",
+        p_description: scrubbedMessage.slice(0, 500),
+        p_risk_level: "low",
+        p_patient_user_id: null,
+        p_resource_type: entry.scope ?? "frontend",
+        p_resource_id: null,
+        p_metadata: {
+          stack: scrubbedStack?.slice(0, 2000) ?? null,
+          contexto: entry.context ? JSON.parse(JSON.stringify(entry.context)) : null,
+          // A RPC ignora identidade vinda do cliente; guardamos o uid apenas
+          // como referência de diagnóstico, sem valor de autoria.
+          uid_observado: this.userId ?? null,
+        },
       });
     } catch {
       // Never throw from monitoring code

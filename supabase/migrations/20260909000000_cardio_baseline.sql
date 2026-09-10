@@ -128,6 +128,23 @@ returns boolean language sql stable security definer set search_path = public as
   select exists (select 1 from user_roles where user_id = _user_id and role = _role);
 $$;
 
+-- "Este perfil profissional é meu?" — também SECURITY DEFINER, e pelo mesmo
+-- motivo, só que na direção oposta.
+--
+-- Sem ela havia RECURSÃO MÚTUA entre duas políticas, e o Postgres aborta a
+-- consulta inteira com "infinite recursion detected in policy":
+--   professional_profiles.pro_visible_to_linked_patient  → lê links
+--   professional_patient_links.links_professional        → lê professional_profiles
+-- O efeito prático era o portal do médico inteiro fora do ar: o médico não
+-- conseguia sequer ler o próprio cadastro nem listar os próprios convites.
+create or replace function public.owns_professional_profile(_professional_id uuid, _user_id uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from professional_profiles p
+     where p.id = _professional_id and p.user_id = _user_id
+  );
+$$;
+
 -- ── Metas terapêuticas ──────────────────────────────────────────────────────
 
 create table if not exists public.cardio_targets (
@@ -570,8 +587,8 @@ create policy cardio_patients_doctor on public.cardio_patients for select
 -- Vínculos: o médico gerencia os seus; o paciente lê e aceita os dele.
 drop policy if exists links_professional on public.professional_patient_links;
 create policy links_professional on public.professional_patient_links for all
-  using (exists (select 1 from professional_profiles p where p.id = professional_id and p.user_id = auth.uid()))
-  with check (exists (select 1 from professional_profiles p where p.id = professional_id and p.user_id = auth.uid()));
+  using (public.owns_professional_profile(professional_id, auth.uid()))
+  with check (public.owns_professional_profile(professional_id, auth.uid()));
 
 drop policy if exists links_patient_read on public.professional_patient_links;
 create policy links_patient_read on public.professional_patient_links for select
@@ -641,8 +658,8 @@ create policy messages_participants on public.patient_messages for all
 -- Anotações do médico: privadas dele. O paciente NÃO vê.
 drop policy if exists notes_professional on public.professional_notes;
 create policy notes_professional on public.professional_notes for all
-  using (exists (select 1 from professional_profiles p where p.id = professional_id and p.user_id = auth.uid()))
-  with check (exists (select 1 from professional_profiles p where p.id = professional_id and p.user_id = auth.uid()));
+  using (public.owns_professional_profile(professional_id, auth.uid()))
+  with check (public.owns_professional_profile(professional_id, auth.uid()));
 
 -- Consentimento: append-only (sem update, sem delete — revogar é novo registro).
 drop policy if exists consent_select_own on public.consent_records;

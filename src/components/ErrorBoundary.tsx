@@ -66,7 +66,10 @@ function DefaultErrorFallback({ error, reset }: { error: Error; reset: () => voi
   const isProArea = window.location.pathname.startsWith("/pro");
   const isMedico = bypass?.role === "medico" || isProArea;
 
-  const homeRoute = isMedico ? "/pro/dashboard" : "/minha-semana";
+  // "/hoje" e a home do paciente. Ate a auditoria de setembro/2026 isto
+  // apontava para "/minha-semana", tela do app de obstetricia que originou
+  // este projeto: quem caia aqui era mandado para um redirect.
+  const homeRoute = isMedico ? "/pro/dashboard" : "/hoje";
   const homeLabel = isMedico ? "Ir para o painel" : "Ir para início";
 
   return (

@@ -11,7 +11,7 @@ interface WrongPortalBlockProps {
 /**
  * Tela de bloqueio quando uma sessão autenticada (e-mail/senha corretos)
  * pertence ao papel errado para o portal em que está — ex.: conta de
- * médico tentando acessar o app da mamãe, ou vice-versa. Usada como defesa
+ * médico tentando acessar o app do paciente, ou vice-versa. Usada como defesa
  * em profundidade nos route guards (ProtectedRoute / ProProtectedRoute),
  * caso alguma sessão já autenticada chegue até aqui mesmo com o bloqueio
  * feito na tela de login (auditoria 26/08/2026).

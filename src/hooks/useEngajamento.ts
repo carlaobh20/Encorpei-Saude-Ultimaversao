@@ -29,7 +29,11 @@ import {
 } from "@/lib/clinical/sodio";
 import { idadeEmAnos } from "@/lib/clinical/scores";
 import { useCardioPatient, useTargets } from "./useCardioPatient";
-import { useActivity, useBloodPressure, useHeartRate, useSleep, useSpo2, useWeight } from "./useCardioReadings";
+import {
+  buscarSerie, medirCobertura, resolverJanela,
+  useActivity, useBloodPressure, useHeartRate, useSleep, useSpo2, useWeight,
+  type Cobertura, type OpcoesSerie,
+} from "./useCardioReadings";
 import { useCardioMedications } from "./useCardioMedications";
 import { useCardioExams, useLabResults } from "./useCardioClinical";
 import type { HeartAgeSnapshot, QolResponse, WalkSession, WellbeingCheckin } from "@/types/cardio";
@@ -38,29 +42,51 @@ import type { HeartAgeSnapshot, QolResponse, WalkSession, WellbeingCheckin } fro
 
 const chave = (nome: string, uid?: string) => [nome, uid ?? "demo"] as const;
 
-function useTabela<T>(tabela: string, nomeChave: string, demo: T[], ordem: string, patientUserId?: string) {
+/**
+ * O mesmo problema de useCardioReadings valia aqui: `.limit(200)` sem filtro
+ * de data. Caminhadas, check-ins e sódio são vários registros por dia — a
+ * "média da semana" e o "total do dia" saíam de uma amostra que já tinha sido
+ * cortada no servidor, sem aviso.
+ *
+ * A infraestrutura de janela/cobertura mora em useCardioReadings porque é a
+ * mesma regra; duplicá-la aqui só criaria duas versões para divergirem.
+ */
+function useTabela<T>(
+  tabela: string,
+  nomeChave: string,
+  demo: T[],
+  ordem: string,
+  patientUserId?: string,
+  opcoes?: OpcoesSerie
+) {
   const { user } = useAuth();
   const uid = patientUserId ?? user?.id;
   const demoAtivo = !!getDevBypass();
 
+  const janela = resolverJanela(opcoes);
+
   const query = useQuery({
-    queryKey: chave(nomeChave, uid),
+    // A janela entra na chave para que dois períodos diferentes não
+    // compartilhem o mesmo cache.
+    queryKey: [...chave(nomeChave, uid), janela.desde, janela.ate, janela.limite],
     enabled: !!uid || demoAtivo,
     staleTime: 60_000,
-    queryFn: async (): Promise<T[]> => {
-      if (demoAtivo) return demo;
-      const { data, error } = await (supabase as any)
-        .from(tabela)
-        .select("*")
-        .eq("patient_user_id", uid)
-        .order(ordem, { ascending: false })
-        .limit(200);
-      if (error) throw error;
-      return (data ?? []) as T[];
+    queryFn: async (): Promise<{ linhas: T[]; cobertura: Cobertura }> => {
+      if (demoAtivo) {
+        return { linhas: demo, cobertura: medirCobertura(demo, ordem, janela, false) };
+      }
+      const { linhas, truncado } = await buscarSerie<T>(tabela, ordem, uid!, janela);
+      return { linhas, cobertura: medirCobertura(linhas, ordem, janela, truncado) };
     },
   });
 
-  return { data: query.data ?? [], isLoading: query.isLoading, uid, demoAtivo };
+  const linhas = query.data?.linhas ?? [];
+  const cobertura: Cobertura = query.data?.cobertura ?? {
+    linhas: 0, desde: janela.desde, ate: janela.ate,
+    cobreDe: null, cobreAte: null, truncado: false, limite: janela.limite,
+  };
+
+  return { data: linhas, cobertura, isLoading: query.isLoading, uid, demoAtivo };
 }
 
 // ── Idade do Coração ─────────────────────────────────────────────────
@@ -75,15 +101,17 @@ export interface DadosIdadeCoracao {
   /** Cenário: pressão no alvo (e sem cigarro, se for o caso). */
   projecao: number | null;
   isLoading: boolean;
+  /** Quantas medidas de pressão entraram, que período cobrem e se truncou. */
+  cobertura: Cobertura;
 }
 
-export function useIdadeDoCoracao(patientUserId?: string): DadosIdadeCoracao {
+export function useIdadeDoCoracao(patientUserId?: string, opcoes?: OpcoesSerie): DadosIdadeCoracao {
   const { data: patient, isLoading: carregandoPaciente } = useCardioPatient(patientUserId);
   const { targets } = useTargets(patientUserId);
   const { ultimoPorMarcador } = useLabResults(patientUserId);
-  const bp = useBloodPressure(patientUserId);
+  const bp = useBloodPressure(patientUserId, opcoes);
   const historicoQuery = useTabela<HeartAgeSnapshot>(
-    "heart_age_snapshots", "heartAge", DEMO_HEART_AGE, "calculado_em", patientUserId
+    "heart_age_snapshots", "heartAge", DEMO_HEART_AGE, "calculado_em", patientUserId, opcoes
   );
 
   const elegibilidade = idadeCoracaoSeAplica(patient ?? null);
@@ -139,14 +167,16 @@ export function useIdadeDoCoracao(patientUserId?: string): DadosIdadeCoracao {
     historico: historicoQuery.data,
     projecao,
     isLoading: carregandoPaciente || bp.isLoading,
+    /** Cobertura da série de pressão que alimentou o cálculo. */
+    cobertura: bp.cobertura,
   };
 }
 
 // ── Tempo no Alvo ────────────────────────────────────────────────────
 
-export function useTempoNoAlvo(patientUserId?: string) {
+export function useTempoNoAlvo(patientUserId?: string, opcoes?: OpcoesSerie) {
   const { targets } = useTargets(patientUserId);
-  const bp = useBloodPressure(patientUserId);
+  const bp = useBloodPressure(patientUserId, opcoes);
 
   return useMemo(() => {
     const mes = calcularTempoNoAlvo(bp.readings, targets, 30);
@@ -157,19 +187,23 @@ export function useTempoNoAlvo(patientUserId?: string) {
       semana,
       serie,
       isLoading: bp.isLoading,
+      // Este era o cálculo mais exposto ao corte de 200 linhas: "tempo no
+      // alvo dos últimos 30 dias" sobre uma amostra de poucos dias. Agora a
+      // cobertura viaja junto e a tela pode qualificar o número.
+      cobertura: bp.cobertura,
       /** Resposta imediata a uma medida nova (regra da reciprocidade). */
       responder: (nova: { systolic: number; diastolic: number }) => responderMedida(nova, bp.readings, targets),
     };
-  }, [bp.readings, bp.isLoading, targets]);
+  }, [bp.readings, bp.isLoading, bp.cobertura, targets]);
 }
 
 // ── Capacidade ───────────────────────────────────────────────────────
 
-export function useCapacidade(patientUserId?: string) {
+export function useCapacidade(patientUserId?: string, opcoes?: OpcoesSerie) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const demo = !!getDevBypass();
-  const r = useTabela<TesteCapacidade>("capacity_tests", "capacity", DEMO_CAPACITY_TESTS, "realizado_em", patientUserId);
+  const r = useTabela<TesteCapacidade>("capacity_tests", "capacity", DEMO_CAPACITY_TESTS, "realizado_em", patientUserId, opcoes);
 
   const registrar = useMutation({
     mutationFn: async (input: {
@@ -199,17 +233,17 @@ export function useCapacidade(patientUserId?: string) {
     [r.data]
   );
 
-  return { testes: r.data, evolucao, isLoading: r.isLoading, registrar };
+  return { testes: r.data, evolucao, cobertura: r.cobertura, isLoading: r.isLoading, registrar };
 }
 
 // ── Caminhada guiada ─────────────────────────────────────────────────
 
-export function useCaminhadas(patientUserId?: string) {
+export function useCaminhadas(patientUserId?: string, opcoes?: OpcoesSerie) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const demo = !!getDevBypass();
   const { targets } = useTargets(patientUserId);
-  const r = useTabela<WalkSession>("walk_sessions", "walks", DEMO_WALK_SESSIONS, "iniciada_em", patientUserId);
+  const r = useTabela<WalkSession>("walk_sessions", "walks", DEMO_WALK_SESSIONS, "iniciada_em", patientUserId, opcoes);
 
   const zona = useMemo(() => zonaDeTreino(targets), [targets]);
 
@@ -234,16 +268,16 @@ export function useCaminhadas(patientUserId?: string) {
   const daSemana = r.data.filter((s) => Date.now() - +new Date(s.iniciada_em) <= 7 * 86_400_000);
   const minutosSemana = Math.round(daSemana.reduce((s, x) => s + x.duracao_segundos, 0) / 60);
 
-  return { sessoes: r.data, zona, daSemana, minutosSemana, isLoading: r.isLoading, salvar };
+  return { sessoes: r.data, zona, daSemana, minutosSemana, cobertura: r.cobertura, isLoading: r.isLoading, salvar };
 }
 
 // ── Como estou agora ─────────────────────────────────────────────────
 
-export function useCheckins(patientUserId?: string) {
+export function useCheckins(patientUserId?: string, opcoes?: OpcoesSerie) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const demo = !!getDevBypass();
-  const r = useTabela<WellbeingCheckin>("wellbeing_checkins", "checkins", DEMO_CHECKINS, "ocorrido_em", patientUserId);
+  const r = useTabela<WellbeingCheckin>("wellbeing_checkins", "checkins", DEMO_CHECKINS, "ocorrido_em", patientUserId, opcoes);
 
   const registrar = useMutation({
     mutationFn: async (input: {
@@ -265,17 +299,17 @@ export function useCheckins(patientUserId?: string) {
     onError: () => undefined,
   });
 
-  return { checkins: r.data, isLoading: r.isLoading, registrar };
+  return { checkins: r.data, cobertura: r.cobertura, isLoading: r.isLoading, registrar };
 }
 
 /** Contexto pronto para `avaliarComoEstou`. */
-export function useContextoComoEstou(patientUserId?: string) {
+export function useContextoComoEstou(patientUserId?: string, opcoes?: OpcoesSerie) {
   const { targets } = useTargets(patientUserId);
-  const bp = useBloodPressure(patientUserId);
-  const hr = useHeartRate(patientUserId);
-  const weight = useWeight(patientUserId);
-  const spo2 = useSpo2(patientUserId);
-  const sleep = useSleep(patientUserId);
+  const bp = useBloodPressure(patientUserId, opcoes);
+  const hr = useHeartRate(patientUserId, opcoes);
+  const weight = useWeight(patientUserId, opcoes);
+  const spo2 = useSpo2(patientUserId, opcoes);
+  const sleep = useSleep(patientUserId, opcoes);
 
   return useMemo(
     () => ({
@@ -286,19 +320,32 @@ export function useContextoComoEstou(patientUserId?: string) {
       spo2: spo2.readings,
       sleep: sleep.records,
       agora: new Date(),
+      /** Cobertura por série — `truncado` em qualquer uma qualifica o resto. */
+      cobertura: {
+        bloodPressure: bp.cobertura,
+        heartRate: hr.cobertura,
+        weight: weight.cobertura,
+        spo2: spo2.cobertura,
+        sleep: sleep.cobertura,
+      },
     }),
-    [targets, bp.readings, hr.readings, weight.readings, spo2.readings, sleep.records]
+    [
+      targets, bp.readings, hr.readings, weight.readings, spo2.readings, sleep.records,
+      bp.cobertura, hr.cobertura, weight.cobertura, spo2.cobertura, sleep.cobertura,
+    ]
   );
 }
 
 // ── Sódio ────────────────────────────────────────────────────────────
 
-export function useSodio(patientUserId?: string) {
+export function useSodio(patientUserId?: string, opcoes?: OpcoesSerie) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const demo = !!getDevBypass();
   const { targets } = useTargets(patientUserId);
-  const r = useTabela<RegistroSodio>("sodium_entries", "sodio", DEMO_SODIUM, "dia", patientUserId);
+  // `dia` é coluna `date` — o filtro de intervalo é recortado para AAAA-MM-DD
+  // dentro de `buscarSerie`.
+  const r = useTabela<RegistroSodio>("sodium_entries", "sodio", DEMO_SODIUM, "dia", patientUserId, opcoes);
 
   const hoje = new Date().toISOString().slice(0, 10);
   const alvo = targets.sodium_mg_day ?? SODIO_ALVO_PADRAO;
@@ -323,6 +370,7 @@ export function useSodio(patientUserId?: string) {
     alvo,
     leitura: lerSodioDoDia(totalHoje, alvo),
     mediaSemana: mediaSemanal(r.data, 7),
+    cobertura: r.cobertura,
     isLoading: r.isLoading,
     registrar,
   };
@@ -360,11 +408,11 @@ export function calcularScoreQol(respostas: Record<string, number>): number {
   return Math.round((soma / (valores.length * 4)) * 100);
 }
 
-export function useQualidadeDeVida(patientUserId?: string) {
+export function useQualidadeDeVida(patientUserId?: string, opcoes?: OpcoesSerie) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const demo = !!getDevBypass();
-  const r = useTabela<QolResponse>("qol_responses", "qol", DEMO_QOL, "respondido_em", patientUserId);
+  const r = useTabela<QolResponse>("qol_responses", "qol", DEMO_QOL, "respondido_em", patientUserId, opcoes);
 
   const responder = useMutation({
     mutationFn: async (respostas: Record<string, number>) => {
@@ -395,6 +443,7 @@ export function useQualidadeDeVida(patientUserId?: string) {
     /** Vale reperguntar depois de 30 dias. */
     devePerguntar: diasDesdeUltima == null || diasDesdeUltima >= 30,
     diasDesdeUltima,
+    cobertura: r.cobertura,
     isLoading: r.isLoading,
     responder,
   };
@@ -459,13 +508,13 @@ export function useAprender(patientUserId?: string) {
 
 // ── Conquistas ───────────────────────────────────────────────────────
 
-export function useConquistas(patientUserId?: string) {
+export function useConquistas(patientUserId?: string, opcoes?: OpcoesSerie) {
   const { intakes } = useCardioMedications(patientUserId);
-  const bp = useBloodPressure(patientUserId);
-  const activity = useActivity(patientUserId);
-  const weight = useWeight(patientUserId);
+  const bp = useBloodPressure(patientUserId, opcoes);
+  const activity = useActivity(patientUserId, opcoes);
+  const weight = useWeight(patientUserId, opcoes);
   const { targets } = useTargets(patientUserId);
-  const tempoNoAlvo = useTempoNoAlvo(patientUserId);
+  const tempoNoAlvo = useTempoNoAlvo(patientUserId, opcoes);
 
   return useMemo(
     () =>

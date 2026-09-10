@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDeQuemCuido } from "@/hooks/useCuidadores";
-import { useCardioPatient } from "@/hooks/useCardioPatient";
+import { useCardioPatient, useNomesDePacientes } from "@/hooks/useCardioPatient";
 import { useBloodPressure, useActivity, useSleep } from "@/hooks/useCardioReadings";
 import { useCardioMedications } from "@/hooks/useCardioMedications";
 import { useCardioAlerts, useCardioExams, useLabResults, useSymptoms } from "@/hooks/useCardioClinical";
@@ -80,10 +80,13 @@ function AvisoLimites() {
   );
 }
 
-/** Chip do seletor de paciente — busca o nome de cada vínculo por conta própria. */
-function ChipPaciente({ vinculo, ativo, onClick }: { vinculo: CaregiverLink; ativo: boolean; onClick: () => void }) {
-  const { data: patient } = useCardioPatient(vinculo.patient_user_id);
-  const nome = primeiroNome(patient?.full_name) || vinculo.caregiver_nome;
+/**
+ * Chip do seletor de paciente.
+ *
+ * O nome chega PRONTO por prop: buscá-lo aqui dentro significaria uma consulta
+ * por chip renderizado (N+1). Quem monta a lista faz uma consulta só.
+ */
+function ChipPaciente({ nome, ativo, onClick }: { nome: string; ativo: boolean; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
@@ -371,6 +374,8 @@ function EntrarComCodigo() {
 export default function CuidadorHomePage() {
   const { user, loading } = useAuth();
   const { vinculos, isLoading } = useDeQuemCuido();
+  // Uma consulta para todos os chips, em vez de uma por chip.
+  const nomesDePacientes = useNomesDePacientes(vinculos.map((v) => v.patient_user_id));
   const [selecionado, setSelecionado] = useState<string | null>(null);
 
   useEffect(() => {
@@ -432,7 +437,7 @@ export default function CuidadorHomePage() {
                 {vinculos.map((v) => (
                   <ChipPaciente
                     key={v.id}
-                    vinculo={v}
+                    nome={primeiroNome(nomesDePacientes[v.patient_user_id]) || v.caregiver_nome}
                     ativo={v.patient_user_id === vinculoAtivo?.patient_user_id}
                     onClick={() => setSelecionado(v.patient_user_id)}
                   />

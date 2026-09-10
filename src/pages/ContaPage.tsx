@@ -11,12 +11,24 @@ import { LinkDoctorCard } from "@/components/LinkDoctorCard";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Stethoscope, Watch, LogOut, Loader2, Pencil, Check, X, BadgeCheck } from "lucide-react";
+import { Stethoscope, Watch, LogOut, Loader2, Pencil, Check, X, BadgeCheck, SlidersHorizontal, ChevronRight } from "lucide-react";
 import { idadeEmAnos } from "@/lib/clinical/scores";
 
 const SEXO_LABEL: Record<string, string> = { male: "Masculino", female: "Feminino" };
 
-/** Conta do paciente: dados pessoais, cardiologista vinculado, dispositivos e privacidade. */
+/**
+ * MINHA CONTA — quem o paciente é e o que é dele.
+ *
+ * ── Divisão de responsabilidade (auditoria de setembro/2026) ───────────
+ * Esta tela e /configuracoes se sobrepunham: dois nomes genéricos
+ * ("Minha Conta" e "Configurações") para um paciente de 68 anos decidir
+ * onde procurar. Passaram a responder perguntas diferentes:
+ *   /conta         → cadastro, médico vinculado, dispositivos, privacidade
+ *   /configuracoes → "Preferências": notificações, aparência, acessibilidade
+ *
+ * Nada foi removido: o que mudou é que cada função aparece em UM lugar, com
+ * UM nome. O cartão no fim desta tela é só a ponte para as Preferências.
+ */
 export default function ContaPage() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -61,7 +73,7 @@ export default function ContaPage() {
 
   return (
     <div className="max-w-2xl mx-auto py-6 px-4 space-y-6">
-      <PageHeader title="Minha conta" subtitle="Seus dados e sua equipe de cuidado" />
+      <PageHeader title="Minha conta" subtitle="Seus dados, sua equipe de cuidado e sua privacidade" />
 
       {/* Dados pessoais */}
       <SurfaceCard>
@@ -155,8 +167,27 @@ export default function ContaPage() {
         </div>
       </SurfaceCard>
 
-      {/* Privacidade e LGPD */}
-      <DataPrivacySection />
+      {/* Privacidade e LGPD — casa única da exportação/exclusão de dados.
+          O id ancora o link "/conta#privacidade" vindo das Preferências;
+          scroll-mt compensa o cabeçalho fixo do AppShell. */}
+      <div id="privacidade" className="scroll-mt-24">
+        <DataPrivacySection />
+      </div>
+
+      {/* Ponte para as Preferências — atalho, não duplicata: nenhum ajuste de
+          notificação ou de letra grande é executado nesta tela. */}
+      <SurfaceCard variant="interactive" onClick={() => navigate("/configuracoes")} ariaLabel="Preferências do app">
+        <div className="flex items-center gap-3.5">
+          <div className="h-11 w-11 rounded-2xl bg-secondary grid place-items-center text-primary shrink-0">
+            <SlidersHorizontal className="h-5 w-5" strokeWidth={1.75} />
+          </div>
+          <div className="flex-1 min-w-0 text-left">
+            <p className="text-sm font-semibold text-foreground">Preferências</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Notificações, letra maior e mais contraste</p>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+        </div>
+      </SurfaceCard>
 
       <Button variant="outline" className="w-full h-12 rounded-2xl" onClick={signOut}>
         <LogOut className="h-4 w-4" /> Sair da conta

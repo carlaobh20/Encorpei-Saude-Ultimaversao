@@ -6,7 +6,7 @@
 import { useState } from "react";
 import { ChevronUp, Loader2, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useMyFeedback, useFeedbackReplies, type FeedbackRow } from "@/hooks/useFeedback";
+import { useMyFeedback, useFeedbackReplyCounts, type FeedbackRow } from "@/hooks/useFeedback";
 import { FeedbackThread } from "@/components/feedback/FeedbackThread";
 
 const CATEGORY_LABEL: Record<string, string> = {
@@ -22,9 +22,8 @@ const STATUS_TONE: Record<string, string> = {
   archived: "bg-secondary text-muted-foreground",
 };
 
-function MyFeedbackCard({ item, authorName }: { item: FeedbackRow; authorName: string | null }) {
+function MyFeedbackCard({ item, authorName, respostas }: { item: FeedbackRow; authorName: string | null; respostas: number }) {
   const [open, setOpen] = useState(false);
-  const { data: replies = [] } = useFeedbackReplies(item.id);
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4 space-y-2">
@@ -51,7 +50,7 @@ function MyFeedbackCard({ item, authorName }: { item: FeedbackRow; authorName: s
         className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground hover:text-foreground pt-1"
       >
         {open ? <ChevronUp className="h-3.5 w-3.5" /> : <MessageCircle className="h-3.5 w-3.5" />}
-        {open ? "Ocultar conversa" : replies.length > 0 ? `Ver resposta da equipe (${replies.length})` : "Responder / ver conversa"}
+        {open ? "Ocultar conversa" : respostas > 0 ? `Ver resposta da equipe (${respostas})` : "Responder / ver conversa"}
       </button>
 
       {open && (
@@ -72,6 +71,8 @@ function MyFeedbackCard({ item, authorName }: { item: FeedbackRow; authorName: s
 
 export function MyFeedbackList({ authorName }: { authorName: string | null }) {
   const { data: items = [], isLoading } = useMyFeedback();
+  // Uma consulta para a lista toda, em vez de uma por cartão.
+  const contagens = useFeedbackReplyCounts(items.map((i) => i.id));
 
   if (isLoading) {
     return (
@@ -88,7 +89,7 @@ export function MyFeedbackList({ authorName }: { authorName: string | null }) {
       <h2 className="text-sm font-semibold text-foreground">Meus feedbacks enviados</h2>
       <div className="space-y-2.5">
         {items.map((item) => (
-          <MyFeedbackCard key={item.id} item={item} authorName={authorName} />
+          <MyFeedbackCard key={item.id} item={item} authorName={authorName} respostas={contagens[item.id] ?? 0} />
         ))}
       </div>
     </div>

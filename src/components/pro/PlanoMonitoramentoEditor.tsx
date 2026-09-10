@@ -22,6 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getDevBypass } from "@/contexts/DevBypass";
 import { cn } from "@/lib/utils";
 import { ROTULO_METRICA, ROTULO_FREQUENCIA, type MetricaPlano, type Frequencia } from "@/hooks/usePlanoMonitoramento";
+import { queryKeys } from "@/lib/queryKeys";
 
 const METRICAS: MetricaPlano[] = [
   "bp", "weight", "medication", "wellbeing", "hr", "spo2",
@@ -49,7 +50,7 @@ export function PlanoMonitoramentoEditor({
   const [rascunho, setRascunho] = useState<Record<string, Linha> | null>(null);
 
   const { data: plano = [] } = useQuery({
-    queryKey: ["monitoring_plan", patientUserId],
+    queryKey: queryKeys.monitoringPlan.todos(patientUserId),
     queryFn: async () => {
       if (demo) return [];
       const { data, error } = await (supabase as any)
@@ -100,7 +101,7 @@ export function PlanoMonitoramentoEditor({
     },
     onSuccess: () => {
       setRascunho(null);
-      qc.invalidateQueries({ queryKey: ["monitoring_plan"] });
+      qc.invalidateQueries({ queryKey: queryKeys.monitoringPlan.all });
       toast.success("Plano salvo. O paciente já vê na tela inicial dele.");
     },
     onError: () => toast.error("Não consegui salvar o plano."),

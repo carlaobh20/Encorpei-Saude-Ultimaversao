@@ -9,11 +9,11 @@ export interface AccountRoleFlags {
  * Auditoria de login cruzado (26/08/2026).
  *
  * O Supabase Auth só prova e-mail+senha — ele não sabe (nem deveria saber)
- * se a conta é de uma mamãe ou de um médico. Antes desta função, cada
+ * se a conta é de um paciente ou de um médico. Antes desta função, cada
  * portal confiava soh no `signInWithPassword` ter dado certo e decidia pra
  * onde mandar o usuário com base em estado local de UI (ex.: um toggle que
  * só existe na tela de cadastro) — nunca checando o banco. Resultado: uma
- * credencial de médico logava normalmente na tela da mamãe (e vice-versa),
+ * credencial de médico logava normalmente na tela do paciente (e vice-versa),
  * e o guard de rota, ao não achar o cadastro esperado, mandava a sessão
  * pro onboarding do papel errado em vez de bloquear.
  *

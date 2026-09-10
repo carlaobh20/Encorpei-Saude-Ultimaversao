@@ -1,7 +1,7 @@
 /**
  * ─────────────────────────────────────────────────────────────
  * TOKENS · fundação compartilhada do Design System
- * Encorpei Mamãe · Sprint 1.5 · 04/08/2026
+ * Encorpei Cardio · Sprint 1.5 · 04/08/2026
  * ─────────────────────────────────────────────────────────────
  *
  * O QUE ESTE ARQUIVO É

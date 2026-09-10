@@ -66,9 +66,9 @@ export function PWAInstallPrompt() {
           className="fixed bottom-20 left-3 right-3 z-50 lg:hidden"
         >
           <div className="rounded-3xl border border-border bg-card shadow-floating p-4 flex items-center gap-3">
-            <img src="/logo-symbol.png" alt="Encorpei Mamãe" width={44} height={44} className="object-contain shrink-0" style={{ width: 44, height: 44 }} />
+            <img src="/logo-symbol.png" alt="Encorpei Cardio" width={44} height={44} className="object-contain shrink-0" style={{ width: 44, height: 44 }} />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground">Instalar Encorpei Mamãe</p>
+              <p className="text-sm font-semibold text-foreground">Instalar Encorpei Cardio</p>
               <p className="text-xs text-muted-foreground">Acesso rápido na tela inicial</p>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">

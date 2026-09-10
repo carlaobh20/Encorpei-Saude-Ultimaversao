@@ -13,7 +13,7 @@ import {
 /**
  * Gate herdado do Encorpei Saúde. O useRealtimeSync antigo assinava
  * 5 tabelas que não existem neste projeto (workout_logs, meals, etc.)
- * e abria um WebSocket por usuário à toa — desligado no Mamãe.
+ * e abria um WebSocket por usuário à toa — desligado desde então.
  */
 function RealtimeGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;

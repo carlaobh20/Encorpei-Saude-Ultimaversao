@@ -18,6 +18,21 @@ export const queryKeys = {
     all: ["targets"] as const,
     de: (uid: string) => ["targets", uid] as const,
   },
+  /**
+   * Metas de COMPORTAMENTO do paciente (`patient_goals`).
+   *
+   * Domínio separado de `targets` de propósito, e não por organização: são
+   * duas coisas com donos diferentes. `targets` é a prescrição do médico —
+   * o paciente só lê (migração 20260912000000_seguranca.sql §3). `patientGoals`
+   * é o combinado do paciente consigo mesmo — ele lê e escreve, o médico só lê.
+   * Se dividissem prefixo, salvar o combinado do paciente invalidaria a
+   * prescrição e vice-versa, misturando no cache duas fontes de autoridade
+   * que o banco faz questão de manter separadas.
+   */
+  patientGoals: {
+    all: ["patient_goals"] as const,
+    de: (uid: string) => ["patient_goals", uid] as const,
+  },
   bp: {
     all: ["bp"] as const,
     de: (uid: string) => ["bp", uid] as const,
@@ -97,6 +112,25 @@ export const queryKeys = {
     professionals: ["admin", "professionals"] as const,
     professionalMetrics: ["admin", "professionalMetrics"] as const,
     professionalPatients: (id: string) => ["admin", "professionalPatients", id] as const,
+  },
+  /**
+   * Plano de monitoramento.
+   *
+   * Duas telas leem a MESMA tabela com recortes DIFERENTES e por isso não
+   * podem dividir a mesma chave:
+   *   · `ativos` — o app do paciente, só `is_active = true` (o que é cobrado);
+   *   · `todos`  — o editor do médico, ativos e inativos (o que é editável).
+   *
+   * Quando as duas usavam `["monitoring_plan", uid]`, quem montasse primeiro
+   * preenchia o cache da outra. Na pior direção o app do paciente lia a lista
+   * completa do editor e passava a COBRAR métrica que o médico havia
+   * desligado. Os dois ficam sob o mesmo prefixo de propósito: invalidar
+   * `all` continua atingindo os dois.
+   */
+  monitoringPlan: {
+    all: ["monitoring_plan"] as const,
+    ativos: (uid: string) => ["monitoring_plan", "ativos", uid] as const,
+    todos: (uid: string) => ["monitoring_plan", "todos", uid] as const,
   },
   feedback: {
     all: ["feedback"] as const,

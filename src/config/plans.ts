@@ -19,8 +19,9 @@ export interface PlanConfig {
 
 /**
  * Quem paga é o cardiologista; o paciente usa de graça.
- * No crônico esse modelo se sustenta melhor do que na gestação: o médico
- * paga por anos de acompanhamento, não por 9 meses (docs §5).
+ * No crônico esse modelo se sustenta melhor do que no acompanhamento de
+ * ciclo curto: o médico paga por anos de acompanhamento, não por meses
+ * contados (docs §5).
  */
 export const PLANS: PlanConfig[] = [
   {

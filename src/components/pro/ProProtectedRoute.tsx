@@ -18,7 +18,7 @@ export function ProProtectedRoute() {
   // na tela de login (ProAuthPage.tsx), mas uma sessão de paciente já
   // autenticada ANTES dessa correção pode ainda estar salva no navegador de
   // alguém. Sem isso, "sem cadastro de médico" cairia direto no onboarding
-  // do médico (linha `if (!profile)` abaixo) e deixaria a conta de mamãe
+  // do médico (linha `if (!profile)` abaixo) e deixaria a conta de paciente
   // terminar o onboarding errado. Só dispara quando realmente vamos precisar
   // da resposta.
   const shouldCheckCrossPortal = !!user && !isDevMode && !isLoading && !isFetching && !isError && !profile;

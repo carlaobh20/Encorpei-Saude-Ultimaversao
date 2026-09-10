@@ -1,22 +1,35 @@
 /**
- * Seletor de emoji simples (médico e mamãe compartilham). Sem dependência
- * externa: um popover com uma grade de emojis frequentes no contexto de
- * acompanhamento de gestação. Ao escolher, chama onSelect(emoji) — o pai
- * decide onde inserir (normalmente no fim do texto do composer). Fecha ao
- * clicar fora ou apertar Esc.
+ * Seletor de emoji simples (médico e paciente compartilham). Sem dependência
+ * externa: um popover com uma grade de emojis úteis na conversa entre um
+ * adulto em acompanhamento cardiológico e o cardiologista dele. Ao escolher,
+ * chama onSelect(emoji) — o pai decide onde inserir (normalmente no fim do
+ * texto do composer). Fecha ao clicar fora ou apertar Esc.
  */
 import { useState, useRef, useEffect } from "react";
 import { Smile } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Conjunto enxuto e útil — reações, apoio, gestação e agenda.
+/**
+ * Conjunto enxuto e adulto — o que este chat realmente precisa dizer.
+ *
+ * ── Por que este conjunto mudou (auditoria de setembro/2026) ──────────
+ * A grade herdada do app de obstetrícia que originou este projeto oferecia
+ * 🤰 👶 🍼 a um senhor de 68 anos falando com o cardiologista dele. Além de
+ * não fazer sentido, custava espaço numa grade pequena que deveria estar
+ * cheia do que ele precisa: dizer como está passando, agradecer, confirmar
+ * que tomou o remédio, marcar que algo dói.
+ *
+ * As quatro linhas respondem quatro necessidades, nesta ordem:
+ *   1. como estou hoje (do bem ao mal — sem infantilizar);
+ *   2. sinais do corpo que ele relata (peito, tontura, falta de ar, sono);
+ *   3. cortesia e combinado (obrigado, entendi, sim/não);
+ *   4. rotina de acompanhamento (remédio, pressão, exame, consulta, anexo).
+ */
 const EMOJIS = [
-  "😊", "😀", "😍", "🥰", "😂", "😅", "😌", "🙂",
-  "😢", "😟", "😰", "🤗", "😴", "🤒", "🤢", "🥴",
-  "👍", "👏", "🙏", "🙌", "💪", "🤝", "👌", "✌️",
-  "❤️", "🧡", "💛", "💚", "💙", "💜", "💕", "🌸",
-  "🤰", "👶", "🍼", "🎉", "✨", "⭐", "🔥", "💧",
-  "✅", "❌", "⏰", "📅", "📎", "📸", "📝", "❓",
+  "🙂", "😊", "😌", "😐", "😕", "😟", "😣", "😞",
+  "❤️", "💙", "💪", "😴", "😮‍💨", "🥵", "🤒", "😵‍💫",
+  "👍", "👌", "🙏", "👏", "🤝", "✅", "❌", "❓",
+  "💊", "🩺", "🩸", "⚖️", "🚶", "📅", "📝", "📎",
 ];
 
 export function EmojiPicker({

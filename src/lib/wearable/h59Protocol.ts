@@ -1,9 +1,20 @@
 /**
  * ══════════════════════════════════════════════════════════════════════
- * PULSEIRA H59 MAX — protocolo e limites honestos
+ * PULSEIRA — protocolo e limites honestos
  * ══════════════════════════════════════════════════════════════════════
  *
- * FICHA CONFIRMADA no anúncio do fornecedor (set/2026):
+ * ⚠ HIPÓTESE NÃO CONFIRMADA. A ficha abaixo veio do ANÚNCIO do fornecedor
+ * (set/2026) — não de manual, não de datasheet, não de documento de protocolo.
+ * Nada aqui foi verificado no aparelho. Trate como palpite informado:
+ * o nome do modelo, o chip, o app companheiro e os UUIDs proprietários podem
+ * estar errados, e mudam de lote para lote nesse tipo de ODM.
+ *
+ * Consequência prática, e ela é regra: **nenhuma tela afirma ao paciente o
+ * modelo do aparelho nem o nome do app do fabricante.** A interface diz "o
+ * aparelho que você conectou" e mostra o nome que o próprio aparelho anunciou
+ * por Bluetooth. Quem responde o que este hardware faz é `diagnosticarPulseira()`.
+ *
+ * Ficha do anúncio (não confirmada):
  *   MCU .............. Realtek RTL8762E
  *   Bluetooth ........ BLE 5.2
  *   Sensor óptico .... Vcare VC30F-S (PPG — frequência cardíaca e SpO2)
@@ -31,7 +42,7 @@
  *   do app não muda.
  *
  * REGRA DE OURO
- * A "pressão arterial" da H59 é estimada por PPG, sem manguito e sem
+ * A "pressão arterial" desta pulseira é estimada por PPG, sem manguito e sem
  * validação clínica. Tudo que sai daqui como PA nasce marcado
  * `validation_status: "estimated"` e é proibido de disparar alerta ou
  * entrar em média de MRPA (ver cardioRiskEngine.mediaMrpa).

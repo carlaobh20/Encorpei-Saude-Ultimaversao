@@ -20,7 +20,8 @@ type MsgTone = "erro" | "ok" | "warn";
 /**
  * Login/cadastro do PACIENTE cardiológico.
  *
- * Preserva a auditoria de login cruzado herdada do Encorpei Mamãe
+ * Preserva a auditoria de login cruzado herdada do app de obstetrícia que
+ * originou este projeto
  * (docs/CONTRATO-DE-CODIGO.md): e-mail+senha só provam identidade, o papel
  * da conta (paciente x médico) é conferido direto no banco antes de deixar
  * entrar. Público-alvo 60–75 anos: campos grandes, poucas etapas, frases

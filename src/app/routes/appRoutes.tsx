@@ -2,7 +2,7 @@ import { Route, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppShell } from "@/components/shell/AppShell";
 import {
-  HojePage, PressaoPage, PesoPage, AtividadePage, SonoPage, RemediosPage, ExamesPage,
+  HojePage, PressaoPage, PesoPage, GlicemiaPage, AtividadePage, SonoPage, RemediosPage, ExamesPage,
   AgendaPage, MetasPage, PulseiraPage, SintomasPage, EmergenciaPage,
   MedicoChatPage, ContaPage, ConfiguracoesPage, FeedbackPage,
   MeuCoracaoPage, ComoEstouPage, CaminhadaPage, AlimentacaoPage,
@@ -22,6 +22,7 @@ export const appRoutes = (
       <Route path="/cuidadores"    element={<CuidadoresPage />} />
       <Route path="/pressao"       element={<PressaoPage />} />
       <Route path="/peso"          element={<PesoPage />} />
+      <Route path="/glicemia"      element={<GlicemiaPage />} />
       <Route path="/atividade"     element={<AtividadePage />} />
       <Route path="/sono"          element={<SonoPage />} />
       <Route path="/remedios"      element={<RemediosPage />} />
@@ -29,6 +30,9 @@ export const appRoutes = (
       <Route path="/agenda"        element={<AgendaPage />} />
       <Route path="/metas"         element={<MetasPage />} />
       <Route path="/pulseira"      element={<PulseiraPage />} />
+      {/* /sintomas não tem item de menu de propósito: chega-se por ele pelo
+          Registro Rápido e pelo cartão do Hoje, que é quando o paciente
+          realmente tem um sintoma para contar. Não é rota órfã. */}
       <Route path="/sintomas"      element={<SintomasPage />} />
       <Route path="/emergencia"    element={<EmergenciaPage />} />
       <Route path="/medico"        element={<MedicoChatPage />} />
@@ -37,9 +41,16 @@ export const appRoutes = (
       <Route path="/feedback"      element={<FeedbackPage />} />
 
       {/* Atalhos e nomes alternativos que as pessoas tentam digitar. */}
+      {/* /minha-semana era a home do app de obstetrícia que originou este
+          projeto. Fica só como redirect para não quebrar link antigo,
+          atalho salvo ou PWA instalado antes da troca do start_url. */}
       <Route path="/minha-semana"  element={<Navigate to="/hoje" replace />} />
       <Route path="/pressao-arterial" element={<Navigate to="/pressao" replace />} />
       <Route path="/medicamentos"  element={<Navigate to="/remedios" replace />} />
+      {/* "Açúcar no sangue" é como o paciente chama; "glicose" é como o exame
+          vem escrito no papel. Os dois caem na mesma tela. */}
+      <Route path="/glicose"       element={<Navigate to="/glicemia" replace />} />
+      <Route path="/acucar"        element={<Navigate to="/glicemia" replace />} />
       <Route path="/consultas"     element={<Navigate to="/agenda" replace />} />
     </Route>
   </Route>

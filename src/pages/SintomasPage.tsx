@@ -131,8 +131,14 @@ export default function SintomasPage() {
 
   const enviarDorNoPeito = () => {
     const min = duracao.trim() ? Number(duracao) : null;
-    // REGRA CRÍTICA: dor em repouso > 10 min não vira registro para depois.
-    if (gatilho === "rest" && min != null && min > 10) {
+    // REGRA CRÍTICA: dor em repouso não vira registro para depois.
+    //
+    // Duração DESCONHECIDA conta como longa, de propósito. O caso que essa
+    // linha protege é o pior possível: alguém com dor torácica em repouso
+    // que não sabe (ou não consegue) dizer há quanto tempo. Tratar o campo
+    // vazio como "curta" é a única leitura que mata; tratá-lo como longa
+    // custa, no máximo, uma tela de emergência a mais.
+    if (gatilho === "rest" && (min == null || min > 10)) {
       navigate("/emergencia");
       return;
     }

@@ -88,11 +88,20 @@ export function RegistroRapido({ aberto, onFechar }: { aberto: boolean; onFechar
 
   return (
     <Sheet open={aberto} onOpenChange={(v) => (v ? null : fechar())}>
-      <SheetContent side="bottom" className="rounded-t-2xl max-h-[88vh] overflow-y-auto pb-8">
+      {/* `leitura-paciente` (index.css) precisa vir aqui também: a folha é
+          renderizada num portal, fora da casca do app, e sem a classe o texto
+          voltaria à escala pequena justamente na tela onde o paciente digita
+          número (auditoria §5). */}
+      <SheetContent side="bottom" className="leitura-paciente rounded-t-2xl max-h-[88vh] overflow-y-auto pb-8">
         <SheetHeader className="text-left">
           <SheetTitle className="flex items-center gap-2">
             {form ? (
-              <button onClick={() => setForm(null)} className="inline-flex items-center gap-1 text-primary">
+              <button
+                type="button"
+                onClick={() => setForm(null)}
+                aria-label="Voltar para a lista do que registrar"
+                className="inline-flex items-center gap-1 min-h-[44px] text-primary"
+              >
                 <ChevronLeft className="h-5 w-5" /> Registrar
               </button>
             ) : (
@@ -113,7 +122,7 @@ export function RegistroRapido({ aberto, onFechar }: { aberto: boolean; onFechar
                   ? "Tudo que era para hoje já está registrado."
                   : `Faltam ${abertas.length} de ${total} registros de hoje.`}
               </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="text-sm text-muted-foreground mt-0.5">
                 {prescrito
                   ? "Este é o plano que seu médico definiu."
                   : "Sugestão do app — seu médico ainda não definiu um plano."}
@@ -130,6 +139,9 @@ export function RegistroRapido({ aberto, onFechar }: { aberto: boolean; onFechar
                     key={a.metric}
                     onClick={() => abrir(a)}
                     className={cn(
+                      // 88px de alvo: o dedo de quem tem 70 anos erra um quadrado
+                      // de 60px — e errar AQUI não custa um toque, custa registrar
+                      // a medida errada. Alvo grande é regra, não estética.
                       "relative flex flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-4 min-h-[88px] transition active:scale-[0.97]",
                       falta ? "border-primary/60 bg-primary/5" : "border-border bg-card"
                     )}
@@ -140,8 +152,10 @@ export function RegistroRapido({ aberto, onFechar }: { aberto: boolean; onFechar
                       </span>
                     ) : null}
                     <a.icone className={cn("h-6 w-6", falta ? "text-primary" : "text-muted-foreground")} strokeWidth={1.75} />
-                    <span className="text-[13px] font-medium leading-tight text-center">{a.rotulo}</span>
-                    {falta ? <span className="text-[10px] text-primary font-semibold">pedido hoje</span> : null}
+                    <span className="text-base font-medium leading-tight text-center">{a.rotulo}</span>
+                    {/* "pedido hoje" é informação que o paciente PRECISA ler —
+                        nunca abaixo de 12px (estava em 10px). */}
+                    {falta ? <span className="text-sm text-primary font-semibold">pedido hoje</span> : null}
                   </button>
                 );
               })}
@@ -158,14 +172,14 @@ export function RegistroRapido({ aberto, onFechar }: { aberto: boolean; onFechar
 function Campo({ label, sufixo, ...props }: any) {
   return (
     <label className="block">
-      <span className="text-sm font-medium">{label}</span>
+      <span className="text-base font-medium">{label}</span>
       <div className="mt-1 flex items-center gap-2">
         <Input
           inputMode="numeric"
           className="h-14 text-2xl font-semibold tabular-nums text-center"
           {...props}
         />
-        {sufixo ? <span className="text-sm text-muted-foreground w-12">{sufixo}</span> : null}
+        {sufixo ? <span className="text-base text-muted-foreground w-14 shrink-0">{sufixo}</span> : null}
       </div>
     </label>
   );
@@ -239,7 +253,7 @@ function FormularioInline({ chave, onPronto }: { chave: string; onPronto: () => 
             <Campo label="Número menor" value={b} onChange={(e: any) => setB(e.target.value)} placeholder="80" />
           </div>
           <Campo label="Batimentos (se o aparelho mostrar)" value={c} onChange={(e: any) => setC(e.target.value)} placeholder="70" sufixo="bpm" />
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground leading-relaxed">
             Sente-se, apoie o braço na mesa e espere cinco minutos parado antes de medir.
           </p>
         </>
@@ -248,7 +262,7 @@ function FormularioInline({ chave, onPronto }: { chave: string; onPronto: () => 
       {chave === "weight" && (
         <>
           <Campo label="Peso de hoje" value={a} onChange={(e: any) => setA(e.target.value)} placeholder="78,5" sufixo="kg" autoFocus />
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground leading-relaxed">
             De manhã, depois de ir ao banheiro e antes de comer — sempre do mesmo jeito.
             É a comparação entre os dias que interessa ao seu médico.
           </p>
@@ -261,15 +275,18 @@ function FormularioInline({ chave, onPronto }: { chave: string; onPronto: () => 
 
       {chave === "wellbeing" && (
         <div>
-          <p className="text-sm font-medium">De 0 a 10, como você está hoje?</p>
-          <p className="text-xs text-muted-foreground mb-3">0 é o pior dia que você já teve; 10 é o melhor.</p>
+          <p className="text-base font-medium">De 0 a 10, como você está hoje?</p>
+          <p className="text-sm text-muted-foreground mb-3">0 é o pior dia que você já teve; 10 é o melhor.</p>
           <div className="grid grid-cols-6 gap-2">
             {Array.from({ length: 11 }, (_, i) => i).map((n) => (
               <button
                 key={n}
+                type="button"
+                aria-pressed={nota === n}
+                aria-label={`Nota ${n} de 10`}
                 onClick={() => setNota(n)}
                 className={cn(
-                  "h-12 rounded-lg border text-base font-semibold tabular-nums transition",
+                  "h-12 min-w-[44px] rounded-lg border text-base font-semibold tabular-nums transition",
                   nota === n ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card"
                 )}
               >
