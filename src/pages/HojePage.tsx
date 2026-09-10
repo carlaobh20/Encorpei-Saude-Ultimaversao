@@ -14,6 +14,7 @@ import {
   CalendarClock, ChevronRight, PhoneCall, CheckCircle2, Salad,
   Award, GraduationCap, ClipboardList,
 } from "lucide-react";
+import { usePendenciasDeHoje, ROTULO_METRICA } from "@/hooks/usePlanoMonitoramento";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { SectionHeader } from "@/components/shell/SectionHeader";
 import { SurfaceCard } from "@/components/shell/SurfaceCard";
@@ -179,7 +180,7 @@ export default function HojePage() {
     tarefas.push({
       key: "peso",
       label: "Registre seu peso — você tem insuficiência cardíaca, o peso é acompanhado todo dia",
-      onAction: () => navigate("/pressao"),
+      onAction: () => navigate("/peso"),
       actionLabel: "Registrar peso",
       icon: Scale,
     });
@@ -193,6 +194,8 @@ export default function HojePage() {
       icon: Salad,
     });
   }
+
+  const plano = usePendenciasDeHoje();
 
   const isLoading = loadingProfile || bp.isLoading || meds.isLoading || idadeCoracao.isLoading || tempoNoAlvo.isLoading;
 
@@ -209,10 +212,46 @@ export default function HojePage() {
   const alertasAbertos = alerts.alerts.filter((a) => !a.is_dismissed);
   const melhorConquista = conquistas[0] ?? null;
   const proximaLicao = aprender.proxima;
+  const combinado = plano;
 
   return (
     <div className="pb-10">
       <PageHeader title={nome ? `Olá, ${nome}` : "Hoje"} subtitle={frase} />
+
+      {/* ── O combinado de hoje ──────────────────────────────────────
+          Este cartão é a ponte entre a prescrição do médico e o dia do
+          paciente. Enquanto o médico não prescreve nada, ele diz que é
+          sugestão do app — nunca finge que é ordem médica. */}
+      {combinado.total > 0 && (
+        <SurfaceCard className="mb-6">
+          <div className="flex items-baseline justify-between mb-2">
+            <p className="text-sm font-semibold">O combinado de hoje</p>
+            <p className="text-sm font-semibold tabular-nums text-primary">
+              {combinado.concluidas}/{combinado.total}
+            </p>
+          </div>
+          <div className="h-2 rounded-full bg-muted overflow-hidden">
+            <div className="h-full bg-primary transition-all" style={{ width: `${combinado.percentual}%` }} />
+          </div>
+          {combinado.abertas.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5 mt-3">
+              {combinado.abertas.map((p) => (
+                <span key={p.metric} className="rounded-full bg-primary/10 text-primary text-xs font-medium px-2.5 py-1">
+                  {ROTULO_METRICA[p.metric]}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground mt-3">Tudo registrado. Até amanhã.</p>
+          )}
+          <p className="text-[11px] text-muted-foreground mt-3">
+            {combinado.prescrito
+              ? "Definido pelo seu médico."
+              : "Sugestão do app — seu médico ainda não definiu um plano."}
+            {" "}Toque no botão <strong>Registrar</strong>, no meio da barra de baixo.
+          </p>
+        </SurfaceCard>
+      )}
 
       {/* ── Cartão do coração — o primeiro elemento, de propósito ──── */}
       <SurfaceCard

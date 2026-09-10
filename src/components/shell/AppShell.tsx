@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { LogOut, Menu, Siren, X } from "lucide-react";
+import { LogOut, Menu, Plus, Siren, X } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { NavLink } from "@/components/NavLink";
@@ -12,6 +12,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePatientMessages } from "@/hooks/useProfessional";
 import { getDevBypass, clearDevBypass } from "@/contexts/DevBypass";
 import { APP_NAME } from "@/lib/config";
+import { RegistroRapido } from "@/components/registro/RegistroRapido";
+import { useMarcaClinica } from "@/hooks/useMarcaClinica";
 
 /**
  * Casca do app do PACIENTE.
@@ -181,6 +183,7 @@ function BotaoEmergencia() {
 function BarraInferior() {
   const location = useLocation();
   const naoLidas = useMensagensNaoLidas();
+  const [registroAberto, setRegistroAberto] = useState(false);
 
   return (
     <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-card border-t border-border pb-[env(safe-area-inset-bottom)]">
@@ -188,13 +191,24 @@ function BarraInferior() {
         {BOTTOM_NAV.slice(0, 2).map((item) => (
           <BotaoBarra key={item.id} item={item} ativo={location.pathname === item.path} badge={item.badge === "medico" ? naoLidas : undefined} />
         ))}
-        <NavLink to="/hoje" className="flex flex-col items-center justify-center py-2">
-          <img src="/logo-symbol.png" alt="Início" width={34} height={34} className="object-contain" style={{ width: 34, height: 34 }} />
-        </NavLink>
+        {/* O botão do meio registra — não navega. Registrar é o ato que o app
+            existe para tornar barato; a tela inicial fica a um toque do ícone. */}
+        <button
+          type="button"
+          onClick={() => setRegistroAberto(true)}
+          aria-label="Registrar"
+          className="flex flex-col items-center justify-center py-1.5"
+        >
+          <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30">
+            <Plus className="h-6 w-6" strokeWidth={2.5} />
+          </span>
+          <span className="text-[10px] font-semibold text-primary mt-0.5">Registrar</span>
+        </button>
         {BOTTOM_NAV.slice(2).map((item) => (
           <BotaoBarra key={item.id} item={item} ativo={location.pathname === item.path} badge={item.badge === "medico" ? naoLidas : undefined} />
         ))}
       </div>
+      <RegistroRapido aberto={registroAberto} onFechar={() => setRegistroAberto(false)} />
     </nav>
   );
 }
@@ -214,6 +228,33 @@ function BotaoBarra({ item, ativo, badge }: { item: NavItem; ativo: boolean; bad
         <span className="absolute top-1 right-[22%] h-2 w-2 rounded-full bg-primary" />
       ) : null}
     </NavLink>
+  );
+}
+
+/**
+ * Topo do app: a marca da clínica do paciente quando ela existe, a marca da
+ * plataforma quando não. Quem cuida dele assina a tela — é isso que faz o
+ * paciente sentir que o app é do consultório dele, e não de um fornecedor.
+ */
+function MarcaNoTopo() {
+  const { marca, temMarca } = useMarcaClinica();
+
+  if (!temMarca) {
+    return <img src="/logo-symbol.png" alt={APP_NAME} width={30} height={30} className="object-contain" style={{ width: 30, height: 30 }} />;
+  }
+
+  return (
+    <div className="flex items-center gap-2 min-w-0">
+      {marca.logoUrl ? (
+        <img src={marca.logoUrl} alt={marca.clinica ?? marca.medico} className="h-8 w-8 rounded-md object-contain" />
+      ) : null}
+      <div className="min-w-0 leading-tight">
+        <p className="text-[13px] font-semibold truncate">{marca.clinica ?? marca.medico}</p>
+        {marca.subtitulo ? (
+          <p className="text-[10px] text-muted-foreground truncate">{marca.subtitulo}</p>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
@@ -254,7 +295,7 @@ export function AppShell() {
               <RodapeNav onItemClick={() => setDrawerOpen(false)} />
             </SheetContent>
           </Sheet>
-          <img src="/logo-symbol.png" alt={APP_NAME} width={30} height={30} className="object-contain" style={{ width: 30, height: 30 }} />
+          <MarcaNoTopo />
           <div className="w-10" />
         </header>
 

@@ -11,7 +11,7 @@
  *     os dados do paciente de todas as tabelas (hard-delete).
  *
  * Tudo roda sob a RLS do Supabase: cada query só alcança as linhas do
- * próprio usuário. Mesmo assim filtramos explicitamente por patient_id/
+ * próprio usuário. Mesmo assim filtramos explicitamente por patient_user_id /
  * user_id como segunda camada de segurança.
  *
  * IMPORTANTE: a remoção do registro de auth (auth.users) precisa de
@@ -23,7 +23,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { auditLog } from "@/lib/auditLogger";
 
-/** Tabelas com dado clínico do paciente, chaveadas por patient_user_id. */
+/** Tabelas com dado clínico do paciente, chaveadas por `patient_user_id`. */
 const PATIENT_SCOPED_TABLES = [
   "bp_readings",
   "hr_readings",
@@ -33,54 +33,36 @@ const PATIENT_SCOPED_TABLES = [
   "sleep_records",
   "activity_records",
   "symptom_reports",
+  "cardio_medications",
   "medication_intakes",
+  "medication_titrations",
   "lab_results",
   "cardio_exams",
   "cardio_alerts",
+  "cardio_targets",
   "appointments",
+  "patient_messages",
+  "professional_notes",
   "raw_device_data",
   "registered_devices",
-  "weight_records",
-  "blood_pressure",
-  "glucose_readings",
-  "body_measurements",
-  "water_intake",
-  "kick_sessions",
-  "contraction_logs",
-  "fasting_sessions",
-  "meals",
-  "medications",
-  "maternal_vaccines",
-  "exams",
-  "exam_biomarkers",
-  "lab_results",
-  "ultrasound_reports",
-  "progress_photos",
-  "appointments",
-  "prescriptions",
-  "prescription_tasks",
-  "prescription_task_completions",
-  "treatments",
-  "treatment_logs",
-  "treatment_checkins",
-  "professional_notes",
-  "professional_alerts",
-  "patient_messages",
-  "clinical_vitals",
-  "mind_records",
-  "spirit_records",
-  "workout_logs",
-  "conquistas",
-  "scores_evolucao",
-  "daily_missions",
+  "capacity_tests",
+  "walk_sessions",
+  "sodium_entries",
+  "wellbeing_checkins",
+  "qol_responses",
+  "heart_age_snapshots",
+  "education_progress",
+  "caregiver_links",
+  "monitoring_plan",
+  "professional_patient_links",
 ] as const;
 
-/** Tabelas chaveadas diretamente por user_id. */
+/** Tabelas chaveadas diretamente por `user_id`. */
 const USER_SCOPED_TABLES = [
   "profiles",
-  "onboardings",
   "user_roles",
-  "professional_patient_links",
+  "consent_records",
+  "feedback",
   "beta_events",
 ] as const;
 
@@ -117,14 +99,12 @@ export async function collectUserData(userId: string): Promise<ExportResult> {
     .eq("user_id", userId);
   data.patients = patientRow ?? [];
 
-  if (patientId) {
-    for (const table of PATIENT_SCOPED_TABLES) {
-      const { data: rows, error } = await supabase
-        .from(table)
-        .select("*")
-        .eq("patient_id", patientId);
-      if (!error && rows) data[table] = rows;
-    }
+  for (const table of PATIENT_SCOPED_TABLES) {
+    const { data: rows, error } = await (supabase as any)
+      .from(table)
+      .select("*")
+      .eq("patient_user_id", userId);
+    if (!error && rows) data[table] = rows;
   }
 
   for (const table of USER_SCOPED_TABLES) {
@@ -196,11 +176,9 @@ export async function deleteAccountData(
     { id: userId, role: "patient" },
   );
 
-  if (patientId) {
-    for (const table of PATIENT_SCOPED_TABLES) {
-      const { error } = await (supabase as any).from(table).delete().eq("patient_id", patientId);
-      (error ? failed : deleted).push(table);
-    }
+  for (const table of PATIENT_SCOPED_TABLES) {
+    const { error } = await (supabase as any).from(table).delete().eq("patient_user_id", userId);
+    (error ? failed : deleted).push(table);
   }
 
   for (const table of USER_SCOPED_TABLES) {

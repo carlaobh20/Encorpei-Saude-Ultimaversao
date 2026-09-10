@@ -4,7 +4,7 @@ import { ProShell } from "@/components/pro/ProShell";
 import {
   ProAuthPage, ProOnboardingPage, ProDashboardPage, ProPatientsPage,
   ProPatientDetailPage, ProAlertsPage, ProAgendaPage, ProMensagensPage,
-  ProExamesPage, ProRelatoriosPage, ProAccountPage, ProFeedbackPage,
+  ProExamesPage, ProRelatoriosPage, ProAccountPage, ProMarcaPage, ProFeedbackPage,
 } from "@/routes/lazy";
 
 export const proPublicRoutes = (
@@ -27,6 +27,7 @@ export const proProtectedRoutes = (
       <Route path="/pro/exames"               element={<ProExamesPage />} />
       <Route path="/pro/relatorios"           element={<ProRelatoriosPage />} />
       <Route path="/pro/conta"                element={<ProAccountPage />} />
+      <Route path="/pro/marca"                element={<ProMarcaPage />} />
       <Route path="/pro/feedback"             element={<ProFeedbackPage />} />
     </Route>
   </Route>

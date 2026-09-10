@@ -13,6 +13,7 @@ export const PlansPage        = lazy(() => import("@/pages/PlansPage"));
 // App do paciente
 export const HojePage         = lazy(() => import("@/pages/HojePage"));
 export const PressaoPage      = lazy(() => import("@/pages/PressaoPage"));
+export const PesoPage         = lazy(() => import("@/pages/PesoPage"));
 export const AtividadePage    = lazy(() => import("@/pages/AtividadePage"));
 export const SonoPage         = lazy(() => import("@/pages/SonoPage"));
 export const RemediosPage     = lazy(() => import("@/pages/RemediosPage"));
@@ -50,4 +51,5 @@ export const ProMensagensPage    = lazy(() => import("@/pages/pro/ProMensagensPa
 export const ProExamesPage       = lazy(() => import("@/pages/pro/ProExamesPage"));
 export const ProRelatoriosPage   = lazy(() => import("@/pages/pro/ProRelatoriosPage"));
 export const ProAccountPage      = lazy(() => import("@/pages/pro/ProAccountPage"));
+export const ProMarcaPage        = lazy(() => import("@/pages/pro/ProMarcaPage"));
 export const ProFeedbackPage     = lazy(() => import("@/pages/pro/ProFeedbackPage"));

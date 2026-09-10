@@ -1,7 +1,7 @@
 import {
   Home, HeartPulse, Activity, Moon, Pill, CalendarDays, FlaskConical,
   MessageCircle, User, MessageSquarePlus, Watch, Target, Siren, Heart,
-  Footprints, Salad, GraduationCap, FileText, Users, Stethoscope,
+  Footprints, Salad, GraduationCap, FileText, Users, Stethoscope, Scale,
   type LucideIcon,
 } from "lucide-react";
 
@@ -57,6 +57,7 @@ export const NAV_STRUCTURE: NavGroup[] = [
     label: "Meus registros",
     items: [
       { id: "nav-pressao",     label: "Pressão & Coração", path: "/pressao",      icon: HeartPulse },
+      { id: "nav-peso",        label: "Peso",              path: "/peso",         icon: Scale },
       { id: "nav-remedios",    label: "Meus Remédios",     path: "/remedios",     icon: Pill },
       { id: "nav-atividade",   label: "Atividade",         path: "/atividade",    icon: Activity },
       { id: "nav-sono",        label: "Sono",              path: "/sono",         icon: Moon },

@@ -20,6 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { SectionHeader } from "@/components/shell/SectionHeader";
+import { PlanoMonitoramentoEditor } from "@/components/pro/PlanoMonitoramentoEditor";
 import { SurfaceCard } from "@/components/shell/SurfaceCard";
 import { StatusBadge } from "@/components/shell/StatusBadge";
 import { EmptyState } from "@/components/shell/EmptyState";
@@ -333,6 +334,9 @@ export default function ProPatientDetailPage() {
               </p>
             )}
           </SurfaceCard>
+
+          {/* Plano de monitoramento — o que o paciente vai ser cobrado a registrar */}
+          <PlanoMonitoramentoEditor patientUserId={patientId} professionalId={null} />
 
           {/* Alvos vs. atual */}
           <div>

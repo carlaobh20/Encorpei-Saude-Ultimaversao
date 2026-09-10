@@ -33,10 +33,12 @@ export function useProfile() {
 
   const updateProfile = useMutation({
     mutationFn: async (updates: Partial<Profile>) => {
-      const { error } = await supabase
+      // upsert e não update: se por qualquer motivo a linha não existir
+      // (conta criada antes do trigger, importação, replicação atrasada), o
+      // UPDATE afetaria 0 linhas SEM erro — e o onboarding entrava em loop.
+      const { error } = await (supabase as any)
         .from("profiles")
-        .update(updates as any)
-        .eq("user_id", user!.id);
+        .upsert({ ...(updates as any), user_id: user!.id }, { onConflict: "user_id" });
       if (error) throw error;
     },
     onSuccess: () => {

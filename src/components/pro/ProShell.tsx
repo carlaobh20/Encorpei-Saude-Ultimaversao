@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, Bell, LogOut, Menu, Calendar, MessageSquare, FileText, ClipboardCheck, BarChart3, Settings, Stethoscope, MessageSquarePlus, MessageCircleHeart } from "lucide-react";
+import { LayoutDashboard, Users, Bell, LogOut, Menu, Calendar, MessageSquare, FileText, ClipboardCheck, BarChart3, Settings, Palette, Stethoscope, MessageSquarePlus, MessageCircleHeart } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfessionalProfile, useProfessionalAlerts, useProfessionalPatients, usePatientMessages } from "@/hooks/useProfessional";
 
@@ -26,6 +26,7 @@ const PRO_NAV = [
   { label: "Exames",        path: "/pro/exames",     icon: FileText },
   { label: "Relatórios",    path: "/pro/relatorios", icon: BarChart3 },
   { label: "Feedback",      path: "/pro/feedback",   icon: MessageSquarePlus },
+  { label: "Marca da clínica", path: "/pro/marca", icon: Palette },
   { label: "Configurações", path: "/pro/conta",      icon: Settings },
 ];
 

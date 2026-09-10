@@ -2,7 +2,7 @@ import { Route, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppShell } from "@/components/shell/AppShell";
 import {
-  HojePage, PressaoPage, AtividadePage, SonoPage, RemediosPage, ExamesPage,
+  HojePage, PressaoPage, PesoPage, AtividadePage, SonoPage, RemediosPage, ExamesPage,
   AgendaPage, MetasPage, PulseiraPage, SintomasPage, EmergenciaPage,
   MedicoChatPage, ContaPage, ConfiguracoesPage, FeedbackPage,
   MeuCoracaoPage, ComoEstouPage, CaminhadaPage, AlimentacaoPage,
@@ -21,6 +21,7 @@ export const appRoutes = (
       <Route path="/meu-mes"       element={<MeuMesPage />} />
       <Route path="/cuidadores"    element={<CuidadoresPage />} />
       <Route path="/pressao"       element={<PressaoPage />} />
+      <Route path="/peso"          element={<PesoPage />} />
       <Route path="/atividade"     element={<AtividadePage />} />
       <Route path="/sono"          element={<SonoPage />} />
       <Route path="/remedios"      element={<RemediosPage />} />
