@@ -6,10 +6,10 @@ import { useProfile } from "@/hooks/useProfile";
 import { useCardioPatient, useSalvarCardioPatient } from "@/hooks/useCardioPatient";
 import { useMyProfessionals } from "@/hooks/useMyProfessionals";
 import { PageHeader, SurfaceCard } from "@/components/shell";
+import { TelaPaciente, TituloSecao, Formulario, Campo } from "@/components/shell";
 import { DataPrivacySection } from "@/components/DataPrivacySection";
 import { LinkDoctorCard } from "@/components/LinkDoctorCard";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Stethoscope, Watch, LogOut, Loader2, Pencil, Check, X, BadgeCheck, SlidersHorizontal, ChevronRight } from "lucide-react";
 import { idadeEmAnos } from "@/lib/clinical/scores";
@@ -28,6 +28,23 @@ const SEXO_LABEL: Record<string, string> = { male: "Masculino", female: "Feminin
  *
  * Nada foi removido: o que mudou é que cada função aparece em UM lugar, com
  * UM nome. O cartão no fim desta tela é só a ponte para as Preferências.
+ *
+ * ── O que a passada visual mudou ──────────────────────────────────────
+ * Nenhuma divisão de responsabilidade, nenhum texto, nenhuma regra de LGPD.
+ * Mudou:
+ *
+ *  · A tela tinha padding próprio (`py-6 px-4`) EM CIMA do padding do
+ *    `<main>` do AppShell — o conteúdo ficava afundado em relação a todas as
+ *    outras telas, e em 360px sobravam 8px de gutter em vez de 16. Agora ela
+ *    usa a mesma coluna das demais.
+ *
+ *  · A ficha de dados pessoais saiu de 14px (`text-sm`) para o corpo
+ *    legível. É a tela onde o paciente confere a própria idade e o próprio
+ *    telefone; ler isso em letra pequena é o contrário do que ela serve.
+ *
+ *  · Os títulos das seções passaram ao mesmo `TituloSecao` do resto do app —
+ *    eram três `h2` escritos à mão, cada um com uma combinação diferente de
+ *    tamanho e peso.
  */
 export default function ContaPage() {
   const { user, signOut } = useAuth();
@@ -72,44 +89,43 @@ export default function ContaPage() {
   const medicoAtivo = professionals.find((p) => p.status === "active");
 
   return (
-    <div className="max-w-2xl mx-auto py-6 px-4 space-y-6">
+    <TelaPaciente>
       <PageHeader title="Minha conta" subtitle="Seus dados, sua equipe de cuidado e sua privacidade" />
 
       {/* Dados pessoais */}
       <SurfaceCard>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display text-lg font-medium tracking-tight text-foreground">Dados pessoais</h2>
-          {!editando ? (
-            <Button variant="outline" size="sm" onClick={() => setEditando(true)}>
-              <Pencil className="h-4 w-4" /> Editar
-            </Button>
-          ) : (
-            <div className="flex gap-2">
-              <Button variant="ghost" size="sm" onClick={() => setEditando(false)} disabled={salvar.isPending}>
-                <X className="h-4 w-4" /> Cancelar
+        <TituloSecao
+          titulo="Dados pessoais"
+          acao={
+            !editando ? (
+              <Button variant="outline" onClick={() => setEditando(true)}>
+                <Pencil className="h-4 w-4" aria-hidden /> Editar
               </Button>
-              <Button size="sm" onClick={handleSalvar} disabled={salvar.isPending}>
-                {salvar.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Salvar
-              </Button>
-            </div>
-          )}
-        </div>
+            ) : (
+              <div className="flex gap-2">
+                <Button variant="ghost" onClick={() => setEditando(false)} disabled={salvar.isPending}>
+                  <X className="h-4 w-4" aria-hidden /> Cancelar
+                </Button>
+                <Button onClick={handleSalvar} disabled={salvar.isPending}>
+                  {salvar.isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Check className="h-4 w-4" aria-hidden />} Salvar
+                </Button>
+              </div>
+            )
+          }
+        />
 
         {editando ? (
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label className="text-sm">Nome completo</Label>
-              <Input value={nome} onChange={(e) => setNome(e.target.value)} className="h-12 rounded-2xl text-base" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">Telefone</Label>
-              <Input value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="(00) 00000-0000" className="h-12 rounded-2xl text-base" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">Altura (cm)</Label>
-              <Input value={altura} onChange={(e) => setAltura(e.target.value)} type="number" inputMode="numeric" className="h-12 rounded-2xl text-base" />
-            </div>
-          </div>
+          <Formulario className="space-y-4">
+            <Campo rotulo="Nome completo" para="conta-nome">
+              <Input id="conta-nome" value={nome} onChange={(e) => setNome(e.target.value)} />
+            </Campo>
+            <Campo rotulo="Telefone" para="conta-telefone">
+              <Input id="conta-telefone" value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="(00) 00000-0000" />
+            </Campo>
+            <Campo rotulo="Altura (cm)" para="conta-altura">
+              <Input id="conta-altura" value={altura} onChange={(e) => setAltura(e.target.value)} type="number" inputMode="numeric" />
+            </Campo>
+          </Formulario>
         ) : (
           <dl className="divide-y divide-border">
             {[
@@ -120,9 +136,9 @@ export default function ContaPage() {
               { label: "Telefone", value: telefone || "—" },
               { label: "E-mail", value: user?.email ?? "—" },
             ].map((row) => (
-              <div key={row.label} className="flex items-center justify-between py-2.5 text-sm">
-                <dt className="text-muted-foreground">{row.label}</dt>
-                <dd className="font-medium text-foreground">{row.value}</dd>
+              <div key={row.label} className="flex min-h-[48px] items-center justify-between gap-3 py-3 text-base">
+                <dt className="text-muted-foreground shrink-0">{row.label}</dt>
+                <dd className="font-medium text-foreground min-w-0 text-right break-words">{row.value}</dd>
               </div>
             ))}
           </dl>
@@ -130,10 +146,10 @@ export default function ContaPage() {
       </SurfaceCard>
 
       {/* Meu cardiologista */}
-      <div>
-        <h2 className="font-display text-lg font-medium tracking-tight text-foreground mb-3 px-1">Meu cardiologista</h2>
+      <section>
+        <TituloSecao titulo="Meu cardiologista" />
         {carregandoMedicos ? (
-          <SurfaceCard><p className="text-sm text-muted-foreground">Carregando...</p></SurfaceCard>
+          <SurfaceCard><p className="text-base text-muted-foreground">Carregando...</p></SurfaceCard>
         ) : medicoAtivo ? (
           <SurfaceCard>
             <div className="flex items-center gap-3">
@@ -141,18 +157,18 @@ export default function ContaPage() {
                 <Stethoscope className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-foreground truncate flex items-center gap-1.5">
+                <p className="text-base font-semibold text-foreground truncate flex items-center gap-1.5">
                   {medicoAtivo.display_name}
-                  {medicoAtivo.is_verified && <BadgeCheck className="h-4 w-4 text-primary shrink-0" />}
+                  {medicoAtivo.is_verified && <BadgeCheck className="h-5 w-5 text-primary shrink-0" aria-label="Perfil verificado" />}
                 </p>
-                <p className="text-xs text-muted-foreground mt-0.5">{medicoAtivo.clinic_name || "Cardiologista"}</p>
+                <p className="text-sm text-muted-foreground mt-0.5">{medicoAtivo.clinic_name || "Cardiologista"}</p>
               </div>
             </div>
           </SurfaceCard>
         ) : (
           <LinkDoctorCard />
         )}
-      </div>
+      </section>
 
       {/* Dispositivos */}
       <SurfaceCard variant="interactive" onClick={() => navigate("/pulseira")} ariaLabel="Meus dispositivos">
@@ -161,9 +177,10 @@ export default function ContaPage() {
             <Watch className="h-5 w-5" strokeWidth={1.75} />
           </div>
           <div className="flex-1 min-w-0 text-left">
-            <p className="text-sm font-semibold text-foreground">Dispositivos</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Pulseira, aparelho de pressão e balança</p>
+            <p className="text-base font-semibold text-foreground">Dispositivos</p>
+            <p className="text-sm text-muted-foreground mt-0.5">Pulseira, aparelho de pressão e balança</p>
           </div>
+          <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" aria-hidden />
         </div>
       </SurfaceCard>
 
@@ -182,16 +199,16 @@ export default function ContaPage() {
             <SlidersHorizontal className="h-5 w-5" strokeWidth={1.75} />
           </div>
           <div className="flex-1 min-w-0 text-left">
-            <p className="text-sm font-semibold text-foreground">Preferências</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Notificações, letra maior e mais contraste</p>
+            <p className="text-base font-semibold text-foreground">Preferências</p>
+            <p className="text-sm text-muted-foreground mt-0.5">Notificações, letra maior e mais contraste</p>
           </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+          <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" aria-hidden />
         </div>
       </SurfaceCard>
 
-      <Button variant="outline" className="w-full h-12 rounded-2xl" onClick={signOut}>
-        <LogOut className="h-4 w-4" /> Sair da conta
+      <Button variant="outline" size="xl" className="w-full" onClick={signOut}>
+        <LogOut className="h-5 w-5" aria-hidden /> Sair da conta
       </Button>
-    </div>
+    </TelaPaciente>
   );
 }

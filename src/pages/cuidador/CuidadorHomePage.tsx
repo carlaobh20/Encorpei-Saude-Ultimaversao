@@ -10,6 +10,26 @@
  *  - Acesso é SOMENTE LEITURA. Nada aqui registra dado em nome do paciente.
  *  - Cada seção só aparece se a permissão do vínculo liberar — sem exceção.
  *  - Nunca substitui o médico: aviso de emergência sempre visível.
+ *
+ * ── O que a passada visual mudou ──────────────────────────────────────
+ * Nenhuma permissão, nenhum hook, nenhum texto. Mudou:
+ *
+ *  · A TELA GANHOU `leitura-paciente`. Ela tem layout próprio e por isso
+ *    ficava de fora da classe que o AppShell aplica — o resultado é que era
+ *    a única tela da área não-médica com corpo de 14px e rótulos de 11px.
+ *    Quem acompanha um paciente de 70 anos costuma ter 65; não havia motivo
+ *    para esta ser a tela de letra menor do produto.
+ *
+ *  · Os cartões passaram ao mesmo desenho dos demais (`rounded-2xl`,
+ *    `border-border`, `bg-card`, sombra suave) — os daqui eram os únicos sem
+ *    sombra, o que fazia a tela parecer um rascunho ao lado das outras.
+ *
+ *  · Os chips de paciente ganharam `aria-pressed` e 44px de alvo; a tela de
+ *    carregando virou um esqueleto com `aria-busy`, em vez de três retângulos
+ *    cinza sem nome.
+ *
+ *  · O aviso de limites (ligue 192) continua onde estava, com o mesmo texto,
+ *    e só subiu de 13px para o corpo legível.
  */
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -54,13 +74,13 @@ function Cabecalho({ mostrarSair }: { mostrarSair: boolean }) {
       <div className="flex items-center gap-2.5">
         <img src="/logo-symbol.png" alt={APP_NAME} width={30} height={30} className="object-contain" style={{ width: 30, height: 30 }} />
         <div className="leading-none">
-          <div className="font-display text-sm font-semibold text-foreground">Encorpei</div>
-          <div className="font-script text-[12px] text-primary">Cardio · Cuidador</div>
+          <div className="font-display text-base font-semibold text-foreground">Encorpei</div>
+          <div className="font-script text-sm text-primary">Cardio · Cuidador</div>
         </div>
       </div>
       {mostrarSair && (
-        <Button variant="ghost" size="sm" onClick={signOut} className="text-muted-foreground">
-          <LogOut className="h-4 w-4" /> Sair
+        <Button variant="ghost" onClick={signOut} className="text-muted-foreground">
+          <LogOut className="h-5 w-5" aria-hidden /> Sair
         </Button>
       )}
     </header>
@@ -70,9 +90,9 @@ function Cabecalho({ mostrarSair }: { mostrarSair: boolean }) {
 /** Aviso permanente — nunca escondido dentro de outra tela. */
 function AvisoLimites() {
   return (
-    <div className="mt-8 rounded-2xl border border-border bg-secondary/60 px-4 py-3.5 flex items-start gap-3">
-      <PhoneCall className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-      <p className="text-xs text-muted-foreground leading-relaxed">
+    <div className="mt-8 rounded-2xl border border-border bg-secondary/60 px-4 py-4 flex items-start gap-3">
+      <PhoneCall className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" aria-hidden />
+      <p className="text-base text-muted-foreground leading-relaxed">
         Você está acompanhando, não substituindo o médico. Em emergência, ligue{" "}
         <span className="font-semibold text-foreground">{EMERGENCIA_TELEFONE}</span>.
       </p>
@@ -89,9 +109,11 @@ function AvisoLimites() {
 function ChipPaciente({ nome, ativo, onClick }: { nome: string; ativo: boolean; onClick: () => void }) {
   return (
     <button
+      type="button"
+      aria-pressed={ativo}
       onClick={onClick}
       className={cn(
-        "shrink-0 rounded-full px-4 py-2 text-sm font-medium border transition-colors",
+        "shrink-0 min-h-[44px] rounded-full px-4 py-2 text-base font-medium border transition-colors",
         ativo ? "bg-primary text-primary-foreground border-primary" : "bg-card text-muted-foreground border-border"
       )}
     >
@@ -155,10 +177,10 @@ function ResumoPaciente({ vinculo }: { vinculo: CaregiverLink }) {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-display font-semibold text-foreground">Como está {nome}</h1>
+        <h1 className="text-2xl font-display font-semibold text-foreground break-words">Como está {nome}</h1>
         {ultimoRegistro && (
-          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
-            <Clock className="h-3.5 w-3.5" /> Último registro {fmtDataHora(ultimoRegistro)}
+          <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
+            <Clock className="h-4 w-4 shrink-0" aria-hidden /> Último registro {fmtDataHora(ultimoRegistro)}
           </p>
         )}
       </div>
@@ -170,18 +192,20 @@ function ResumoPaciente({ vinculo }: { vinculo: CaregiverLink }) {
             <div
               key={a.id}
               className={cn(
-                "rounded-2xl p-4",
-                a.severity === "critical" || a.severity === "emergency" ? "bg-error-bg" : "bg-warning-bg"
+                "rounded-2xl border-l-4 p-4 md:p-5",
+                a.severity === "critical" || a.severity === "emergency"
+                  ? "bg-error-bg border-error"
+                  : "bg-warning-bg border-warning"
               )}
             >
               <div className="flex items-start gap-3">
                 <AlertTriangle className={cn(
-                  "h-5 w-5 shrink-0 mt-0.5",
+                  "h-6 w-6 shrink-0 mt-0.5",
                   a.severity === "critical" || a.severity === "emergency" ? "text-error" : "text-warning"
-                )} />
+                )} aria-hidden />
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground">{a.title}</p>
-                  <p className="text-sm text-muted-foreground mt-0.5 leading-relaxed">{a.description}</p>
+                  <p className="text-lg font-semibold text-foreground leading-snug">{a.title}</p>
+                  <p className="text-base text-muted-foreground mt-1 leading-relaxed">{a.description}</p>
                 </div>
               </div>
             </div>
@@ -191,18 +215,18 @@ function ResumoPaciente({ vinculo }: { vinculo: CaregiverLink }) {
 
       {/* ── Pressão ──────────────────────────────────────────────────── */}
       {vinculo.ver_medidas && (
-        <div className="rounded-2xl border border-border bg-card p-4">
+        <div className="rounded-2xl border border-border bg-card p-4 md:p-5 shadow-sm">
           <div className="flex items-center gap-2 mb-2">
-            <HeartPulse className="h-4 w-4 text-muted-foreground" />
-            <p className="text-sm font-semibold text-foreground">Pressão</p>
+            <HeartPulse className="h-5 w-5 text-primary" aria-hidden />
+            <p className="text-base font-semibold text-foreground">Pressão</p>
           </div>
           {bp.ultima ? (
             <>
-              <p className="text-3xl font-bold text-foreground leading-none">
+              <p className="text-3xl font-bold text-foreground leading-none tabular-nums">
                 {bp.ultima.systolic}/{bp.ultima.diastolic}
-                <span className="text-sm font-medium text-muted-foreground"> mmHg</span>
+                <span className="text-base font-medium text-muted-foreground"> mmHg</span>
               </p>
-              <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+              <p className="text-base text-muted-foreground mt-2 leading-relaxed">
                 Medida {fmtDataHora(bp.ultima.recorded_at)}.{" "}
                 {tempoNoAlvo.mes.percentual != null
                   ? `Nas últimas semanas, a pressão ficou no alvo em ${tempoNoAlvo.mes.percentual}% das vezes.`
@@ -210,24 +234,24 @@ function ResumoPaciente({ vinculo }: { vinculo: CaregiverLink }) {
               </p>
             </>
           ) : (
-            <p className="text-sm text-muted-foreground">Ainda sem medida de pressão registrada.</p>
+            <p className="text-base text-muted-foreground">Ainda sem medida de pressão registrada.</p>
           )}
         </div>
       )}
 
       {/* ── Remédios ─────────────────────────────────────────────────── */}
       {vinculo.ver_remedios && (
-        <div className="rounded-2xl border border-border bg-card p-4">
+        <div className="rounded-2xl border border-border bg-card p-4 md:p-5 shadow-sm">
           <div className="flex items-center gap-2 mb-2">
-            <Pill className="h-4 w-4 text-muted-foreground" />
-            <p className="text-sm font-semibold text-foreground">Remédios de hoje</p>
+            <Pill className="h-5 w-5 text-primary" aria-hidden />
+            <p className="text-base font-semibold text-foreground">Remédios de hoje</p>
           </div>
           {dosesHoje.length > 0 ? (
             <>
-              <p className="text-3xl font-bold text-foreground leading-none">
+              <p className="text-3xl font-bold text-foreground leading-none tabular-nums">
                 {dosesTomadas}<span className="text-lg font-medium text-muted-foreground">/{dosesHoje.length}</span>
               </p>
-              <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+              <p className="text-base text-muted-foreground mt-2 leading-relaxed">
                 {dosesTomadas === dosesHoje.length
                   ? "Já tomou tudo o que estava previsto para hoje."
                   : `Faltam ${dosesHoje.length - dosesTomadas} dose${dosesHoje.length - dosesTomadas > 1 ? "s" : ""} até o fim do dia.`}
@@ -235,79 +259,79 @@ function ResumoPaciente({ vinculo }: { vinculo: CaregiverLink }) {
               </p>
             </>
           ) : (
-            <p className="text-sm text-muted-foreground">Sem remédios cadastrados no momento.</p>
+            <p className="text-base text-muted-foreground">Sem remédios cadastrados no momento.</p>
           )}
         </div>
       )}
 
       {/* ── Passos e sono ────────────────────────────────────────────── */}
       {vinculo.ver_medidas && (
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-border bg-card p-4">
+        <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
+          <div className="rounded-2xl border border-border bg-card p-4 md:p-5 shadow-sm">
             <div className="flex items-center gap-2 mb-2">
-              <Footprints className="h-4 w-4 text-muted-foreground" />
-              <p className="text-xs font-semibold text-foreground">Passos</p>
+              <Footprints className="h-5 w-5 text-primary" aria-hidden />
+              <p className="text-base font-semibold text-foreground">Passos</p>
             </div>
-            <p className="text-2xl font-bold text-foreground">
+            <p className="text-2xl font-bold text-foreground tabular-nums">
               {activity.hoje?.steps != null ? activity.hoje.steps.toLocaleString("pt-BR") : "—"}
             </p>
-            <p className="text-[11px] text-muted-foreground mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               {activity.hoje?.activity_date ? "hoje" : "ainda sem registro"}
             </p>
           </div>
-          <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="rounded-2xl border border-border bg-card p-4 md:p-5 shadow-sm">
             <div className="flex items-center gap-2 mb-2">
-              <Moon className="h-4 w-4 text-muted-foreground" />
-              <p className="text-xs font-semibold text-foreground">Sono</p>
+              <Moon className="h-5 w-5 text-primary" aria-hidden />
+              <p className="text-base font-semibold text-foreground">Sono</p>
             </div>
-            <p className="text-2xl font-bold text-foreground">
+            <p className="text-2xl font-bold text-foreground tabular-nums">
               {sleep.ultima ? `${Math.round((sleep.ultima.total_minutes / 60) * 10) / 10} h` : "—"}
             </p>
-            <p className="text-[11px] text-muted-foreground mt-1">última noite</p>
+            <p className="text-sm text-muted-foreground mt-1">última noite</p>
           </div>
         </div>
       )}
 
       {/* ── O que a pessoa sentiu ────────────────────────────────────── */}
       {vinculo.ver_sintomas && (
-        <div className="rounded-2xl border border-border bg-card p-4">
+        <div className="rounded-2xl border border-border bg-card p-4 md:p-5 shadow-sm">
           <div className="flex items-center gap-2 mb-2">
-            <Stethoscope className="h-4 w-4 text-muted-foreground" />
-            <p className="text-sm font-semibold text-foreground">O que {nome} registrou sentir</p>
+            <Stethoscope className="h-5 w-5 text-primary" aria-hidden />
+            <p className="text-base font-semibold text-foreground">O que {nome} registrou sentir</p>
           </div>
           {sintomas.symptoms.length > 0 ? (
-            <ul className="space-y-2">
+            <ul className="divide-y divide-border">
               {sintomas.symptoms.slice(0, 5).map((s) => (
-                <li key={s.id} className="text-sm text-foreground leading-relaxed">
+                <li key={s.id} className="text-base text-foreground leading-relaxed py-2.5 first:pt-0 last:pb-0">
                   <span className="font-medium">{SINTOMA_ROTULO[s.symptom_type] ?? s.symptom_type}</span>
                   <span className="text-muted-foreground"> · {fmtDataHora(s.occurred_at)}</span>
-                  {s.notes && <span className="block text-xs text-muted-foreground">{s.notes}</span>}
+                  {s.notes && <span className="block text-sm text-muted-foreground">{s.notes}</span>}
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-muted-foreground">Nada registrado nos últimos dias.</p>
+            <p className="text-base text-muted-foreground">Nada registrado nos últimos dias.</p>
           )}
         </div>
       )}
 
       {/* ── Exames ───────────────────────────────────────────────────── */}
       {vinculo.ver_exames && (
-        <div className="rounded-2xl border border-border bg-card p-4">
+        <div className="rounded-2xl border border-border bg-card p-4 md:p-5 shadow-sm">
           <div className="flex items-center gap-2 mb-2">
-            <FlaskConical className="h-4 w-4 text-muted-foreground" />
-            <p className="text-sm font-semibold text-foreground">Exames</p>
+            <FlaskConical className="h-5 w-5 text-primary" aria-hidden />
+            <p className="text-base font-semibold text-foreground">Exames</p>
           </div>
           {exames.exams.length > 0 || labs.labs.length > 0 ? (
-            <ul className="space-y-1.5 text-sm">
+            <ul className="divide-y divide-border text-base">
               {exames.exams.slice(0, 3).map((e) => (
-                <li key={e.id} className="text-foreground">
+                <li key={e.id} className="text-foreground py-2 first:pt-0">
                   {EXAME_ROTULO[e.exam_type] ?? e.exam_type}
                   <span className="text-muted-foreground"> · {fmtDataHora(e.performed_at)}</span>
                 </li>
               ))}
               {labs.labs.slice(0, 4).map((l) => (
-                <li key={l.id} className="text-foreground">
+                <li key={l.id} className="text-foreground py-2 last:pb-0">
                   {l.marker_label}: <span className="tabular-nums font-medium">{l.value_num ?? l.value_text}</span>
                   {l.unit ? ` ${l.unit}` : ""}
                   <span className="text-muted-foreground"> · {fmtDataHora(l.collected_at)}</span>
@@ -315,9 +339,9 @@ function ResumoPaciente({ vinculo }: { vinculo: CaregiverLink }) {
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-muted-foreground">Nenhum exame registrado ainda.</p>
+            <p className="text-base text-muted-foreground">Nenhum exame registrado ainda.</p>
           )}
-          <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
+          <p className="text-sm text-muted-foreground mt-3 leading-relaxed">
             Quem interpreta esses resultados é o médico de {nome}.
           </p>
         </div>
@@ -325,8 +349,8 @@ function ResumoPaciente({ vinculo }: { vinculo: CaregiverLink }) {
 
       {!vinculo.ver_medidas && !vinculo.ver_remedios && !vinculo.ver_sintomas && !vinculo.ver_exames && (
         <div className="rounded-2xl border border-dashed border-border bg-card/50 p-5 text-center">
-          <ShieldCheck className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground leading-relaxed">
+          <ShieldCheck className="h-7 w-7 text-muted-foreground mx-auto mb-2" aria-hidden />
+          <p className="text-base text-muted-foreground leading-relaxed">
             {nome} ainda não liberou nenhuma informação para você ver aqui.
           </p>
         </div>
@@ -345,8 +369,8 @@ function EntrarComCodigo() {
         <div className="h-14 w-14 rounded-2xl bg-primary/10 grid place-items-center mx-auto mb-4">
           <Users className="h-6 w-6 text-primary" />
         </div>
-        <h1 className="text-lg font-display font-semibold text-foreground">Digite o código do convite</h1>
-        <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed max-w-xs mx-auto">
+        <h1 className="text-2xl font-display font-semibold text-foreground">Digite o código do convite</h1>
+        <p className="text-base text-muted-foreground mt-2 leading-relaxed max-w-sm mx-auto">
           A pessoa que você acompanha te passou um código de 6 letras. Digite abaixo para começar.
         </p>
       </div>
@@ -356,10 +380,11 @@ function EntrarComCodigo() {
           onChange={(e) => setCodigo(e.target.value.toUpperCase())}
           placeholder="CÓDIGO"
           maxLength={6}
-          className="h-14 text-center text-2xl font-bold tracking-[0.3em] font-mono"
+          aria-label="Código do convite"
+          className="h-14 rounded-xl text-center text-2xl font-bold tracking-[0.3em] font-mono"
         />
         <Button
-          size="lg"
+          size="xl"
           className="w-full"
           disabled={codigo.trim().length < 4 || aceitarConvite.isPending}
           onClick={() => aceitarConvite.mutate(codigo)}
@@ -386,7 +411,7 @@ export default function CuidadorHomePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="leitura-paciente min-h-screen bg-background">
         <Cabecalho mostrarSair={false} />
       </div>
     );
@@ -394,21 +419,21 @@ export default function CuidadorHomePage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
+      <div className="leitura-paciente min-h-screen bg-background flex flex-col">
         <Cabecalho mostrarSair={false} />
-        <main className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+        <main className="flex-1 flex flex-col items-center justify-center px-4 py-10 text-center">
           <div className="h-16 w-16 rounded-2xl bg-primary/10 grid place-items-center mb-5">
-            <Users className="h-7 w-7 text-primary" />
+            <Users className="h-7 w-7 text-primary" aria-hidden />
           </div>
-          <h1 className="text-xl font-display font-semibold text-foreground max-w-sm">
+          <h1 className="text-2xl font-display font-semibold text-foreground max-w-sm text-balance">
             Aqui é a área de quem acompanha a saúde de alguém pelo Encorpei Cardio
           </h1>
-          <p className="text-sm text-muted-foreground mt-3 max-w-sm leading-relaxed">
+          <p className="text-base text-muted-foreground mt-3 max-w-sm leading-relaxed">
             Entre ou crie sua conta para usar o código que a pessoa que você cuida te enviou.
           </p>
-          <Button asChild size="lg" className="mt-6">
+          <Button asChild size="xl" className="mt-6">
             <Link to="/auth">
-              Entrar ou criar conta <ArrowRight className="h-4 w-4" />
+              Entrar ou criar conta <ArrowRight className="h-5 w-5" aria-hidden />
             </Link>
           </Button>
         </main>
@@ -419,14 +444,16 @@ export default function CuidadorHomePage() {
   const vinculoAtivo = vinculos.find((v) => v.patient_user_id === selecionado) ?? vinculos[0] ?? null;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    // `leitura-paciente` também aqui: esta tela não passa pelo AppShell, que é
+    // quem normalmente aplica o piso de legibilidade da área não-médica.
+    <div className="leitura-paciente min-h-screen bg-background flex flex-col">
       <Cabecalho mostrarSair />
       <main className="flex-1 w-full max-w-2xl mx-auto px-4 py-6 pb-10">
         {isLoading ? (
-          <div className="animate-pulse space-y-4">
-            <div className="h-6 w-40 bg-secondary rounded" />
-            <div className="h-24 bg-secondary rounded-2xl" />
-            <div className="h-24 bg-secondary rounded-2xl" />
+          <div className="animate-pulse space-y-4" aria-busy="true" aria-label="Carregando">
+            <div className="h-7 w-40 bg-secondary rounded-lg" />
+            <div className="h-28 bg-secondary rounded-2xl" />
+            <div className="h-28 bg-secondary rounded-2xl" />
           </div>
         ) : vinculos.length === 0 ? (
           <EntrarComCodigo />

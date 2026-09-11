@@ -4,6 +4,18 @@
  * Uso:
  *   <RiskBadge level="red" reason="PA 148/92" />
  *   <RiskBadge level="green" />
+ *
+ * ── Nota de escopo (passada visual de set/2026) ───────────────────────
+ * Este componente é compartilhado com as telas do MÉDICO, onde a densidade é
+ * contrato — por isso os tamanhos compactos (`text-[10px]`, `text-[11px]`)
+ * ficaram como estavam. Na área do paciente eles já sobem sozinhos: a folha
+ * `leitura-paciente` (index.css) impõe o piso de 12px sobre esses tamanhos
+ * avulsos, sem tocar nas telas do médico.
+ *
+ * O único ajuste feito foi o `animate-pulse` do nível vermelho passar a
+ * respeitar `prefers-reduced-motion`: um ponto que pisca sem parar é o tipo
+ * de movimento que provoca sintoma em paciente com enxaqueca vestibular — e
+ * ele não carrega informação nenhuma que o rótulo ao lado já não carregue.
  */
 
 import { ShieldAlert, AlertTriangle, CheckCircle2 } from "lucide-react";
@@ -45,7 +57,14 @@ export function RiskBadge({ level, reason, pulse, compact, className }: Props) {
         className={cn("inline-flex items-center gap-1.5 text-[10px] font-bold", colors.text, className)}
         title={reason ?? label}
       >
-        <span className={cn("h-2 w-2 rounded-full", colors.dot, pulse && level === "red" && "animate-pulse")} />
+        <span
+          className={cn(
+            "h-2 w-2 rounded-full",
+            colors.dot,
+            pulse && level === "red" && "animate-pulse motion-reduce:animate-none",
+          )}
+          aria-hidden
+        />
         {label}
       </span>
     );
@@ -60,7 +79,7 @@ export function RiskBadge({ level, reason, pulse, compact, className }: Props) {
       )}
       title={reason}
     >
-      <Icon className="h-3 w-3" />
+      <Icon className="h-3 w-3" aria-hidden />
       {label}
       {reason && (
         <span className="font-normal opacity-80 truncate max-w-[200px]">

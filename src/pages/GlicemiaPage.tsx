@@ -26,6 +26,12 @@
  * seria dar diagnóstico, e diagnóstico é do médico.
  *
  * Modelo de tela: PesoPage (registro rápido → último valor → histórico).
+ *
+ * ── O que a passada visual mudou ──────────────────────────────────────
+ * Nada dos limiares, nada dos textos. O bloco "muito baixo" continua sendo o
+ * único vermelho da tela e continua com o botão de ligar em cima de tudo;
+ * ele só passou a usar o desenho de aviso comum, para não ser mais um
+ * retângulo vermelho diferente dos outros retângulos vermelhos do app.
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -33,13 +39,15 @@
 import { useMemo, useState } from "react";
 import { Droplet, Phone } from "lucide-react";
 import { PageHeader, SurfaceCard, EmptyState, PageLoader } from "@/components/shell";
+import {
+  TelaPaciente, TituloSecao, Formulario, Campo, OpcaoBotao, GradeOpcoes,
+  Lista, ItemLista, AvisoDaTela,
+} from "@/components/shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useGlucose } from "@/hooks/useCardioReadings";
 import { EMERGENCIA_TELEFONE } from "@/lib/config";
-import { cn } from "@/lib/utils";
 import type { GlucoseReading } from "@/types/cardio";
 
 type Contexto = GlucoseReading["context"];
@@ -110,6 +118,7 @@ export default function GlicemiaPage() {
   const [valor, setValor] = useState("");
   const [contexto, setContexto] = useState<Contexto>("fasting");
   const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
 
   const lista = (readings ?? []) as GlucoseReading[];
   const ultimo = lista[0] ?? null;
@@ -128,9 +137,12 @@ export default function GlicemiaPage() {
     const v = Number(valor.replace(",", "."));
     if (!Number.isFinite(v) || v < MIN_VALIDO || v > MAX_VALIDO) {
       // Mensagem de digitação, não de clínica: fala do aparelho, não do corpo.
-      toast.error(`Digite um valor entre ${MIN_VALIDO} e ${MAX_VALIDO} mg/dL, como aparece no aparelho.`);
+      const msg = `Digite um valor entre ${MIN_VALIDO} e ${MAX_VALIDO} mg/dL, como aparece no aparelho.`;
+      setErro(msg);
+      toast.error(msg);
       return;
     }
+    setErro(null);
     setSalvando(true);
     try {
       await (registrar as any).mutateAsync({ value: Math.round(v), context: contexto });
@@ -145,7 +157,7 @@ export default function GlicemiaPage() {
   if (isLoading) return <PageLoader />;
 
   return (
-    <div className="space-y-4 pb-10">
+    <TelaPaciente>
       <PageHeader
         title="Glicemia"
         subtitle="Anote o número como ele aparece no aparelho, sem arredondar."
@@ -153,50 +165,43 @@ export default function GlicemiaPage() {
 
       {/* ── Registro rápido ───────────────────────────────────────── */}
       <SurfaceCard>
-        <Label htmlFor="glicemia" className="block">
-          <span className="text-sm font-medium">Glicemia agora</span>
-          <div className="mt-2 flex items-center gap-2">
-            <Input
-              id="glicemia"
-              inputMode="numeric"
-              value={valor}
-              onChange={(e) => setValor(e.target.value.replace(/[^\d]/g, ""))}
-              placeholder="102"
-              className="h-14 text-2xl font-semibold tabular-nums text-center"
-            />
-            <span className="text-base text-muted-foreground w-16">mg/dL</span>
-          </div>
-        </Label>
+        <Formulario>
+          <Campo rotulo="Glicemia agora" para="glicemia" erro={erro}>
+            <div className="flex items-center gap-2">
+              <Input
+                id="glicemia"
+                inputMode="numeric"
+                value={valor}
+                onChange={(e) => { setValor(e.target.value.replace(/[^\d]/g, "")); if (erro) setErro(null); }}
+                placeholder="102"
+                className="h-14 text-2xl font-semibold tabular-nums text-center"
+              />
+              <span className="text-base text-muted-foreground w-16 shrink-0">mg/dL</span>
+            </div>
+          </Campo>
 
-        {/* Contexto: sem ele o número não serve para o médico — 180 em jejum e
-            180 depois de comer são conversas diferentes. Botão em vez de select
-            porque são quatro opções e a tela é de registro rápido. */}
-        <fieldset className="mt-4">
-          <legend className="text-sm font-medium">Quando você mediu?</legend>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            {CONTEXTOS.map((c) => (
-              <button
-                key={c.valor}
-                type="button"
-                onClick={() => setContexto(c.valor)}
-                aria-pressed={contexto === c.valor}
-                className={cn(
-                  "rounded-xl border px-3 py-2.5 text-left transition-colors touch-target",
-                  contexto === c.valor
-                    ? "border-primary bg-cardio-50 text-foreground"
-                    : "border-border bg-card text-muted-foreground hover:border-primary/40"
-                )}
-              >
-                <span className="block text-sm font-medium">{c.label}</span>
-                <span className="block text-[11px] text-muted-foreground mt-0.5">{c.ajuda}</span>
-              </button>
-            ))}
-          </div>
-        </fieldset>
+          {/* Contexto: sem ele o número não serve para o médico — 180 em jejum e
+              180 depois de comer são conversas diferentes. Botão em vez de select
+              porque são quatro opções e a tela é de registro rápido. */}
+          <fieldset className="mt-4">
+            <legend className="text-base font-medium text-foreground">Quando você mediu?</legend>
+            <GradeOpcoes className="mt-2">
+              {CONTEXTOS.map((c) => (
+                <OpcaoBotao
+                  key={c.valor}
+                  selecionado={contexto === c.valor}
+                  onClick={() => setContexto(c.valor)}
+                  titulo={c.label}
+                  descricao={c.ajuda}
+                />
+              ))}
+            </GradeOpcoes>
+          </fieldset>
 
-        <Button onClick={salvar} disabled={salvando} className="w-full h-12 mt-4 text-base">
-          {salvando ? "Salvando…" : "Registrar glicemia"}
-        </Button>
+          <Button onClick={salvar} disabled={salvando} size="xl" className="w-full mt-4">
+            {salvando ? "Salvando…" : "Registrar glicemia"}
+          </Button>
+        </Formulario>
       </SurfaceCard>
 
       {/* ── Último valor ──────────────────────────────────────────── */}
@@ -209,39 +214,36 @@ export default function GlicemiaPage() {
               <p className="text-3xl font-semibold tabular-nums">
                 {Number(ultimo.value)} <span className="text-lg font-normal text-muted-foreground">mg/dL</span>
               </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="text-sm text-muted-foreground mt-0.5">
                 {CONTEXTO_LABEL[ultimo.context]} · {dataHora(ultimo.recorded_at)}
               </p>
             </div>
           </div>
 
           {aviso === "atendimento" ? (
-            <div className="mt-4 rounded-xl bg-error/10 px-3 py-3">
-              <p className="text-sm font-semibold">Esse valor está muito baixo.</p>
-              <p className="text-sm mt-1.5">
+            <AvisoDaTela tom="grave" titulo="Esse valor está muito baixo." className="mt-4">
+              <p>
                 Não fique sozinho e não espere passar. Procure atendimento agora — se estiver
                 confuso, tremendo, suando frio ou se sentindo mal, ligue para o {EMERGENCIA_TELEFONE}.
               </p>
               <a
                 href={`tel:${EMERGENCIA_TELEFONE}`}
-                className="mt-3 inline-flex items-center justify-center gap-2 h-12 w-full rounded-xl bg-error text-white text-base font-semibold touch-target"
+                className="mt-3 inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-error text-white text-lg font-semibold"
               >
-                <Phone className="h-4 w-4" /> Ligar {EMERGENCIA_TELEFONE}
+                <Phone className="h-5 w-5" aria-hidden /> Ligar {EMERGENCIA_TELEFONE}
               </a>
-            </div>
+            </AvisoDaTela>
           ) : aviso === "medico" ? (
-            <div className="mt-4 rounded-xl bg-warning/10 px-3 py-3">
-              <p className="text-sm">
-                Esse valor está fora da faixa em que o app fica quieto.{" "}
-                <strong>Avise seu médico</strong> — quem diz o que esse número significa para o seu
-                tratamento é ele, não o aplicativo.
-              </p>
-            </div>
+            <AvisoDaTela tom="atencao" className="mt-4">
+              Esse valor está fora da faixa em que o app fica quieto.{" "}
+              <strong>Avise seu médico</strong> — quem diz o que esse número significa para o seu
+              tratamento é ele, não o aplicativo.
+            </AvisoDaTela>
           ) : (
             // Dentro da faixa: o app registra e cala. Um "tudo certo!" aqui
             // seria interpretação — e seria interpretação errada num paciente
             // cuja meta o médico pode ter colocado em outro lugar.
-            <p className="text-xs text-muted-foreground mt-4">
+            <p className="text-sm text-muted-foreground mt-4 leading-relaxed">
               Registrado. Seu médico vê esse valor junto com os outros no acompanhamento.
             </p>
           )}
@@ -251,35 +253,38 @@ export default function GlicemiaPage() {
           icon={Droplet}
           title="Nenhuma glicemia registrada ainda"
           description="Registre a primeira e o histórico começa a aparecer aqui para você mostrar na consulta."
+          variant="card"
+          actionLabel="Registrar a primeira medida"
+          onAction={() => document.getElementById("glicemia")?.focus()}
         />
       )}
 
       {/* ── Histórico ─────────────────────────────────────────────── */}
       {lista.length > 1 ? (
         <SurfaceCard>
-          <p className="text-sm font-medium mb-2">Últimos registros</p>
-          <ul className="divide-y divide-border">
+          <TituloSecao titulo="Últimos registros" />
+          <Lista>
             {lista.slice(0, 14).map((r) => (
-              <li key={r.id} className="flex items-center justify-between py-2.5 gap-3">
+              <ItemLista key={r.id}>
                 <div className="min-w-0">
-                  <span className="text-sm text-muted-foreground">{dataCurta(r.recorded_at)}</span>
-                  <span className="text-xs text-muted-foreground/80 ml-2">{CONTEXTO_LABEL[r.context]}</span>
+                  <span className="text-base text-muted-foreground">{dataCurta(r.recorded_at)}</span>
+                  <span className="text-sm text-muted-foreground/80 ml-2">{CONTEXTO_LABEL[r.context]}</span>
                 </div>
                 {/* Sem cor por faixa também no histórico: uma coluna colorida
                     é um laudo visual, e o app não dá laudo. */}
-                <span className="text-sm font-semibold tabular-nums shrink-0">
+                <span className="text-base font-semibold tabular-nums shrink-0">
                   {Number(r.value)} mg/dL
                 </span>
-              </li>
+              </ItemLista>
             ))}
-          </ul>
+          </Lista>
         </SurfaceCard>
       ) : null}
 
-      <p className="text-xs text-muted-foreground px-1">
+      <p className="text-sm text-muted-foreground px-1 leading-relaxed">
         O Encorpei Cardio guarda e organiza seus registros. Ele não interpreta glicemia, não
         ajusta remédio e não substitui a consulta.
       </p>
-    </div>
+    </TelaPaciente>
   );
 }

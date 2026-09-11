@@ -32,8 +32,8 @@ function ToggleRow({ label, hint, checked, onChange }: { label: string; hint?: s
       )}
     >
       <span>
-        <span className={cn("block text-base font-medium", checked ? "text-primary" : "text-foreground")}>{label}</span>
-        {hint && <span className="block text-xs text-muted-foreground mt-0.5">{hint}</span>}
+        <span className={cn("block text-base font-medium leading-snug", checked ? "text-primary" : "text-foreground")}>{label}</span>
+        {hint && <span className="block text-sm text-muted-foreground mt-0.5 leading-relaxed">{hint}</span>}
       </span>
       <span
         className={cn(
@@ -55,7 +55,7 @@ function ToggleRow({ label, hint, checked, onChange }: { label: string; hint?: s
 function StepShell({ eyebrow, title, children }: { eyebrow: string; title: ReactNode; children: ReactNode }) {
   return (
     <div className="space-y-5">
-      <p className="text-xs font-semibold uppercase tracking-wider text-primary">{eyebrow}</p>
+      <p className="text-sm font-semibold uppercase tracking-wider text-primary">{eyebrow}</p>
       <h2 className="font-display text-3xl font-medium tracking-tight text-foreground leading-tight">{title}</h2>
       {children}
     </div>
@@ -175,7 +175,12 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    // `leitura-paciente` (index.css): o onboarding roda fora do AppShell e
+    // ficava com a escala menor do app — justamente no formulário mais longo
+    // que o paciente preenche, e no primeiro contato dele com o produto.
+    // A classe sobe o piso de texto e de alvo de toque; nenhuma pergunta,
+    // nenhum passo e nenhum texto mudou.
+    <div className="leitura-paciente min-h-screen flex flex-col bg-background">
 
       {/* Topo */}
       <header className="px-6 pt-6 pb-4 flex items-center gap-2.5">
@@ -183,17 +188,24 @@ export default function OnboardingPage() {
           <img src="/logo-symbol.png" alt="Encorpei Cardio" width={36} height={36} className="object-contain shrink-0" style={{ width: 36, height: 36 }} />
           <div className="leading-tight">
             <div className="font-display text-base font-medium tracking-tight">Encorpei</div>
-            <div className="text-[13px] text-primary font-semibold -mt-0.5">Cardio</div>
+            <div className="text-sm text-primary font-semibold -mt-0.5">Cardio</div>
           </div>
         </div>
-        <div className="ml-auto text-xs text-muted-foreground tabular-nums">
+        <div className="ml-auto text-sm text-muted-foreground tabular-nums" aria-label={`Passo ${stepIndex + 1} de ${STEPS.length}`}>
           {stepIndex + 1} / {STEPS.length}
         </div>
       </header>
 
       {/* Progresso */}
       <div className="px-6 mb-6">
-        <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+        <div
+          className="h-2 bg-secondary rounded-full overflow-hidden"
+          role="progressbar"
+          aria-valuenow={stepIndex + 1}
+          aria-valuemin={1}
+          aria-valuemax={STEPS.length}
+          aria-label={`Passo ${stepIndex + 1} de ${STEPS.length}`}
+        >
           <motion.div
             className="h-full bg-primary rounded-full"
             initial={false}
@@ -233,16 +245,16 @@ export default function OnboardingPage() {
                 <StepShell eyebrow="Identificação" title={<>Seus <span className="text-primary">dados</span></>}>
                   <div className="space-y-4">
                     <div>
-                      <Label className="text-sm text-muted-foreground">Nome completo</Label>
+                      <Label className="text-base text-foreground">Nome completo</Label>
                       <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Seu nome" className="mt-1.5 h-14 rounded-2xl text-base" autoFocus />
                     </div>
                     <div>
-                      <Label className="text-sm text-muted-foreground">Data de nascimento</Label>
+                      <Label className="text-base text-foreground">Data de nascimento</Label>
                       <Input value={nascimento} onChange={(e) => setNascimento(e.target.value)} type="date" className="mt-1.5 h-14 rounded-2xl text-base" />
                     </div>
                     <div>
-                      <Label className="text-sm text-muted-foreground">Sexo biológico</Label>
-                      <p className="text-xs text-muted-foreground mb-1.5">Usado para calcular seu risco cardiovascular.</p>
+                      <Label className="text-base text-foreground">Sexo biológico</Label>
+                      <p className="text-sm text-muted-foreground mb-1.5 leading-relaxed">Usado para calcular seu risco cardiovascular.</p>
                       <div className="grid grid-cols-2 gap-3">
                         {([{ value: "male" as const, label: "Masculino" }, { value: "female" as const, label: "Feminino" }]).map((opt) => (
                           <button
@@ -267,15 +279,15 @@ export default function OnboardingPage() {
                 <StepShell eyebrow="Medidas" title={<>Altura e <span className="text-primary">peso</span></>}>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label className="text-sm text-muted-foreground">Altura (cm)</Label>
+                      <Label className="text-base text-foreground">Altura (cm)</Label>
                       <Input value={altura} onChange={(e) => setAltura(e.target.value)} type="number" inputMode="numeric" placeholder="Ex: 170" className="mt-1.5 h-14 rounded-2xl text-base" />
                     </div>
                     <div>
-                      <Label className="text-sm text-muted-foreground">Peso atual (kg)</Label>
+                      <Label className="text-base text-foreground">Peso atual (kg)</Label>
                       <Input value={peso} onChange={(e) => setPeso(e.target.value)} type="number" inputMode="decimal" placeholder="Ex: 78" className="mt-1.5 h-14 rounded-2xl text-base" />
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">Pode deixar em branco e preencher depois, sem problema.</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">Pode deixar em branco e preencher depois, sem problema.</p>
                 </StepShell>
               )}
 
@@ -283,7 +295,7 @@ export default function OnboardingPage() {
                 <StepShell eyebrow="Hábitos" title={<>Fumo e <span className="text-primary">álcool</span></>}>
                   <div className="space-y-4">
                     <div>
-                      <Label className="text-sm text-muted-foreground">Fumo</Label>
+                      <Label className="text-base text-foreground">Fumo</Label>
                       <div className="grid grid-cols-3 gap-2 mt-1.5">
                         {([
                           { value: "never" as const, label: "Nunca fumei" },
@@ -305,7 +317,7 @@ export default function OnboardingPage() {
                       </div>
                     </div>
                     <div>
-                      <Label className="text-sm text-muted-foreground">Quantas doses de bebida alcoólica por semana, em média?</Label>
+                      <Label className="text-base text-foreground">Quantas doses de bebida alcoólica por semana, em média?</Label>
                       <Input value={alcool} onChange={(e) => setAlcool(e.target.value)} type="number" inputMode="numeric" placeholder="Ex: 0" className="mt-1.5 h-14 rounded-2xl text-base" />
                     </div>
                   </div>
@@ -352,7 +364,7 @@ export default function OnboardingPage() {
                       onChange={() => toggleHistory("family_early_cad")}
                     />
                     <div>
-                      <Label className="text-sm text-muted-foreground">Alergia ou reação a algum remédio?</Label>
+                      <Label className="text-base text-foreground">Alergia ou reação a algum remédio?</Label>
                       <Textarea
                         value={alergias}
                         onChange={(e) => setAlergias(e.target.value)}
@@ -383,12 +395,12 @@ export default function OnboardingPage() {
                       </span>
                       <span>
                         <span className="block text-base font-medium text-foreground">Tenho um código do meu médico</span>
-                        <span className="block text-xs text-muted-foreground mt-0.5">Toque aqui para digitar</span>
+                        <span className="block text-sm text-muted-foreground mt-0.5">Toque aqui para digitar</span>
                       </span>
                     </button>
                   ) : (
                     <div className="space-y-2">
-                      <Label className="text-sm text-muted-foreground">Código do médico</Label>
+                      <Label className="text-base text-foreground">Código do médico</Label>
                       <Input
                         value={codigo}
                         onChange={(e) => setCodigo(e.target.value.toUpperCase())}
@@ -400,8 +412,8 @@ export default function OnboardingPage() {
                   )}
 
                   <div className="rounded-2xl bg-card border border-border shadow-sm p-5 mt-6">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Resumo</p>
-                    <div className="space-y-2 mt-3 text-sm">
+                    <p className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Resumo</p>
+                    <div className="space-y-2 mt-3 text-base">
                       {[
                         { label: "Nome", value: nome || "—" },
                         { label: "Nascimento", value: nascimento ? new Date(nascimento + "T00:00:00").toLocaleDateString("pt-BR") : "—" },

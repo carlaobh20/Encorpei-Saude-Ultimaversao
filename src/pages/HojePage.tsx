@@ -1,62 +1,65 @@
 /**
  * HojePage — a home do paciente.
  *
- * ── O que a auditoria de setembro/2026 mudou aqui ─────────────────────
+ * ── O que a auditoria de setembro/2026 fixou aqui (e continua valendo) ─
  *
  * 1) DUAS LISTAS DE PENDÊNCIA VIRARAM UMA. A tela tinha "O combinado de
  *    hoje" (vindo do plano de monitoramento, que é o que o médico prescreve)
  *    e, logo abaixo, "O que falta hoje" — uma segunda lista montada por
- *    regras escritas à mão nesta página (`if (temIC && !pesoHoje)`,
- *    `if (!pressaoHoje)`, `if (!sodioHoje)`). Duas listas de dever, com
- *    critérios diferentes, sobre o mesmo dia. Além de confundir, a segunda
- *    cobrava coisa que o médico não pediu — o oposto do que o app promete.
- *    Agora TODA pendência sai de `usePendenciasDeHoje()`. Quando não há
- *    prescrição, o plano mínimo entra e a tela DIZ que é sugestão do app.
+ *    regras escritas à mão nesta página. Duas listas de dever, com critérios
+ *    diferentes, sobre o mesmo dia. Toda pendência sai de
+ *    `usePendenciasDeHoje()`; quando não há prescrição, o plano mínimo entra
+ *    e a tela DIZ que é sugestão do app.
  *
- * 2) A IDADE DO CORAÇÃO SAIU DO TOPO. O número (80, no caso típico) dominava
- *    cada visita, era a primeira coisa que o paciente lia todo dia, e não
- *    tinha ação possível atrás dele — só ansiedade. Ele virou um cartão
- *    dentro da evolução, em /meu-coracao, com a explicação ao lado do número.
- *    O topo passou a ser: o que dá para fazer agora, e o que já melhorou.
+ * 2) A IDADE DO CORAÇÃO SAIU DO TOPO. O número dominava cada visita e não
+ *    tinha ação possível atrás dele — só ansiedade. Mora em /meu-coracao,
+ *    com a explicação ao lado do número. Ele não volta para cá.
  *
- * 3) A ABERTURA TEM SEIS BLOCOS, NESTA ORDEM: saudação · aviso (só se
- *    existir) · tarefa prioritária com botão · último registro com data e
- *    origem · resumo da evolução · próxima consulta. Educação, conquista e
- *    questionário desceram para o fim e só aparecem quando há algo novo.
+ * ── O que esta reformulação (visual) mudou ────────────────────────────
+ *
+ * A página era uma coluna só, empilhada, projetada para o celular e esticada
+ * no desktop: num monitor de 1440px sobrava metade da tela em branco enquanto
+ * o paciente rolava para achar a consulta. Agora há duas colunas
+ * (`LayoutPainel`): à esquerda o fluxo do dia — saudação, aviso, cuidado de
+ * hoje, registros, evolução —, à direita o contexto que se consulta e não se
+ * executa — pulseira, equipe, atalhos. No celular a mesma ordem vira uma
+ * coluna e rola; NÃO tentamos caber tudo na primeira tela, porque o preço
+ * disso seria encolher texto que já é o piso legível para 68 anos.
+ *
+ * O que NÃO mudou: nenhuma regra clínica, nenhum limiar, nenhum cálculo.
+ * Todo dado desta tela sai dos hooks como eles já o devolvem, e onde falta
+ * dado a tela mostra ausência — nunca zero, nunca estimativa disfarçada.
  *
  * Nada aqui prescreve conduta (docs/CONTRATO-DE-CODIGO.md, regra 1) e nada
- * promete "rejuvenescer o coração": o que a tela mostra é ação possível e
- * progresso observado.
+ * interpreta número ("normal", "ótimo", "tudo certo" não existem na página).
  */
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
-  AlertTriangle, CalendarClock, ChevronRight, CheckCircle2, Gauge,
-  Award, GraduationCap, ClipboardList, Clock3,
+  AlertTriangle, Award, ChevronRight, ClipboardList, FileText,
+  FlaskConical, GraduationCap, Pill, Stethoscope, Target,
 } from "lucide-react";
 import {
-  usePendenciasDeHoje, ROTULO_METRICA, type MetricaPlano, type Pendencia,
+  usePendenciasDeHoje, type MetricaPlano, type Pendencia,
 } from "@/hooks/usePlanoMonitoramento";
 import { PageHeader } from "@/components/shell/PageHeader";
-import { SectionHeader } from "@/components/shell/SectionHeader";
-import { SurfaceCard } from "@/components/shell/SurfaceCard";
-import { EmptyState } from "@/components/shell/EmptyState";
 import { TabPageSkeleton } from "@/components/shell/Skeletons";
 import { AppModal } from "@/components/shell/AppModal";
+import { Atalho, LayoutPainel, Painel } from "@/components/shell";
 import { Button } from "@/components/ui/button";
 import { RegistroRapido } from "@/components/registro/RegistroRapido";
+import { CuidadoDeHoje } from "@/components/hoje/CuidadoDeHoje";
+import { UltimosRegistros } from "@/components/hoje/UltimosRegistros";
+import { MinhaEvolucao } from "@/components/hoje/MinhaEvolucao";
+import { PainelPulseira } from "@/components/hoje/PainelPulseira";
+import { PainelEquipe } from "@/components/hoje/PainelEquipe";
 import { useProfile } from "@/hooks/useProfile";
-import { useBloodPressure, useHeartRate, useWeight } from "@/hooks/useCardioReadings";
+import { useBloodPressure } from "@/hooks/useCardioReadings";
 import { useCardioAlerts, useRiskAssessment } from "@/hooks/useCardioClinical";
-import { useAppointments } from "@/hooks/useProfessional";
 import {
   useTempoNoAlvo, useConquistas, useAprender,
   useQualidadeDeVida, PERGUNTAS_QOL, OPCOES_QOL,
 } from "@/hooks/useEngajamento";
-import {
-  MINIMO_DE_MEDIDAS, ROTULO_MEDIDAS_NA_META, rotuloPeriodo,
-} from "@/lib/clinical/timeInRange";
-import { rotuloProveniencia } from "@/lib/wearable/normalize";
 import { cn } from "@/lib/utils";
 
 const FRASES_DO_DIA = [
@@ -111,10 +114,16 @@ function primeiroNome(nome?: string | null): string {
   return nome.trim().split(/\s+/)[0];
 }
 
-function fmtDataHora(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "long" }) + " às " +
-    d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+/**
+ * Saudação pela hora do aparelho. É a única personalização barata que a tela
+ * tem: dizer "bom dia" às 22h é o tipo de detalhe que faz o app parecer um
+ * formulário e não alguém falando com você.
+ */
+function saudacao(agora = new Date()): string {
+  const h = agora.getHours();
+  if (h < 12) return "Bom dia";
+  if (h < 18) return "Boa tarde";
+  return "Boa noite";
 }
 
 /** Diálogo do questionário mensal de qualidade de vida (derivado do KCCQ). */
@@ -181,11 +190,8 @@ export default function HojePage() {
   const { profile, loading: loadingProfile } = useProfile();
 
   const bp = useBloodPressure();
-  const hr = useHeartRate();
-  const weight = useWeight();
   const alerts = useCardioAlerts();
   const { risk } = useRiskAssessment();
-  const appointments = useAppointments();
 
   const tempoNoAlvo = useTempoNoAlvo();
   const conquistas = useConquistas();
@@ -212,20 +218,31 @@ export default function HojePage() {
     );
   }
 
-  // ── (b) o aviso ────────────────────────────────────────────────────
-  // Um aviso, no máximo. Alerta aberto do motor clínico vem primeiro; na
-  // falta dele, um sinal que o motor de risco marcou como amarelo/vermelho.
-  // Se não há nem um nem outro, este bloco simplesmente não existe — tela
-  // sem aviso é informação, não é espaço vazio.
+  // ── Aviso prioritário ──────────────────────────────────────────────
+  // Um aviso, no máximo, e ANTES do cartão azul: um alerta clínico que
+  // aparecesse depois do "cuidado de hoje" seria lido depois da ação — e a
+  // ação pode ser justamente a errada para quem está com sintoma. A
+  // referência de design mostra a tela sem aviso; isso é o ESTADO FELIZ
+  // dela, não permissão para esconder o aviso quando ele existe.
   const alertaAberto = alerts.alerts.filter((a) => !a.is_dismissed)[0] ?? null;
   const sinalDeAtencao = !alertaAberto && risk.level !== "green" ? risk.headline : null;
+  const avisoGrave =
+    alertaAberto?.severity === "critical" || alertaAberto?.severity === "emergency";
 
-  // ── (c) a tarefa prioritária ───────────────────────────────────────
+  // ── O cuidado de hoje ──────────────────────────────────────────────
   const abertasOrdenadas: Pendencia[] = [...plano.abertas].sort(
     (a, b) => PESO_DA_METRICA[a.metric] - PESO_DA_METRICA[b.metric]
   );
   const prioritaria = abertasOrdenadas[0] ?? null;
   const demaisAbertas = abertasOrdenadas.slice(1);
+  // Marcador de check SÓ para o que foi realmente registrado hoje.
+  // `usePendenciasDeHoje()` marca item de frequência semanal/mensal como
+  // `concluido: true` no dia — de propósito, para não cobrar dívida falsa na
+  // tela. Só que "não é cobrado hoje" e "você fez isso hoje" são coisas
+  // diferentes, e um check ao lado de "Sono" que ninguém registrou seria a
+  // tela afirmando algo falso sobre o paciente. O filtro por `feitos > 0`
+  // resolve isso na exibição, sem tocar na regra do hook.
+  const concluidas = plano.pendencias.filter((p) => p.concluido && p.feitos > 0);
 
   function resolver(metric: MetricaPlano) {
     const acao = ACAO_DA_METRICA[metric];
@@ -233,293 +250,188 @@ export default function HojePage() {
     else setRegistroAberto(true);
   }
 
-  // ── (d) o último registro ──────────────────────────────────────────
-  // Data E origem juntas, sempre. Sem a origem o paciente (e depois o
-  // médico) não sabe se aquele número saiu do aparelho de braço ou é
-  // estimativa da pulseira — e os dois não valem a mesma coisa
-  // (docs/CONTRATO-DE-CODIGO.md, regra 2).
-  const candidatos = [
-    bp.ultima ? { r: bp.ultima, texto: `${bp.ultima.systolic}/${bp.ultima.diastolic}`, oque: "Pressão" } : null,
-    weight.ultimo ? { r: weight.ultimo, texto: `${weight.ultimo.value} kg`, oque: "Peso" } : null,
-    hr.ultima ? { r: hr.ultima, texto: `${hr.ultima.bpm} bpm`, oque: "Batimentos" } : null,
-  ].filter(Boolean) as { r: { recorded_at: string; source_type: string; validation_status: string; source_device_name?: string | null }; texto: string; oque: string }[];
-
-  const ultimoRegistro = candidatos.sort(
-    (a, b) => +new Date(b.r.recorded_at) - +new Date(a.r.recorded_at)
-  )[0] ?? null;
-  const origem = ultimoRegistro
-    ? rotuloProveniencia(ultimoRegistro.r.source_type, ultimoRegistro.r.validation_status, ultimoRegistro.r.source_device_name)
-    : null;
-
-  // ── (e) o resumo da evolução ───────────────────────────────────────
-  const meta = tempoNoAlvo.mes;
-
-  // ── (f) e o fim da página ──────────────────────────────────────────
-  const proxima = appointments.proxima;
   // "Só quando há algo novo": lição só entra se houver lição não lida.
-  // `aprender.naoLidas` é a LISTA de lições ainda não lidas — `proxima` já é
-  // a primeira delas, então basta ela: se não há lição nova, não há bloco.
   const proximaLicao = aprender.proxima;
   const melhorConquista = conquistas[0] ?? null;
 
   return (
-    <div>
-      {/* ── (a) saudação ─────────────────────────────────────────── */}
-      <PageHeader title={nome ? `Olá, ${nome}` : "Hoje"} subtitle={frase} />
-
-      {/* ── (b) aviso, só se existir ─────────────────────────────── */}
-      {alertaAberto && (
-        <SurfaceCard
-          className={cn(
-            "mb-5 border-0",
-            alertaAberto.severity === "critical" || alertaAberto.severity === "emergency"
-              ? "bg-error-bg"
-              : "bg-warning-bg"
-          )}
-        >
-          <div className="flex items-start gap-3">
-            <AlertTriangle
-              className={cn(
-                "h-6 w-6 shrink-0 mt-0.5",
-                alertaAberto.severity === "critical" || alertaAberto.severity === "emergency"
-                  ? "text-error"
-                  : "text-warning-forte"
-              )}
-              aria-hidden="true"
+    <div className="pb-4">
+      <LayoutPainel
+        principal={
+          <>
+            {/* ── 1. Saudação ─────────────────────────────────────── */}
+            <PageHeader
+              title={nome ? `${saudacao()}, ${nome}` : saudacao()}
+              subtitle={frase}
             />
-            <div className="min-w-0">
-              <p className="text-base font-semibold text-foreground">{alertaAberto.title}</p>
-              <p className="text-base text-muted-foreground mt-1 leading-relaxed">{alertaAberto.description}</p>
-            </div>
-          </div>
-        </SurfaceCard>
-      )}
 
-      {!alertaAberto && sinalDeAtencao && (
-        <SurfaceCard className="mb-5 bg-warning-bg border-0">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="h-6 w-6 shrink-0 mt-0.5 text-warning-forte" aria-hidden="true" />
-            <p className="text-base text-foreground leading-relaxed">{sinalDeAtencao}</p>
-          </div>
-        </SurfaceCard>
-      )}
-
-      {/* ── (c) a tarefa prioritária do plano ────────────────────── */}
-      <div className="mb-6">
-        <SectionHeader
-          title="O combinado de hoje"
-          subtitle={plano.total > 0 ? `${plano.concluidas} de ${plano.total}` : undefined}
-        />
-
-        {prioritaria ? (
-          <SurfaceCard>
-            <p className="text-lg font-semibold text-foreground leading-snug">
-              {ROTULO_METRICA[prioritaria.metric]}
-              {prioritaria.esperados > 1 ? ` — ${prioritaria.feitos} de ${prioritaria.esperados} hoje` : ""}
-            </p>
-            {prioritaria.instrucao && (
-              <p className="text-base text-muted-foreground mt-1 leading-relaxed">{prioritaria.instrucao}</p>
-            )}
-            <Button
-              size="lg"
-              className="w-full mt-4 h-12 text-base"
-              onClick={() => resolver(prioritaria.metric)}
-            >
-              {ACAO_DA_METRICA[prioritaria.metric].botao}
-            </Button>
-
-            {/* O resto do combinado fica visível, mas sem competir com o
-                botão. É a mesma lista — só que uma coisa de cada vez. */}
-            {demaisAbertas.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-border">
-                <p className="text-sm text-muted-foreground mb-2">Também combinado para hoje:</p>
-                <ul className="flex flex-wrap gap-2">
-                  {demaisAbertas.map((p) => (
-                    <li key={p.metric}>
-                      <button
-                        type="button"
-                        onClick={() => resolver(p.metric)}
-                        className="rounded-full bg-primary/10 text-primary text-sm font-medium px-4 py-2 min-h-[44px]"
-                      >
-                        {ROTULO_METRICA[p.metric]}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            <p className="text-sm text-muted-foreground mt-4 leading-relaxed">
-              {plano.prescrito
-                ? "Este é o plano que seu médico definiu."
-                : "Sugestão do app — seu médico ainda não definiu um plano para você."}
-            </p>
-          </SurfaceCard>
-        ) : (
-          <SurfaceCard className="bg-success-bg border-0 flex items-center gap-3">
-            <CheckCircle2 className="h-6 w-6 text-success shrink-0" aria-hidden="true" />
-            <div className="min-w-0">
-              <p className="text-base font-medium text-foreground">
-                {plano.total > 0 ? "Tudo registrado por hoje. Até amanhã." : "Nada combinado para hoje."}
-              </p>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                {plano.prescrito
-                  ? "Este é o plano que seu médico definiu."
-                  : "Sugestão do app — seu médico ainda não definiu um plano para você."}
-              </p>
-            </div>
-          </SurfaceCard>
-        )}
-      </div>
-
-      {/* ── (d) último registro, com data e origem ───────────────── */}
-      <div className="mb-6">
-        <SectionHeader title="Seu último registro" />
-        {ultimoRegistro && origem ? (
-          <SurfaceCard>
-            <div className="flex items-baseline justify-between gap-3 flex-wrap">
-              <p className="text-base font-medium text-muted-foreground">{ultimoRegistro.oque}</p>
-              <p className="text-3xl font-display font-bold text-foreground tabular-nums">{ultimoRegistro.texto}</p>
-            </div>
-            <p className="text-sm text-muted-foreground mt-2 flex items-center gap-1.5">
-              <Clock3 className="h-4 w-4 shrink-0" aria-hidden="true" />
-              {fmtDataHora(ultimoRegistro.r.recorded_at)}
-            </p>
-            <p className={cn("text-sm mt-1", origem.tone === "warning" ? "text-warning-forte font-medium" : "text-muted-foreground")}>
-              Origem: {origem.label}
-              {origem.tone === "warning" ? " — estimativa, não usar para decisão clínica." : ""}
-            </p>
-          </SurfaceCard>
-        ) : (
-          <EmptyState
-            icon={Gauge}
-            title="Nenhum registro ainda"
-            description="Toque em Registrar, no meio da barra de baixo, para começar."
-            variant="card"
-          />
-        )}
-      </div>
-
-      {/* ── (e) resumo curto da evolução ─────────────────────────── */}
-      <div className="mb-6">
-        <SectionHeader title="Como está indo" />
-        <SurfaceCard
-          className="text-left w-full"
-          onClick={() => navigate("/meu-coracao")}
-          ariaLabel="Ver minha evolução completa"
-        >
-          <p className="text-base font-semibold text-foreground">{ROTULO_MEDIDAS_NA_META}</p>
-          {meta.suficiente && meta.percentual != null ? (
-            <>
-              <p className="text-4xl font-display font-bold text-foreground leading-none mt-2 tabular-nums">
-                {meta.percentual}%
-              </p>
-              {/* Percentual nunca aparece sozinho: n= e período andam junto,
-                  senão o número vira opinião. */}
-              <p className="text-sm text-muted-foreground mt-2">
-                {meta.dentro} de {meta.total} medidas (n={meta.total}) · {rotuloPeriodo(meta.dias)}
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="text-lg font-semibold text-foreground mt-2">Medidas insuficientes</p>
-              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
-                {meta.total === 0
-                  ? `Nenhuma medida com aparelho de braço ${rotuloPeriodo(meta.dias)}.`
-                  : `${meta.total} medida${meta.total > 1 ? "s" : ""} (n=${meta.total}) ${rotuloPeriodo(meta.dias)} — o app mostra o percentual a partir de ${MINIMO_DE_MEDIDAS}.`}
-              </p>
-            </>
-          )}
-          <p className="text-base font-medium text-primary mt-3 inline-flex items-center gap-1">
-            Ver minha evolução <ChevronRight className="h-5 w-5" aria-hidden="true" />
-          </p>
-        </SurfaceCard>
-      </div>
-
-      {/* ── (f) próxima consulta ─────────────────────────────────── */}
-      <div className="mb-8">
-        <SectionHeader title="Próxima consulta" />
-        {proxima ? (
-          <SurfaceCard
-            className="w-full text-left flex items-center justify-between gap-3"
-            onClick={() => navigate("/agenda")}
-            ariaLabel="Ver minhas consultas"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="h-11 w-11 rounded-xl bg-cardio-50 grid place-items-center shrink-0">
-                <CalendarClock className="h-5 w-5 text-primary" aria-hidden="true" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-base font-semibold text-foreground truncate">{fmtDataHora(proxima.scheduled_at)}</p>
-                <p className="text-sm text-muted-foreground truncate">{proxima.location ?? "Local a confirmar"}</p>
-              </div>
-            </div>
-            <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" aria-hidden="true" />
-          </SurfaceCard>
-        ) : (
-          <EmptyState
-            icon={CalendarClock}
-            title="Sem consulta marcada"
-            description="Quando seu médico agendar uma consulta, ela aparece aqui."
-            variant="card"
-          />
-        )}
-      </div>
-
-      {/*
-        ── Rodapé discreto ────────────────────────────────────────────
-        Educação, conquista e questionário são bons — mas não são o motivo
-        de abrir o app hoje. Ficam no fim, em tom baixo, e só aparecem
-        quando têm novidade: lição não lida, alguma conquista acumulada, ou
-        o mês em que o questionário é devido. Numa tela sem nada novo, esta
-        seção inteira desaparece.
-      */}
-      {(proximaLicao || melhorConquista || qol.devePerguntar) && (
-        <div className="space-y-3 border-t border-border pt-6">
-          {proximaLicao && (
-            <SurfaceCard
-              className="w-full text-left"
-              onClick={() => navigate("/aprender")}
-              ariaLabel={`Aprender: ${proximaLicao.titulo}`}
-            >
-              <div className="flex items-start gap-3">
-                <GraduationCap className="h-5 w-5 text-primary shrink-0 mt-0.5" aria-hidden="true" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold uppercase tracking-wide text-primary">{proximaLicao.origem}</p>
-                  <p className="text-base font-semibold text-foreground mt-0.5">{proximaLicao.titulo}</p>
+            {/* ── 2. Aviso prioritário, só quando existe ───────────── */}
+            {alertaAberto && (
+              <section
+                className={cn(
+                  "rounded-2xl p-4 md:p-5 border-l-4",
+                  avisoGrave
+                    ? "bg-error-bg border-error"
+                    : "bg-warning-bg border-warning"
+                )}
+                aria-label="Aviso sobre a sua saúde"
+              >
+                <div className="flex items-start gap-3">
+                  <AlertTriangle
+                    className={cn("h-6 w-6 shrink-0 mt-0.5", avisoGrave ? "text-error" : "text-warning-forte")}
+                    aria-hidden="true"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-lg font-semibold text-foreground leading-snug">{alertaAberto.title}</p>
+                    <p className="text-base text-muted-foreground mt-1 leading-relaxed">
+                      {alertaAberto.description}
+                    </p>
+                  </div>
                 </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
-              </div>
-            </SurfaceCard>
-          )}
+              </section>
+            )}
 
-          {melhorConquista && (
-            <SurfaceCard className="bg-surface-warm border-0">
-              <div className="flex items-start gap-3">
-                <Award className="h-5 w-5 text-primary shrink-0 mt-0.5" aria-hidden="true" />
-                <p className="text-base text-foreground leading-relaxed">{melhorConquista.texto}</p>
-              </div>
-            </SurfaceCard>
-          )}
+            {!alertaAberto && sinalDeAtencao && (
+              <section
+                className="rounded-2xl p-4 md:p-5 bg-warning-bg border-l-4 border-warning"
+                aria-label="Sinal que precisa de atenção"
+              >
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-6 w-6 shrink-0 mt-0.5 text-warning-forte" aria-hidden="true" />
+                  <p className="text-base text-foreground leading-relaxed">{sinalDeAtencao}</p>
+                </div>
+              </section>
+            )}
 
-          {qol.devePerguntar && (
-            <SurfaceCard
-              className="w-full text-left border-dashed"
-              onClick={() => setQolAberto(true)}
-              ariaLabel="Responder o questionário do mês"
-            >
-              <div className="flex items-center gap-3">
+            {/* ── 3. O único bloco azul da página ──────────────────── */}
+            <CuidadoDeHoje
+              prescrito={plano.prescrito}
+              total={plano.total}
+              concluidasCount={plano.concluidas}
+              prioritaria={prioritaria}
+              demaisAbertas={demaisAbertas}
+              concluidas={concluidas}
+              rotuloAcao={prioritaria ? ACAO_DA_METRICA[prioritaria.metric].botao : ""}
+              onResolver={resolver}
+            />
+
+            {/* ── 4. Seus últimos registros ────────────────────────── */}
+            <UltimosRegistros />
+
+            {/* ── 5. Minha evolução ────────────────────────────────── */}
+            <MinhaEvolucao />
+
+            {/* ── 6. Aprender e Meu mês, em peso menor ─────────────── */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
+              <Painel titulo="Aprender a cuidar">
+                {proximaLicao ? (
+                  <Link to="/aprender" className="flex items-start gap-3 -mx-1 px-1 py-1 rounded-xl">
+                    <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/8 text-primary">
+                      <GraduationCap className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium uppercase tracking-wide text-primary">
+                        {proximaLicao.origem}
+                      </span>
+                      <span className="block text-base font-semibold text-foreground mt-0.5 leading-snug">
+                        {proximaLicao.titulo}
+                      </span>
+                    </span>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" aria-hidden />
+                  </Link>
+                ) : (
+                  <div>
+                    <p className="text-base text-muted-foreground leading-relaxed">
+                      Você já leu as lições sugeridas para o seu caso.
+                    </p>
+                    <Link to="/aprender" className="inline-block text-base font-medium text-primary mt-2 rounded-lg">
+                      Rever as lições
+                    </Link>
+                  </div>
+                )}
+              </Painel>
+
+              <Painel titulo="Meu mês">
+                {melhorConquista ? (
+                  <div className="flex items-start gap-3">
+                    <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/8 text-primary">
+                      <Award className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-base text-foreground leading-relaxed">{melhorConquista.texto}</p>
+                      <Link to="/meu-mes" className="inline-block text-base font-medium text-primary mt-2 rounded-lg">
+                        Ver o resumo do mês
+                      </Link>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-3">
+                    <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                      <FileText className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-base text-muted-foreground leading-relaxed">
+                        O resumo que você leva para a consulta se monta sozinho com o que
+                        você registra.
+                      </p>
+                      <Link to="/meu-mes" className="inline-block text-base font-medium text-primary mt-2 rounded-lg">
+                        Ver o resumo do mês
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </Painel>
+            </div>
+
+            {/* O questionário mensal fica no fim, discreto, e some no resto
+                do mês: ele não é o motivo de abrir o app hoje. */}
+            {qol.devePerguntar && (
+              <button
+                type="button"
+                onClick={() => setQolAberto(true)}
+                className="w-full text-left rounded-2xl border border-dashed border-border bg-card/50 p-4 md:p-5
+                           flex items-center gap-3"
+              >
                 <ClipboardList className="h-5 w-5 text-muted-foreground shrink-0" aria-hidden="true" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-base font-medium text-foreground">Como você tem passado nas últimas semanas?</p>
-                  <p className="text-sm text-muted-foreground mt-0.5">7 perguntas rápidas, uma vez por mês</p>
-                </div>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-base font-medium text-foreground">
+                    Como você tem passado nas últimas semanas?
+                  </span>
+                  <span className="block text-sm text-muted-foreground mt-0.5">
+                    7 perguntas rápidas, uma vez por mês
+                  </span>
+                </span>
                 <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" aria-hidden="true" />
+              </button>
+            )}
+          </>
+        }
+        apoio={
+          <>
+            {/* ── Coluna de apoio: contexto que se consulta ────────── */}
+            <PainelPulseira />
+            <PainelEquipe />
+
+            {/*
+              Acesso rápido — quatro destinos, e SÓ estes quatro. Eles não se
+              repetem em nenhum outro ponto da página: atalho duplicado ensina
+              que a página tem dois lugares para a mesma coisa, e o paciente
+              passa a procurar nos dois.
+            */}
+            <Painel titulo="Acesso rápido">
+              {/* Uma coluna a partir de 1280px: é onde a grade passa a morar na
+                  coluna de apoio estreita, e duas colunas ali cortavam
+                  "Sintomas" e "Remédios" pela metade. */}
+              <div className="grid grid-cols-2 xl:grid-cols-1 gap-2">
+                <Atalho icone={Stethoscope} rotulo="Sintomas" para="/sintomas" />
+                <Atalho icone={FlaskConical} rotulo="Exames" para="/exames" />
+                <Atalho icone={Pill} rotulo="Remédios" para="/remedios" />
+                <Atalho icone={Target} rotulo="Metas" para="/metas" />
               </div>
-            </SurfaceCard>
-          )}
-        </div>
-      )}
+            </Painel>
+          </>
+        }
+      />
 
       <DialogoQualidadeDeVida
         open={qolAberto}
@@ -530,11 +442,11 @@ export default function HojePage() {
         }}
       />
 
-      {/* A folha de registro é a mesma do botão central da barra. Abrir a
-          daqui evita a troca de tela quando a tarefa prioritária cabe num
-          campo. O botão "Não estou bem" NÃO se repete nesta página: ele já
-          flutua em toda tela pela casca do app (AppShell) — ter os dois era
-          a duplicação apontada na auditoria §6. */}
+      {/* A folha de registro é a mesma do botão central da barra. Abrir daqui
+          evita a troca de tela quando a tarefa prioritária cabe num campo. O
+          botão "Não estou bem" NÃO se repete nesta página: ele já flutua em
+          toda tela pela casca do app (AppShell) — ter os dois era a
+          duplicação apontada na auditoria §6. */}
       <RegistroRapido aberto={registroAberto} onFechar={() => setRegistroAberto(false)} />
     </div>
   );

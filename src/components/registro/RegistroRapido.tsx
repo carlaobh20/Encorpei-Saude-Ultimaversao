@@ -92,7 +92,14 @@ export function RegistroRapido({ aberto, onFechar }: { aberto: boolean; onFechar
           renderizada num portal, fora da casca do app, e sem a classe o texto
           voltaria à escala pequena justamente na tela onde o paciente digita
           número (auditoria §5). */}
-      <SheetContent side="bottom" className="leitura-paciente rounded-t-2xl max-h-[88vh] overflow-y-auto pb-8">
+      {/* `sm:max-w-2xl mx-auto`: a folha continua encostada embaixo, mas no
+          monitor de 1440px ela deixa de esticar um quadrado de uma palavra até
+          470px de largura. A coluna centralizada é a mesma largura de leitura
+          dos formulários do paciente. */}
+      <SheetContent
+        side="bottom"
+        className="leitura-paciente mx-auto sm:max-w-2xl rounded-t-2xl max-h-[88vh] overflow-y-auto pb-8"
+      >
         <SheetHeader className="text-left">
           <SheetTitle className="flex items-center gap-2">
             {form ? (
@@ -130,7 +137,10 @@ export function RegistroRapido({ aberto, onFechar }: { aberto: boolean; onFechar
               </p>
             </div>
 
-            <div className="grid grid-cols-3 gap-2.5">
+            {/* Duas colunas abaixo de 420px — o mesmo corte de `GradeOpcoes`.
+                Com três colunas em 360–390px o quadrado fica com ~100px de área
+                útil e "Oxigenação"/"Alimentação" partiam no meio da palavra. */}
+            <div className="grid grid-cols-2 min-[420px]:grid-cols-3 gap-2.5">
               {ordenados.map((a) => {
                 const falta = pendente(a.metric);
                 const feito = noPlano(a.metric) && !falta;
@@ -152,7 +162,13 @@ export function RegistroRapido({ aberto, onFechar }: { aberto: boolean; onFechar
                       </span>
                     ) : null}
                     <a.icone className={cn("h-6 w-6", falta ? "text-primary" : "text-muted-foreground")} strokeWidth={1.75} />
-                    <span className="text-base font-medium leading-tight text-center">{a.rotulo}</span>
+                    {/* `w-full break-words` é só a rede de segurança: com a grade
+                        de duas colunas em telas estreitas nenhum rótulo chega a
+                        precisar dela, mas um rótulo novo mais longo fica dentro
+                        do quadrado em vez de vazar pela borda. */}
+                    <span className="w-full text-base font-medium leading-tight text-center break-words">
+                      {a.rotulo}
+                    </span>
                     {/* "pedido hoje" é informação que o paciente PRECISA ler —
                         nunca abaixo de 12px (estava em 10px). */}
                     {falta ? <span className="text-sm text-primary font-semibold">pedido hoje</span> : null}

@@ -4,20 +4,46 @@
  * Registro grande de pressão, gráfico de 30 dias com a faixa-alvo, média de
  * MRPA (só medidas válidas de manguito — ver docs §4), histórico com badge
  * de proveniência, e frequência cardíaca de repouso.
+ *
+ * ── O que esta passada visual mudou (e só isso) ───────────────────────
+ * Nenhum limiar, nenhuma conta, nenhum texto clínico. O que mudou:
+ *
+ *  · O formulário deixou de herdar a largura da tela. Num monitor de 1440px
+ *    os campos "Sistólica" e "Diastólica" viravam duas faixas de 600px com
+ *    três dígitos no meio — o olho percorre meia tela entre o rótulo e o que
+ *    ele acabou de digitar, e é exatamente aí que se erra a linha.
+ *
+ *  · Os rótulos saíram de `text-xs` (13px na escala do paciente) para o
+ *    corpo de 17px do `Campo`. Rótulo de formulário é a instrução: encolhê-lo
+ *    para caber mais campo é economizar no lugar errado.
+ *
+ *  · UM botão azul por tela. "Salvar pressão" continua azul cheio; os dois
+ *    botões de "mediu com aparelho de braço?" viraram `OpcaoBotao`, que é
+ *    escolha e não ação — antes o "Sim" ficava azul cheio quando marcado e
+ *    competia com o Salvar logo abaixo.
+ *
+ *  · Os dois gráficos passaram à paleta e às peças comuns (`shell/Grafico`):
+ *    eixo com unidade, tick de 13px em vez de 10px, legenda em texto, e
+ *    animação desligada sob `prefers-reduced-motion`.
+ *
+ * A faixa-alvo do gráfico continua vindo de `useTargets()` e continua sendo
+ * desenhada do mesmo jeito: é referência do médico, não juízo do app.
  */
 import { useMemo, useState } from "react";
 import { Gauge, HeartPulse, Info } from "lucide-react";
 import {
-  ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip as RTooltip, ReferenceArea,
+  ResponsiveContainer, LineChart, Line, ReferenceArea,
 } from "recharts";
 import { PageHeader } from "@/components/shell/PageHeader";
-import { SectionHeader } from "@/components/shell/SectionHeader";
 import { SurfaceCard } from "@/components/shell/SurfaceCard";
 import { EmptyState } from "@/components/shell/EmptyState";
 import { TabPageSkeleton } from "@/components/shell/Skeletons";
+import {
+  TelaPaciente, TituloSecao, Formulario, Campo, OpcaoBotao, GradeOpcoes,
+  AreaGrafico, LegendaGrafico, NotaGrafico, usePrefereMenosMovimento,
+  gradeGrafico, eixoX, eixoY, dicaGrafico, COR_SERIE, COR_SERIE_APOIO,
+} from "@/components/shell";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
@@ -25,7 +51,6 @@ import { useBloodPressure, useHeartRate } from "@/hooks/useCardioReadings";
 import { useTargets } from "@/hooks/useCardioPatient";
 import { mediaMrpa } from "@/lib/clinical/cardioRiskEngine";
 import { rotuloProveniencia } from "@/lib/wearable/normalize";
-import { DOMAIN_COLORS } from "@/theme/colors";
 import type { BpContext } from "@/types/cardio";
 
 const CONTEXTO_LABEL: Record<BpContext, string> = {
@@ -49,6 +74,7 @@ export default function PressaoPage() {
   const bp = useBloodPressure();
   const hr = useHeartRate();
   const { targets, isLoading: loadingTargets } = useTargets();
+  const reduzirMovimento = usePrefereMenosMovimento();
 
   const [systolic, setSystolic] = useState("");
   const [diastolic, setDiastolic] = useState("");
@@ -98,151 +124,161 @@ export default function PressaoPage() {
 
   if (isLoading) {
     return (
-      <div>
+      <TelaPaciente>
         <PageHeader title="Pressão e coração" />
         <TabPageSkeleton />
-      </div>
+      </TelaPaciente>
     );
   }
 
   return (
-    <div className="pb-10">
+    <TelaPaciente>
       <PageHeader title="Pressão e coração" subtitle="Registre e acompanhe sua pressão" />
 
       {/* ── Registro ─────────────────────────────────────────────── */}
-      <SurfaceCard className="mb-5">
-        <SectionHeader title="Registrar pressão" icon={Gauge} />
-        <div className="grid grid-cols-2 gap-3 mb-3">
-          <div>
-            <Label htmlFor="sistolica" className="text-xs text-muted-foreground">Sistólica (o número maior)</Label>
+      <SurfaceCard>
+        <TituloSecao titulo="Registrar pressão" icone={Gauge} />
+        {/* `Formulario` segura a largura em 2xl mesmo dentro de um cartão que
+            ocupa a coluna toda — é o campo que precisa de teto, não o cartão. */}
+        <Formulario className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <Campo rotulo="Sistólica" ajuda="o número maior" para="sistolica">
+              <Input
+                id="sistolica" inputMode="numeric" placeholder="ex.: 128" value={systolic}
+                onChange={(e) => setSystolic(e.target.value.replace(/\D/g, ""))}
+                className="h-14 text-2xl font-bold text-center tabular-nums"
+              />
+            </Campo>
+            <Campo rotulo="Diastólica" ajuda="o número menor" para="diastolica">
+              <Input
+                id="diastolica" inputMode="numeric" placeholder="ex.: 82" value={diastolic}
+                onChange={(e) => setDiastolic(e.target.value.replace(/\D/g, ""))}
+                className="h-14 text-2xl font-bold text-center tabular-nums"
+              />
+            </Campo>
+          </div>
+
+          <Campo rotulo="Pulso" ajuda="opcional" para="pulso">
             <Input
-              id="sistolica" inputMode="numeric" placeholder="ex.: 128" value={systolic}
-              onChange={(e) => setSystolic(e.target.value.replace(/\D/g, ""))}
-              className="h-14 text-2xl font-bold text-center mt-1"
+              id="pulso" inputMode="numeric" placeholder="ex.: 70" value={pulse}
+              onChange={(e) => setPulse(e.target.value.replace(/\D/g, ""))}
+              className="tabular-nums"
             />
-          </div>
-          <div>
-            <Label htmlFor="diastolica" className="text-xs text-muted-foreground">Diastólica (o número menor)</Label>
-            <Input
-              id="diastolica" inputMode="numeric" placeholder="ex.: 82" value={diastolic}
-              onChange={(e) => setDiastolic(e.target.value.replace(/\D/g, ""))}
-              className="h-14 text-2xl font-bold text-center mt-1"
-            />
-          </div>
-        </div>
+          </Campo>
 
-        <div className="mb-3">
-          <Label htmlFor="pulso" className="text-xs text-muted-foreground">Pulso (opcional)</Label>
-          <Input
-            id="pulso" inputMode="numeric" placeholder="ex.: 70" value={pulse}
-            onChange={(e) => setPulse(e.target.value.replace(/\D/g, ""))}
-            className="h-11 mt-1"
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 mb-3">
-          <div>
-            <Label className="text-xs text-muted-foreground">Quando mediu</Label>
-            <Select value={context} onValueChange={(v) => setContext(v as BpContext)}>
-              <SelectTrigger className="h-11 mt-1"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {(Object.keys(CONTEXTO_LABEL) as BpContext[]).map((c) => (
-                  <SelectItem key={c} value={c}>{CONTEXTO_LABEL[c]}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
+            <Campo rotulo="Quando mediu">
+              <Select value={context} onValueChange={(v) => setContext(v as BpContext)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(CONTEXTO_LABEL) as BpContext[]).map((c) => (
+                    <SelectItem key={c} value={c}>{CONTEXTO_LABEL[c]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Campo>
+            <Campo rotulo="Braço">
+              <Select value={arm} onValueChange={(v) => setArm(v as "left" | "right")}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="right">Direito</SelectItem>
+                  <SelectItem value="left">Esquerdo</SelectItem>
+                </SelectContent>
+              </Select>
+            </Campo>
           </div>
-          <div>
-            <Label className="text-xs text-muted-foreground">Braço</Label>
-            <Select value={arm} onValueChange={(v) => setArm(v as "left" | "right")}>
-              <SelectTrigger className="h-11 mt-1"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="right">Direito</SelectItem>
-                <SelectItem value="left">Esquerdo</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
 
-        <div className="mb-1">
-          <Label className="text-xs text-muted-foreground">Você mediu com aparelho de braço?</Label>
-          <div className="grid grid-cols-2 gap-3 mt-1.5">
-            <button
-              type="button"
-              onClick={() => setCuffValidated(true)}
-              className={cn(
-                "h-12 rounded-xl border text-sm font-semibold transition-colors",
-                cuffValidated === true ? "bg-primary text-primary-foreground border-primary" : "border-border bg-card text-foreground"
-              )}
-            >
-              Sim, aparelho de braço
-            </button>
-            <button
-              type="button"
-              onClick={() => setCuffValidated(false)}
-              className={cn(
-                "h-12 rounded-xl border text-sm font-semibold transition-colors",
-                cuffValidated === false ? "bg-secondary text-foreground border-border-strong" : "border-border bg-card text-foreground"
-              )}
-            >
-              Não / outro tipo
-            </button>
-          </div>
-          <p className="text-xs text-muted-foreground mt-2 flex items-start gap-1.5">
-            <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-            Só a medida com aparelho de braço entra na média que seu médico usa e pode gerar alerta — aparelho de pulso ou de dedo não é confiável para isso.
-          </p>
-        </div>
+          {/* Escolha, não ação: por isso `OpcaoBotao` e não dois `Button`. O
+              azul cheio desta tela é do "Salvar pressão", e é um só. */}
+          <Campo
+            rotulo="Você mediu com aparelho de braço?"
+            ajuda={
+              <span className="flex items-start gap-1.5">
+                <Info className="h-4 w-4 shrink-0 mt-0.5" aria-hidden />
+                Só a medida com aparelho de braço entra na média que seu médico usa e pode gerar alerta — aparelho de pulso ou de dedo não é confiável para isso.
+              </span>
+            }
+          >
+            <GradeOpcoes>
+              <OpcaoBotao
+                selecionado={cuffValidated === true}
+                onClick={() => setCuffValidated(true)}
+                titulo="Sim, aparelho de braço"
+              />
+              <OpcaoBotao
+                selecionado={cuffValidated === false}
+                onClick={() => setCuffValidated(false)}
+                titulo="Não / outro tipo"
+              />
+            </GradeOpcoes>
+          </Campo>
 
-        <Button
-          size="xl"
-          className="w-full mt-4"
-          disabled={!podeSalvar || bp.registrar.isPending}
-          onClick={salvar}
-        >
-          {bp.registrar.isPending ? "Salvando..." : "Salvar pressão"}
-        </Button>
+          <Button
+            size="xl"
+            className="w-full"
+            disabled={!podeSalvar || bp.registrar.isPending}
+            onClick={salvar}
+          >
+            {bp.registrar.isPending ? "Salvando..." : "Salvar pressão"}
+          </Button>
+        </Formulario>
       </SurfaceCard>
 
       {/* ── Média de MRPA ────────────────────────────────────────── */}
-      <SurfaceCard className="mb-5 bg-cardio-50 border-0">
-        <p className="text-xs font-bold uppercase tracking-wide text-primary mb-1">Média dos últimos 7 dias</p>
+      <SurfaceCard className="bg-cardio-50 border-0">
+        <p className="text-sm font-bold uppercase tracking-wide text-primary mb-1">Média dos últimos 7 dias</p>
         {mrpa ? (
           <>
-            <p className="text-3xl font-bold text-foreground">{mrpa.systolic}/{mrpa.diastolic} <span className="text-base font-normal text-muted-foreground">mmHg</span></p>
-            <p className="text-xs text-muted-foreground mt-1">Calculada com {mrpa.n} medida{mrpa.n > 1 ? "s" : ""} válida{mrpa.n > 1 ? "s" : ""} de manhã e à noite, com manguito.</p>
+            <p className="text-3xl font-bold text-foreground tabular-nums">{mrpa.systolic}/{mrpa.diastolic} <span className="text-base font-normal text-muted-foreground">mmHg</span></p>
+            <p className="text-sm text-muted-foreground mt-1 leading-relaxed">Calculada com {mrpa.n} medida{mrpa.n > 1 ? "s" : ""} válida{mrpa.n > 1 ? "s" : ""} de manhã e à noite, com manguito.</p>
           </>
         ) : (
-          <p className="text-sm text-muted-foreground">Ainda não há medidas suficientes (mínimo 2, de manhã ou à noite, com aparelho de braço) para calcular a média.</p>
+          <p className="text-base text-muted-foreground leading-relaxed">Ainda não há medidas suficientes (mínimo 2, de manhã ou à noite, com aparelho de braço) para calcular a média.</p>
         )}
       </SurfaceCard>
 
       {/* ── Gráfico 30 dias ──────────────────────────────────────── */}
-      <div className="mb-5">
-        <SectionHeader title="Últimos 30 dias" subtitle="faixa em verde é o seu alvo" />
+      <section>
+        <TituloSecao titulo="Últimos 30 dias" subtitulo="faixa em verde é o seu alvo" />
         {chartData30d.length === 0 ? (
           <EmptyState icon={Gauge} title="Sem medidas ainda" description="Registre sua pressão para ver o gráfico." variant="card" />
         ) : (
           <SurfaceCard>
-            <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={chartData30d} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
-                <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeDasharray="2 4" />
-                <XAxis dataKey="dia" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} domain={["dataMin - 10", "dataMax + 10"]} />
-                <ReferenceArea y1={0} y2={targets.bp_diastolic_max} fill="hsl(var(--success))" fillOpacity={0.06} ifOverflow="extendDomain" />
-                <ReferenceArea y1={0} y2={targets.bp_systolic_max} fill="hsl(var(--success))" fillOpacity={0.06} ifOverflow="extendDomain" />
-                <RTooltip contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
-                <Line type="monotone" dataKey="sistolica" stroke={DOMAIN_COLORS.pressao} strokeWidth={2.5} dot={false} name="Sistólica" />
-                <Line type="monotone" dataKey="diastolica" stroke={DOMAIN_COLORS.atividade} strokeWidth={2.5} dot={false} name="Diastólica" />
-              </LineChart>
-            </ResponsiveContainer>
+            <AreaGrafico altura={220}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData30d} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+                  {gradeGrafico()}
+                  {eixoX("dia")}
+                  {eixoY({ unidade: "mmHg", dominio: ["dataMin - 10", "dataMax + 10"] })}
+                  <ReferenceArea y1={0} y2={targets.bp_diastolic_max} fill="hsl(var(--success))" fillOpacity={0.06} ifOverflow="extendDomain" />
+                  <ReferenceArea y1={0} y2={targets.bp_systolic_max} fill="hsl(var(--success))" fillOpacity={0.06} ifOverflow="extendDomain" />
+                  {dicaGrafico((v: never, nome: string) => [`${v} mmHg`, nome])}
+                  <Line
+                    type="monotone" dataKey="sistolica" name="Sistólica"
+                    stroke={COR_SERIE} strokeWidth={2.5} dot={false}
+                    isAnimationActive={!reduzirMovimento}
+                  />
+                  <Line
+                    type="monotone" dataKey="diastolica" name="Diastólica"
+                    stroke={COR_SERIE_APOIO} strokeWidth={2.5} dot={false}
+                    isAnimationActive={!reduzirMovimento}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </AreaGrafico>
+            <LegendaGrafico
+              itens={[
+                { cor: COR_SERIE, rotulo: "Sistólica (o número maior)" },
+                { cor: COR_SERIE_APOIO, rotulo: "Diastólica (o número menor)" },
+              ]}
+            />
           </SurfaceCard>
         )}
-      </div>
+      </section>
 
       {/* ── Histórico ────────────────────────────────────────────── */}
-      <div className="mb-5">
-        <SectionHeader title="Últimas leituras" />
+      <section>
+        <TituloSecao titulo="Últimas leituras" />
         {bp.readings.length === 0 ? (
           <EmptyState icon={Gauge} title="Nenhuma leitura registrada" description="Suas medidas aparecem aqui." variant="card" />
         ) : (
@@ -251,14 +287,14 @@ export default function PressaoPage() {
               const prov = rotuloProveniencia(r.source_type, r.validation_status, r.source_device_name);
               return (
                 <SurfaceCard key={r.id} className={cn("flex items-center justify-between gap-3", prov.tone === "warning" && "opacity-70")}>
-                  <div>
-                    <p className={cn("text-lg font-bold", prov.tone === "warning" ? "text-muted-foreground" : "text-foreground")}>
-                      {r.systolic}/{r.diastolic} <span className="text-xs font-normal text-muted-foreground">mmHg</span>
+                  <div className="min-w-0">
+                    <p className={cn("text-lg font-bold tabular-nums", prov.tone === "warning" ? "text-muted-foreground" : "text-foreground")}>
+                      {r.systolic}/{r.diastolic} <span className="text-sm font-normal text-muted-foreground">mmHg</span>
                     </p>
-                    <p className="text-xs text-muted-foreground">{fmtDiaHora(r.recorded_at)} · {CONTEXTO_LABEL[r.context]}</p>
+                    <p className="text-sm text-muted-foreground">{fmtDiaHora(r.recorded_at)} · {CONTEXTO_LABEL[r.context]}</p>
                   </div>
                   <span className={cn(
-                    "text-[10.5px] font-bold uppercase tracking-wide rounded-full px-2.5 py-1 shrink-0",
+                    "text-xs font-bold uppercase tracking-wide rounded-full px-2.5 py-1 shrink-0",
                     prov.tone === "warning" ? "bg-muted text-muted-foreground" : "bg-cardio-50 text-primary"
                   )}>
                     {prov.label}
@@ -268,34 +304,41 @@ export default function PressaoPage() {
             })}
           </div>
         )}
-        <p className="text-xs text-muted-foreground mt-2 flex items-start gap-1.5">
-          <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+        <NotaGrafico className="flex items-start gap-1.5">
+          <Info className="h-4 w-4 shrink-0 mt-0.5" aria-hidden />
           Leituras em cinza são estimativas da pulseira — não usadas para decisão clínica.
-        </p>
-      </div>
+        </NotaGrafico>
+      </section>
 
       {/* ── Frequência cardíaca de repouso ───────────────────────── */}
-      <div>
-        <SectionHeader title="Batimentos de repouso" icon={HeartPulse} />
+      <section>
+        <TituloSecao titulo="Batimentos de repouso" icone={HeartPulse} />
         {hrChartData.length === 0 ? (
           <EmptyState icon={HeartPulse} title="Sem dados de batimentos" description="Conecte a pulseira ou registre manualmente." variant="card" />
         ) : (
           <SurfaceCard>
-            <ResponsiveContainer width="100%" height={180}>
-              <LineChart data={hrChartData} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
-                <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeDasharray="2 4" />
-                <XAxis dataKey="dia" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} domain={["dataMin - 10", "dataMax + 10"]} />
-                <RTooltip contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} formatter={(v: number) => [`${v} bpm`, "Batimentos"]} />
-                <Line type="monotone" dataKey="bpm" stroke={DOMAIN_COLORS.coracao} strokeWidth={2.5} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
+            <AreaGrafico altura={180}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={hrChartData} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+                  {gradeGrafico()}
+                  {eixoX("dia")}
+                  {eixoY({ unidade: "bpm", dominio: ["dataMin - 10", "dataMax + 10"] })}
+                  {dicaGrafico((v: never) => [`${v} bpm`, "Batimentos"])}
+                  <Line
+                    type="monotone" dataKey="bpm" name="Batimentos"
+                    stroke={COR_SERIE} strokeWidth={2.5} dot={false}
+                    isAnimationActive={!reduzirMovimento}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </AreaGrafico>
+            <LegendaGrafico itens={[{ cor: COR_SERIE, rotulo: "Batimentos de repouso" }]} />
           </SurfaceCard>
         )}
-        <p className="text-xs text-muted-foreground mt-2">
+        <NotaGrafico>
           Variabilidade de batimentos (HRV) aparece aqui quando sua pulseira envia esse dado.
-        </p>
-      </div>
-    </div>
+        </NotaGrafico>
+      </section>
+    </TelaPaciente>
   );
 }

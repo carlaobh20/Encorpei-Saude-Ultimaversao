@@ -24,20 +24,38 @@
  *
  * 3) Nada nesta tela promete rejuvenescer coração. Projeção é cenário de
  *    cálculo, escrito como cenário de cálculo.
+ *
+ * ── O que a passada visual mudou ──────────────────────────────────────
+ * Nenhum número, nenhum limiar, nenhuma frase — inclusive a ordem das três
+ * seções, que é decisão de auditoria e não de layout. Mudou:
+ *
+ *  · Os dois gráficos passaram às peças comuns (`shell/Grafico`): eixo com
+ *    unidade, tick de 13px, e legenda escrita. O gráfico da idade do coração
+ *    tinha duas linhas — uma cheia e uma tracejada — sem nada dizendo qual
+ *    era a idade real e qual era a do coração. As cores saíram de
+ *    `DOMAIN_COLORS` (taxonomia interna: "pressão", "coração") para a paleta
+ *    da marca, que é a mesma da tela inicial.
+ *
+ *  · A animação de entrada das linhas foi desligada sob
+ *    `prefers-reduced-motion`.
+ *
+ *  · Os títulos de seção subiram para a escala de título (antes valiam 17px,
+ *    o mesmo do corpo — ou seja, não eram títulos).
  */
 import { useNavigate } from "react-router-dom";
 import {
   HeartPulse, Gauge, Activity, Info, ChevronRight, Footprints,
   Timer, HeartCrack,
 } from "lucide-react";
-import {
-  ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis,
-  CartesianGrid, Tooltip as RTooltip,
-} from "recharts";
+import { ResponsiveContainer, LineChart, Line, BarChart, Bar } from "recharts";
 import { PageHeader } from "@/components/shell/PageHeader";
-import { SectionHeader } from "@/components/shell/SectionHeader";
 import { SurfaceCard } from "@/components/shell/SurfaceCard";
 import { TabPageSkeleton } from "@/components/shell/Skeletons";
+import {
+  TelaPaciente, TituloSecao, AreaGrafico, LegendaGrafico, NotaGrafico,
+  usePrefereMenosMovimento, gradeGrafico, eixoX, eixoY, dicaGrafico,
+  COR_SERIE, COR_REFERENCIA,
+} from "@/components/shell";
 import { Button } from "@/components/ui/button";
 import {
   useIdadeDoCoracao, useTempoNoAlvo, useCapacidade, useConquistas,
@@ -45,7 +63,6 @@ import {
 import {
   MINIMO_DE_MEDIDAS, ROTULO_MEDIDAS_NA_META, rotuloPeriodo,
 } from "@/lib/clinical/timeInRange";
-import { DOMAIN_COLORS } from "@/theme/colors";
 
 const ROTA_DO_QUE_FALTA: Record<string, { label: string; rota: string }> = {
   "colesterol total": { label: "Registrar exame de colesterol", rota: "/exames" },
@@ -64,15 +81,16 @@ export default function MeuCoracaoPage() {
   const tempoNoAlvo = useTempoNoAlvo();
   const capacidade = useCapacidade();
   const conquistas = useConquistas();
+  const reduzirMovimento = usePrefereMenosMovimento();
 
   const isLoading = idadeCoracao.isLoading || tempoNoAlvo.isLoading || capacidade.isLoading;
 
   if (isLoading) {
     return (
-      <div>
+      <TelaPaciente>
         <PageHeader title="Minha evolução" />
         <TabPageSkeleton />
-      </div>
+      </TelaPaciente>
     );
   }
 
@@ -93,14 +111,14 @@ export default function MeuCoracaoPage() {
   const meta = tempoNoAlvo.mes;
 
   return (
-    <div>
+    <TelaPaciente>
       <PageHeader title="Minha evolução" subtitle="A prova de que o esforço está funcionando" />
 
       {/* ── Medidas de pressão dentro da meta ─────────────────────────
           Primeiro lugar porque é o único dos três números que responde ao
           que o paciente faz esta semana. */}
-      <div className="mb-6">
-        <SectionHeader title={ROTULO_MEDIDAS_NA_META} icon={Gauge} />
+      <section>
+        <TituloSecao titulo={ROTULO_MEDIDAS_NA_META} icone={Gauge} />
         <SurfaceCard className="mb-3">
           {meta.suficiente && meta.percentual != null ? (
             <div className="text-center py-2">
@@ -125,7 +143,7 @@ export default function MeuCoracaoPage() {
                 Você tem {meta.total} medida{meta.total === 1 ? "" : "s"} (n={meta.total}) com aparelho de braço {rotuloPeriodo(meta.dias)}.
                 A partir de {MINIMO_DE_MEDIDAS} medidas o app mostra o seu percentual.
               </p>
-              <Button className="w-full mt-4 h-12 text-base" onClick={() => navigate("/pressao")}>
+              <Button size="xl" className="w-full mt-4" onClick={() => navigate("/pressao")}>
                 Medir a pressão
               </Button>
             </div>
@@ -135,28 +153,36 @@ export default function MeuCoracaoPage() {
         {temSerie && (
           <SurfaceCard>
             <p className="text-base font-medium text-foreground mb-3">Semana a semana</p>
-            <ResponsiveContainer width="100%" height={180}>
-              <BarChart data={serieMedidas} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
-                <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeDasharray="2 4" />
-                <XAxis dataKey="semana" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                <YAxis domain={[0, 100]} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                <RTooltip
-                  contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 14 }}
-                  formatter={(v: number, _n, item) => [`${v}% (n=${item?.payload?.total ?? 0})`, "Dentro da meta"]}
-                />
-                <Bar dataKey="percentual" fill={DOMAIN_COLORS.pressao} radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-            <p className="text-sm text-muted-foreground mt-2">
+            <AreaGrafico altura={200}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={serieMedidas} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+                  {gradeGrafico()}
+                  {eixoX("semana")}
+                  {eixoY({ unidade: "%", dominio: [0, 100] })}
+                  {dicaGrafico((v: never, _n: string, item: never) => [
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    `${v}% (n=${(item as any)?.payload?.total ?? 0})`, "Dentro da meta",
+                  ])}
+                  <Bar
+                    dataKey="percentual" name="Dentro da meta" fill={COR_SERIE} radius={[6, 6, 0, 0]}
+                    isAnimationActive={!reduzirMovimento}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </AreaGrafico>
+            <LegendaGrafico
+              itens={[{ cor: COR_SERIE, rotulo: "Medidas dentro da meta na semana" }]}
+            />
+            <NotaGrafico>
               Semana sem medida não aparece como zero — aparece vazia.
-            </p>
+            </NotaGrafico>
           </SurfaceCard>
         )}
-      </div>
+      </section>
 
       {/* ── Capacidade ────────────────────────────────────────────── */}
-      <div className="mb-6">
-        <SectionHeader title="Capacidade" icon={Activity} />
+      <section>
+        <TituloSecao titulo="Capacidade" icone={Activity} />
         <div className="space-y-3 mb-3">
           <SurfaceCard>
             <div className="flex items-center gap-3 mb-1">
@@ -189,32 +215,50 @@ export default function MeuCoracaoPage() {
             <p className="text-base text-muted-foreground mt-1 leading-relaxed">{capacidade.evolucao.recuperacao.frase}</p>
           </SurfaceCard>
         </div>
-        <Button variant="outline" className="w-full h-12 text-base" onClick={() => navigate("/caminhada")}>
+        <Button variant="outline" size="xl" className="w-full" onClick={() => navigate("/caminhada")}>
           Fazer ou refazer os testes
         </Button>
-      </div>
+      </section>
 
       {/* ══ EVOLUÇÃO ══════════════════════════════════════════════════
           A curva primeiro (o que mudou ao longo do tempo), e a Idade do
           Coração como um cartão DENTRO desta seção — não como manchete do
           app. É aqui que o número tem contexto: ao lado da explicação do
           que ele é, e logo acima do que efetivamente o move. */}
-      <div className="mb-6">
-        <SectionHeader title="Evolução" icon={HeartPulse} />
+      <section>
+        <TituloSecao titulo="Evolução" icone={HeartPulse} />
 
         {idadeCoracao.aplicavel && historico.length >= 2 && (
           <SurfaceCard className="mb-3">
             <p className="text-base font-medium text-foreground mb-3">Idade do coração ao longo do tempo</p>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={historico} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
-                <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeDasharray="2 4" />
-                <XAxis dataKey="dia" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                <RTooltip contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 14 }} />
-                <Line type="monotone" dataKey="idadeDoCoracao" name="Idade do coração" stroke={DOMAIN_COLORS.coracao} strokeWidth={2.5} dot={false} />
-                <Line type="monotone" dataKey="idadeReal" name="Idade real" stroke="hsl(var(--muted-foreground))" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
+            <AreaGrafico altura={200}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={historico} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+                  {gradeGrafico()}
+                  {eixoX("dia")}
+                  {eixoY({ unidade: "anos" })}
+                  {dicaGrafico((v: never, nome: string) => [`${v} anos`, nome])}
+                  <Line
+                    type="monotone" dataKey="idadeDoCoracao" name="Idade do coração"
+                    stroke={COR_SERIE} strokeWidth={2.5} dot={false}
+                    isAnimationActive={!reduzirMovimento}
+                  />
+                  <Line
+                    type="monotone" dataKey="idadeReal" name="Idade real"
+                    stroke={COR_REFERENCIA} strokeWidth={1.5} strokeDasharray="4 4" dot={false}
+                    isAnimationActive={!reduzirMovimento}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </AreaGrafico>
+            {/* Duas linhas sem legenda eram duas linhas anônimas: quem lê não
+                tinha como saber qual delas é a própria idade. */}
+            <LegendaGrafico
+              itens={[
+                { cor: COR_SERIE, rotulo: "Idade do coração (estimativa)" },
+                { cor: COR_REFERENCIA, rotulo: "Sua idade real" },
+              ]}
+            />
           </SurfaceCard>
         )}
 
@@ -286,7 +330,7 @@ export default function MeuCoracaoPage() {
                 const info = ROTA_DO_QUE_FALTA[f];
                 if (!info) return null;
                 return (
-                  <Button key={f} variant="outline" className="justify-between h-12 text-base" onClick={() => navigate(info.rota)}>
+                  <Button key={f} variant="outline" size="lg" className="justify-between" onClick={() => navigate(info.rota)}>
                     {info.label} <ChevronRight className="h-5 w-5" aria-hidden="true" />
                   </Button>
                 );
@@ -331,12 +375,12 @@ export default function MeuCoracaoPage() {
             </p>
           </SurfaceCard>
         )}
-      </div>
+      </section>
 
       {/* ── Conquistas ────────────────────────────────────────────── */}
       {conquistas.length > 0 && (
-        <div>
-          <SectionHeader title="Conquistas" />
+        <section>
+          <TituloSecao titulo="Conquistas" />
           <SurfaceCard>
             <ul className="space-y-3">
               {conquistas.map((c) => (
@@ -346,8 +390,8 @@ export default function MeuCoracaoPage() {
               ))}
             </ul>
           </SurfaceCard>
-        </div>
+        </section>
       )}
-    </div>
+    </TelaPaciente>
   );
 }

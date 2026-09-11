@@ -4,21 +4,39 @@
  * REGRA CRÍTICA (docs §2.3 e contrato regra 3): dor no peito em repouso com
  * duração acima de 10 minutos, ou desmaio, não vira registro para o médico
  * ver depois — a tela redireciona na hora para /emergencia.
+ *
+ * ── O que a passada visual mudou ──────────────────────────────────────
+ * Nenhum gatilho, nenhuma pergunta, nenhum texto. A regra de duração
+ * desconhecida contar como longa está onde sempre esteve, com o mesmo
+ * comentário. Mudou:
+ *
+ *  · Os rótulos das perguntas saíram de `text-xs` — 13px na escala do
+ *    paciente — para o corpo de 17px do `Campo`. Aqui isso não é conforto: a
+ *    pergunta É o formulário, e ler "A dor vai para algum lugar (braço,
+ *    costas, mandíbula)?" em letra miúda é onde a resposta sai errada.
+ *
+ *  · O `Botao` local (11 de altura, azul cheio quando marcado) virou
+ *    `OpcaoBotao`. Marcar "Em repouso" era azul cheio do mesmo tom do
+ *    "Registrar" logo abaixo — dois azuis, e o de cima nem era ação.
+ *
+ *  · A grade de sintomas ganhou alvo maior e quebra em uma coluna abaixo de
+ *    380px, onde "Palpitação (coração disparado)" partia no meio.
  */
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
   HeartCrack, Wind, Activity, Droplets, PersonStanding, Footprints,
-  Stethoscope, BatteryLow, Gauge, ChevronLeft, AlertTriangle,
+  Stethoscope, BatteryLow, Gauge, ChevronLeft,
 } from "lucide-react";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { SurfaceCard } from "@/components/shell/SurfaceCard";
+import {
+  TelaPaciente, Formulario, Campo, OpcaoBotao, AvisoDaTela,
+} from "@/components/shell";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
 import { useSymptoms } from "@/hooks/useCardioClinical";
 import { classificarNyha, NYHA_DESCRICAO } from "@/lib/clinical/scores";
 import type { SymptomType } from "@/types/cardio";
@@ -42,19 +60,9 @@ const SINTOMAS: SymptomDef[] = [
   { type: "dizziness", label: "Tontura", icon: Gauge },
 ];
 
-function Botao({ pressionado, onClick, children }: { pressionado: boolean; onClick: () => void; children: ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "h-11 px-4 rounded-xl border text-sm font-semibold transition-colors",
-        pressionado ? "bg-primary text-primary-foreground border-primary" : "border-border bg-card text-foreground"
-      )}
-    >
-      {children}
-    </button>
-  );
+/** Linha de escolhas que quebra em vez de estourar a largura em 360px. */
+function LinhaOpcoes({ children }: { children: React.ReactNode }) {
+  return <div className="flex flex-wrap gap-2">{children}</div>;
 }
 
 export default function SintomasPage() {
@@ -157,234 +165,287 @@ export default function SintomasPage() {
   if (selecionado) {
     const def = SINTOMAS.find((s) => s.type === selecionado)!;
     return (
-      <div className="pb-10">
+      <TelaPaciente>
         <PageHeader
           title={def.label}
           action={
-            <Button variant="ghost" size="icon" onClick={limpar} aria-label="Voltar">
+            <Button variant="ghost" size="icon" className="touch-target" onClick={limpar} aria-label="Voltar">
               <ChevronLeft className="h-5 w-5" />
             </Button>
           }
         />
 
         {selecionado === "chest_pain" && (
-          <SurfaceCard className="space-y-4">
-            <SurfaceCard className="bg-warning-bg border-0">
-              <p className="text-sm text-foreground flex items-start gap-2">
-                <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+          <SurfaceCard>
+            <Formulario className="space-y-5">
+              {/* O aviso vem ANTES do formulário: quem está com dor agora não
+                  pode encontrá-lo depois de seis perguntas. */}
+              <AvisoDaTela tom="atencao">
                 Se a dor está acontecendo agora, não passa e você está em repouso, não espere — vá direto para{" "}
-                <button className="underline font-semibold" onClick={() => navigate("/emergencia")}>emergência</button>.
-              </p>
-            </SurfaceCard>
-            <div>
-              <Label className="text-xs text-muted-foreground">Onde dói</Label>
-              <Input value={local} onChange={(e) => setLocal(e.target.value)} placeholder="ex.: meio do peito" className="h-11 mt-1" />
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Tipo de dor</Label>
-              <div className="flex flex-wrap gap-2 mt-1.5">
-                {["Aperto", "Queimação", "Pontada"].map((t) => (
-                  <Botao key={t} pressionado={tipo === t} onClick={() => setTipo(t)}>{t}</Botao>
-                ))}
-              </div>
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Há quanto tempo (minutos)</Label>
-              <Input inputMode="numeric" value={duracao} onChange={(e) => setDuracao(e.target.value.replace(/\D/g, ""))} className="h-11 mt-1" />
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Quando começou</Label>
-              <div className="flex flex-wrap gap-2 mt-1.5">
-                <Botao pressionado={gatilho === "effort"} onClick={() => setGatilho("effort")}>Durante esforço</Botao>
-                <Botao pressionado={gatilho === "rest"} onClick={() => setGatilho("rest")}>Em repouso</Botao>
-                <Botao pressionado={gatilho === "emotion"} onClick={() => setGatilho("emotion")}>Com emoção/estresse</Botao>
-              </div>
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">A dor vai para algum lugar (braço, costas, mandíbula)?</Label>
-              <Input value={irradiacao} onChange={(e) => setIrradiacao(e.target.value)} className="h-11 mt-1" />
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Sentiu junto com a dor</Label>
-              <div className="flex flex-wrap gap-2 mt-1.5">
-                {["Suor frio", "Náusea", "Falta de ar"].map((s) => (
-                  <Botao key={s} pressionado={associados.includes(s)} onClick={() => toggleAssociado(s)}>{s}</Botao>
-                ))}
-              </div>
-            </div>
-            <Button size="xl" className="w-full" onClick={enviarDorNoPeito} disabled={registrar.isPending}>
-              Registrar
-            </Button>
+                <button type="button" className="underline font-semibold" onClick={() => navigate("/emergencia")}>emergência</button>.
+              </AvisoDaTela>
+
+              <Campo rotulo="Onde dói" para="dor-local">
+                <Input id="dor-local" value={local} onChange={(e) => setLocal(e.target.value)} placeholder="ex.: meio do peito" />
+              </Campo>
+
+              <Campo rotulo="Tipo de dor">
+                <LinhaOpcoes>
+                  {["Aperto", "Queimação", "Pontada"].map((t) => (
+                    <OpcaoBotao key={t} className="w-auto" selecionado={tipo === t} onClick={() => setTipo(t)} titulo={t} />
+                  ))}
+                </LinhaOpcoes>
+              </Campo>
+
+              <Campo rotulo="Há quanto tempo (minutos)" para="dor-duracao">
+                <Input id="dor-duracao" inputMode="numeric" value={duracao} onChange={(e) => setDuracao(e.target.value.replace(/\D/g, ""))} className="tabular-nums" />
+              </Campo>
+
+              <Campo rotulo="Quando começou">
+                <LinhaOpcoes>
+                  <OpcaoBotao className="w-auto" selecionado={gatilho === "effort"} onClick={() => setGatilho("effort")} titulo="Durante esforço" />
+                  <OpcaoBotao className="w-auto" selecionado={gatilho === "rest"} onClick={() => setGatilho("rest")} titulo="Em repouso" />
+                  <OpcaoBotao className="w-auto" selecionado={gatilho === "emotion"} onClick={() => setGatilho("emotion")} titulo="Com emoção/estresse" />
+                </LinhaOpcoes>
+              </Campo>
+
+              <Campo rotulo="A dor vai para algum lugar (braço, costas, mandíbula)?" para="dor-irradiacao">
+                <Input id="dor-irradiacao" value={irradiacao} onChange={(e) => setIrradiacao(e.target.value)} />
+              </Campo>
+
+              <Campo rotulo="Sentiu junto com a dor">
+                <LinhaOpcoes>
+                  {["Suor frio", "Náusea", "Falta de ar"].map((s) => (
+                    <OpcaoBotao key={s} className="w-auto" selecionado={associados.includes(s)} onClick={() => toggleAssociado(s)} titulo={s} />
+                  ))}
+                </LinhaOpcoes>
+              </Campo>
+
+              <Button size="xl" className="w-full" onClick={enviarDorNoPeito} disabled={registrar.isPending}>
+                Registrar
+              </Button>
+            </Formulario>
           </SurfaceCard>
         )}
 
         {selecionado === "dyspnea" && (
-          <SurfaceCard className="space-y-4">
-            <div>
-              <Label className="text-xs text-muted-foreground">Quando você sente falta de ar?</Label>
-              <div className="flex flex-col gap-2 mt-1.5">
-                <Botao pressionado={atividadeHabitual} onClick={() => setAtividadeHabitual((v) => !v)}>Em atividades do dia a dia (ex.: subir escada)</Botao>
-                <Botao pressionado={esforcoLeve} onClick={() => setEsforcoLeve((v) => !v)}>Em esforços leves (ex.: andar em casa)</Botao>
-                <Botao pressionado={repouso} onClick={() => setRepouso((v) => !v)}>Mesmo parado, sem fazer nada</Botao>
-              </div>
-            </div>
-            <SurfaceCard className="bg-cardio-50 border-0">
-              <p className="text-xs font-bold uppercase tracking-wide text-primary mb-1">Classificação (NYHA {nyhaClasse})</p>
-              <p className="text-sm text-foreground">{NYHA_DESCRICAO[nyhaClasse]}</p>
-            </SurfaceCard>
-            <div>
-              <Label className="text-xs text-muted-foreground">Quantos travesseiros usa para dormir sem faltar ar?</Label>
-              <Input inputMode="numeric" value={travesseiros} onChange={(e) => setTravesseiros(e.target.value.replace(/\D/g, ""))} className="h-11 mt-1 w-24" />
-            </div>
-            <Botao pressionado={dpn} onClick={() => setDpn((v) => !v)}>Já acordei à noite sem conseguir respirar</Botao>
-            <Button
-              size="xl" className="w-full" disabled={registrar.isPending}
-              onClick={() => salvarESeguir({ nyha: nyhaClasse, travesseiros: Number(travesseiros), dispneia_paroxistica_noturna: dpn }, null)}
-            >
-              Registrar
-            </Button>
+          <SurfaceCard>
+            <Formulario className="space-y-5">
+              <Campo rotulo="Quando você sente falta de ar?">
+                <div className="flex flex-col gap-2">
+                  <OpcaoBotao selecionado={atividadeHabitual} onClick={() => setAtividadeHabitual((v) => !v)} titulo="Em atividades do dia a dia (ex.: subir escada)" />
+                  <OpcaoBotao selecionado={esforcoLeve} onClick={() => setEsforcoLeve((v) => !v)} titulo="Em esforços leves (ex.: andar em casa)" />
+                  <OpcaoBotao selecionado={repouso} onClick={() => setRepouso((v) => !v)} titulo="Mesmo parado, sem fazer nada" />
+                </div>
+              </Campo>
+
+              <SurfaceCard className="bg-cardio-50 border-0">
+                <p className="text-sm font-bold uppercase tracking-wide text-primary mb-1">Classificação (NYHA {nyhaClasse})</p>
+                <p className="text-base text-foreground leading-relaxed">{NYHA_DESCRICAO[nyhaClasse]}</p>
+              </SurfaceCard>
+
+              <Campo rotulo="Quantos travesseiros usa para dormir sem faltar ar?" para="travesseiros">
+                <Input id="travesseiros" inputMode="numeric" value={travesseiros} onChange={(e) => setTravesseiros(e.target.value.replace(/\D/g, ""))} className="w-24 tabular-nums" />
+              </Campo>
+
+              <OpcaoBotao selecionado={dpn} onClick={() => setDpn((v) => !v)} titulo="Já acordei à noite sem conseguir respirar" />
+
+              <Button
+                size="xl" className="w-full" disabled={registrar.isPending}
+                onClick={() => salvarESeguir({ nyha: nyhaClasse, travesseiros: Number(travesseiros), dispneia_paroxistica_noturna: dpn }, null)}
+              >
+                Registrar
+              </Button>
+            </Formulario>
           </SurfaceCard>
         )}
 
         {selecionado === "palpitations" && (
-          <SurfaceCard className="space-y-4">
-            <div>
-              <Label className="text-xs text-muted-foreground">Começou de repente ou foi piorando aos poucos?</Label>
-              <div className="flex gap-2 mt-1.5">
-                <Botao pressionado={inicioSubito === true} onClick={() => setInicioSubito(true)}>De repente</Botao>
-                <Botao pressionado={inicioSubito === false} onClick={() => setInicioSubito(false)}>Aos poucos</Botao>
-              </div>
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">O batimento estava regular ou desorganizado?</Label>
-              <div className="flex gap-2 mt-1.5">
-                <Botao pressionado={ritmoRegular === true} onClick={() => setRitmoRegular(true)}>Regular</Botao>
-                <Botao pressionado={ritmoRegular === false} onClick={() => setRitmoRegular(false)}>Irregular</Botao>
-              </div>
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Quanto tempo durou (minutos)</Label>
-              <Input inputMode="numeric" value={duracaoPalpitacao} onChange={(e) => setDuracaoPalpitacao(e.target.value.replace(/\D/g, ""))} className="h-11 mt-1" />
-            </div>
-            <Button
-              size="xl" className="w-full" disabled={registrar.isPending}
-              onClick={() => salvarESeguir(
-                { inicio_subito: !!inicioSubito, ritmo_regular: !!ritmoRegular },
-                duracaoPalpitacao.trim() ? Number(duracaoPalpitacao) : null
-              )}
-            >
-              Registrar
-            </Button>
+          <SurfaceCard>
+            <Formulario className="space-y-5">
+              <Campo rotulo="Começou de repente ou foi piorando aos poucos?">
+                <LinhaOpcoes>
+                  <OpcaoBotao className="w-auto" selecionado={inicioSubito === true} onClick={() => setInicioSubito(true)} titulo="De repente" />
+                  <OpcaoBotao className="w-auto" selecionado={inicioSubito === false} onClick={() => setInicioSubito(false)} titulo="Aos poucos" />
+                </LinhaOpcoes>
+              </Campo>
+
+              <Campo rotulo="O batimento estava regular ou desorganizado?">
+                <LinhaOpcoes>
+                  <OpcaoBotao className="w-auto" selecionado={ritmoRegular === true} onClick={() => setRitmoRegular(true)} titulo="Regular" />
+                  <OpcaoBotao className="w-auto" selecionado={ritmoRegular === false} onClick={() => setRitmoRegular(false)} titulo="Irregular" />
+                </LinhaOpcoes>
+              </Campo>
+
+              <Campo rotulo="Quanto tempo durou (minutos)" para="palpitacao-duracao">
+                <Input id="palpitacao-duracao" inputMode="numeric" value={duracaoPalpitacao} onChange={(e) => setDuracaoPalpitacao(e.target.value.replace(/\D/g, ""))} className="tabular-nums" />
+              </Campo>
+
+              <Button
+                size="xl" className="w-full" disabled={registrar.isPending}
+                onClick={() => salvarESeguir(
+                  { inicio_subito: !!inicioSubito, ritmo_regular: !!ritmoRegular },
+                  duracaoPalpitacao.trim() ? Number(duracaoPalpitacao) : null
+                )}
+              >
+                Registrar
+              </Button>
+            </Formulario>
           </SurfaceCard>
         )}
 
         {selecionado === "edema" && (
-          <SurfaceCard className="space-y-4">
-            <div>
-              <Label className="text-xs text-muted-foreground">Onde está inchado?</Label>
-              <div className="flex flex-wrap gap-2 mt-1.5">
-                {["Tornozelo", "Perna", "Abdome"].map((l) => (
-                  <Botao key={l} pressionado={localEdema === l} onClick={() => setLocalEdema(l)}>{l}</Botao>
-                ))}
-              </div>
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Se apertar com o dedo, fica marcado?</Label>
-              <div className="flex gap-2 mt-1.5">
-                <Botao pressionado={cacifo === true} onClick={() => setCacifo(true)}>Sim</Botao>
-                <Botao pressionado={cacifo === false} onClick={() => setCacifo(false)}>Não</Botao>
-              </div>
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Piora em que período?</Label>
-              <div className="flex gap-2 mt-1.5">
-                {["Manhã", "Fim do dia"].map((p) => (
-                  <Botao key={p} pressionado={periodo === p} onClick={() => setPeriodo(p)}>{p}</Botao>
-                ))}
-              </div>
-            </div>
-            <Button
-              size="xl" className="w-full" disabled={registrar.isPending}
-              onClick={() => salvarESeguir({ local: localEdema ?? "", cacifo: !!cacifo, periodo: periodo ?? "" }, null)}
-            >
-              Registrar
-            </Button>
+          <SurfaceCard>
+            <Formulario className="space-y-5">
+              <Campo rotulo="Onde está inchado?">
+                <LinhaOpcoes>
+                  {["Tornozelo", "Perna", "Abdome"].map((l) => (
+                    <OpcaoBotao key={l} className="w-auto" selecionado={localEdema === l} onClick={() => setLocalEdema(l)} titulo={l} />
+                  ))}
+                </LinhaOpcoes>
+              </Campo>
+
+              <Campo rotulo="Se apertar com o dedo, fica marcado?">
+                <LinhaOpcoes>
+                  <OpcaoBotao className="w-auto" selecionado={cacifo === true} onClick={() => setCacifo(true)} titulo="Sim" />
+                  <OpcaoBotao className="w-auto" selecionado={cacifo === false} onClick={() => setCacifo(false)} titulo="Não" />
+                </LinhaOpcoes>
+              </Campo>
+
+              <Campo rotulo="Piora em que período?">
+                <LinhaOpcoes>
+                  {["Manhã", "Fim do dia"].map((p) => (
+                    <OpcaoBotao key={p} className="w-auto" selecionado={periodo === p} onClick={() => setPeriodo(p)} titulo={p} />
+                  ))}
+                </LinhaOpcoes>
+              </Campo>
+
+              <Button
+                size="xl" className="w-full" disabled={registrar.isPending}
+                onClick={() => salvarESeguir({ local: localEdema ?? "", cacifo: !!cacifo, periodo: periodo ?? "" }, null)}
+              >
+                Registrar
+              </Button>
+            </Formulario>
           </SurfaceCard>
         )}
 
         {selecionado === "presyncope" && (
-          <SurfaceCard className="space-y-4">
-            <SurfaceCard className="bg-warning-bg border-0">
-              <p className="text-sm text-foreground">Se desmaiar de verdade, pare e procure emergência na hora.</p>
-            </SurfaceCard>
-            <div>
-              <Label className="text-xs text-muted-foreground">Aconteceu fazendo o quê?</Label>
-              <div className="flex flex-wrap gap-2 mt-1.5">
-                {["Esforço", "Ao levantar rápido", "Ao urinar"].map((c) => (
-                  <Botao key={c} pressionado={tipo === c} onClick={() => setTipo(c)}>{c}</Botao>
-                ))}
-              </div>
-            </div>
-            <Textarea placeholder="Sentiu algum aviso antes (tontura, visão escura, suor)?" value={notas} onChange={(e) => setNotas(e.target.value)} />
-            <Button size="xl" className="w-full" disabled={registrar.isPending} onClick={() => salvarESeguir({ contexto: tipo ?? "" }, null)}>
-              Registrar
-            </Button>
+          <SurfaceCard>
+            <Formulario className="space-y-5">
+              <AvisoDaTela tom="atencao">
+                Se desmaiar de verdade, pare e procure emergência na hora.
+              </AvisoDaTela>
+
+              <Campo rotulo="Aconteceu fazendo o quê?">
+                <LinhaOpcoes>
+                  {["Esforço", "Ao levantar rápido", "Ao urinar"].map((c) => (
+                    <OpcaoBotao key={c} className="w-auto" selecionado={tipo === c} onClick={() => setTipo(c)} titulo={c} />
+                  ))}
+                </LinhaOpcoes>
+              </Campo>
+
+              <Campo rotulo="Quer contar mais alguma coisa?" para="presyncope-notas">
+                <Textarea
+                  id="presyncope-notas"
+                  placeholder="Sentiu algum aviso antes (tontura, visão escura, suor)?"
+                  value={notas}
+                  onChange={(e) => setNotas(e.target.value)}
+                  className="min-h-[96px]"
+                />
+              </Campo>
+
+              <Button size="xl" className="w-full" disabled={registrar.isPending} onClick={() => salvarESeguir({ contexto: tipo ?? "" }, null)}>
+                Registrar
+              </Button>
+            </Formulario>
           </SurfaceCard>
         )}
 
         {selecionado === "claudication" && (
-          <SurfaceCard className="space-y-4">
-            <div>
-              <Label className="text-xs text-muted-foreground">Quantos metros/quarteirões você anda até a dor aparecer?</Label>
-              <Input value={distancia} onChange={(e) => setDistancia(e.target.value)} placeholder="ex.: 2 quarteirões" className="h-11 mt-1" />
-            </div>
-            <Button size="xl" className="w-full" disabled={registrar.isPending} onClick={() => salvarESeguir({ distancia }, null)}>
-              Registrar
-            </Button>
+          <SurfaceCard>
+            <Formulario className="space-y-5">
+              <Campo rotulo="Quantos metros/quarteirões você anda até a dor aparecer?" para="claudicacao-distancia">
+                <Input id="claudicacao-distancia" value={distancia} onChange={(e) => setDistancia(e.target.value)} placeholder="ex.: 2 quarteirões" />
+              </Campo>
+              <Button size="xl" className="w-full" disabled={registrar.isPending} onClick={() => salvarESeguir({ distancia }, null)}>
+                Registrar
+              </Button>
+            </Formulario>
           </SurfaceCard>
         )}
 
         {selecionado === "dry_cough" && (
-          <SurfaceCard className="space-y-4">
-            <p className="text-sm text-muted-foreground">Tosse seca pode ser efeito de um dos seus remédios — vale contar ao médico.</p>
-            <Textarea placeholder="Quando começou, o que piora ou melhora..." value={notas} onChange={(e) => setNotas(e.target.value)} />
-            <Button size="xl" className="w-full" disabled={registrar.isPending} onClick={() => salvarESeguir({}, null)}>
-              Registrar
-            </Button>
+          <SurfaceCard>
+            <Formulario className="space-y-5">
+              <p className="text-base text-muted-foreground leading-relaxed">Tosse seca pode ser efeito de um dos seus remédios — vale contar ao médico.</p>
+              <Campo rotulo="Quer contar mais alguma coisa?" para="tosse-notas">
+                <Textarea
+                  id="tosse-notas"
+                  placeholder="Quando começou, o que piora ou melhora..."
+                  value={notas}
+                  onChange={(e) => setNotas(e.target.value)}
+                  className="min-h-[96px]"
+                />
+              </Campo>
+              <Button size="xl" className="w-full" disabled={registrar.isPending} onClick={() => salvarESeguir({}, null)}>
+                Registrar
+              </Button>
+            </Formulario>
           </SurfaceCard>
         )}
 
         {(selecionado === "fatigue" || selecionado === "dizziness") && (
-          <SurfaceCard className="space-y-4">
-            {selecionado === "fatigue" && (
-              <div>
-                <Label className="text-xs text-muted-foreground">De 0 (nada) a 10 (muito forte), quanto cansaço?</Label>
-                <Input inputMode="numeric" value={intensidade} onChange={(e) => setIntensidade(e.target.value.replace(/\D/g, ""))} className="h-14 mt-1 w-24 text-2xl font-bold text-center" />
-              </div>
-            )}
-            <Textarea placeholder="Quer contar mais alguma coisa?" value={notas} onChange={(e) => setNotas(e.target.value)} />
-            <Button size="xl" className="w-full" disabled={registrar.isPending} onClick={() => salvarESeguir({}, null)}>
-              Registrar
-            </Button>
+          <SurfaceCard>
+            <Formulario className="space-y-5">
+              {selecionado === "fatigue" && (
+                <Campo rotulo="De 0 (nada) a 10 (muito forte), quanto cansaço?" para="cansaco-intensidade">
+                  <Input
+                    id="cansaco-intensidade" inputMode="numeric" value={intensidade}
+                    onChange={(e) => setIntensidade(e.target.value.replace(/\D/g, ""))}
+                    className="h-14 w-24 text-2xl font-bold text-center tabular-nums"
+                  />
+                </Campo>
+              )}
+              <Campo rotulo="Quer contar mais alguma coisa?" para="sintoma-notas">
+                <Textarea
+                  id="sintoma-notas"
+                  placeholder="Quer contar mais alguma coisa?"
+                  value={notas}
+                  onChange={(e) => setNotas(e.target.value)}
+                  className="min-h-[96px]"
+                />
+              </Campo>
+              <Button size="xl" className="w-full" disabled={registrar.isPending} onClick={() => salvarESeguir({}, null)}>
+                Registrar
+              </Button>
+            </Formulario>
           </SurfaceCard>
         )}
-      </div>
+      </TelaPaciente>
     );
   }
 
   return (
-    <div className="pb-10">
+    <TelaPaciente>
       <PageHeader title="Sintomas" subtitle="O que você está sentindo?" />
-      <div className="grid grid-cols-2 gap-3">
+      {/* Uma coluna abaixo de 380px: "Palpitação (coração disparado)" em duas
+          colunas de 160px partia no meio da palavra. */}
+      <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
         {SINTOMAS.map((s) => (
-          <SurfaceCard key={s.type} onClick={() => escolher(s.type)} className="flex flex-col items-center text-center gap-2 py-6 cursor-pointer">
-            <div className="h-11 w-11 rounded-full bg-cardio-50 grid place-items-center">
-              <s.icon className="h-5 w-5 text-primary" />
+          <SurfaceCard
+            key={s.type}
+            onClick={() => escolher(s.type)}
+            ariaLabel={s.label}
+            className="flex flex-col items-center text-center gap-2 py-6 cursor-pointer min-h-[120px] justify-center hover:shadow-md transition-shadow"
+          >
+            <div className="h-12 w-12 rounded-full bg-cardio-50 grid place-items-center">
+              <s.icon className="h-6 w-6 text-primary" aria-hidden />
             </div>
-            <p className="text-sm font-semibold text-foreground">{s.label}</p>
+            <p className="text-base font-semibold text-foreground leading-snug">{s.label}</p>
           </SurfaceCard>
         ))}
       </div>
-    </div>
+    </TelaPaciente>
   );
 }

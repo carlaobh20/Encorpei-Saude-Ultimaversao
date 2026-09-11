@@ -2,7 +2,7 @@ import {
   Home, HeartPulse, Activity, Moon, Pill, CalendarDays, FlaskConical,
   MessageCircle, User, MessageSquarePlus, Watch, Target, Siren, Heart,
   Footprints, Salad, GraduationCap, FileText, Users, Stethoscope, Scale,
-  Plus, Menu, SlidersHorizontal, Droplet,
+  Plus, Menu, SlidersHorizontal, Droplet, AlertTriangle,
   type LucideIcon,
 } from "lucide-react";
 
@@ -61,8 +61,17 @@ export interface NavGroup {
  *      estava registrada, mas nenhum menu chegava até ela — auditoria de
  *      setembro/2026) e "Configurações" vira "Preferências", para não
  *      concorrer com "Minha conta" como se fossem a mesma coisa.
+ * v5 = o menu lateral passou a ter grupos RECOLHÍVEIS, e três itens saíram
+ *      das listas recolhíveis para lugares onde estão sempre à vista:
+ *      "Como estou agora" virou o bloco vermelho "Não estou bem" (fora de
+ *      qualquer grupo — é o acesso que não pode depender de o paciente
+ *      lembrar de abrir uma seção), "Preferências" desceu para o rodapé
+ *      fixo e "Minha conta" virou o bloco de conta do rodapé. Nenhum
+ *      destino saiu do app: todos continuam alcançáveis, só mudaram de
+ *      altura na tela. "Feedback" desceu para "Mais recursos", porque
+ *      rodapé com quatro linhas voltava a ser uma lista.
  */
-export const NAV_STRUCTURE_VERSION = 4;
+export const NAV_STRUCTURE_VERSION = 5;
 
 export const NAV_STRUCTURE: NavGroup[] = [
   {
@@ -111,26 +120,59 @@ export const NAV_STRUCTURE: NavGroup[] = [
   },
   {
     // O grupo "Mais" é o destino do quinto botão da barra: ele abre este
-    // menu. Emergência fica no fim, em vermelho — mas nunca é o único
-    // caminho: o botão flutuante "Não estou bem" está em todas as telas.
+    // menu. O título ganhou "recursos" porque, como cabeçalho de seção
+    // recolhível, "Mais" sozinho parecia o comando de abrir e não o nome
+    // do que está guardado dentro.
+    //
+    // Emergência fica no fim, em vermelho — mas nunca é o único caminho:
+    // o bloco "Não estou bem" (abaixo) e o botão flutuante de mesmo nome
+    // estão fora de qualquer grupo, em todas as telas.
     key: "mais",
-    label: "Mais",
+    label: "Mais recursos",
     items: [
-      { id: "nav-como-estou",    label: "Como estou agora", path: "/como-estou",    icon: Stethoscope },
       { id: "nav-pulseira",      label: "Minha Pulseira",   path: "/pulseira",      icon: Watch },
       { id: "nav-aprender",      label: "Aprender",         path: "/aprender",      icon: GraduationCap },
-      // "Preferências" e não "Configurações": o par Conta/Configurações fazia o
-      // paciente procurar seus dados cadastrais nos dois lugares. Agora cada
-      // um tem um nome que diz o que faz — "Minha conta" (quem sou eu, meus
-      // dados) e "Preferências" (como o app se comporta comigo).
-      { id: "nav-preferencias",  label: "Preferências",     path: "/configuracoes", icon: SlidersHorizontal },
+      { id: "nav-feedback",      label: "Feedback",         path: "/feedback",      icon: MessageSquarePlus },
       { id: "nav-emergencia",    label: "Emergência",       path: "/emergencia",    icon: Siren, tone: "danger" },
     ],
   },
 ];
 
-/** Todos os itens em uma lista só — para busca e para telas que precisam do mapa. */
-export const NAV_ITEMS: NavItem[] = NAV_STRUCTURE.flatMap((g) => g.items);
+/**
+ * Acesso de socorro do menu lateral — fora dos grupos, de propósito.
+ *
+ * Leva à triagem (`/como-estou`) e não ao 192: a tela de triagem já abre com
+ * o botão de ligar no topo e com a lista de sinais de alarme, então atende
+ * tanto quem está com medo quanto quem está passando mal. Quem está mal não
+ * vai abrir uma seção recolhida para achar isto — por isso ele mora colado
+ * no rodapé do menu, sempre visível, e nunca dentro de "Mais recursos".
+ */
+export const NAV_EMERGENCIA: NavItem = {
+  id: "nav-como-estou",
+  label: "Não estou bem",
+  path: "/como-estou",
+  icon: AlertTriangle,
+  tone: "danger",
+};
+
+/**
+ * Bloco de conta do rodapé do menu. É um item de navegação como os outros —
+ * o que muda é o desenho (iniciais + nome real de quem está logado), não o
+ * destino.
+ */
+export const NAV_CONTA: NavItem = {
+  id: "foot-conta",
+  label: "Minha conta",
+  path: "/conta",
+  icon: User,
+};
+
+/** Todos os destinos em uma lista só — para busca e para telas que precisam do mapa. */
+export const NAV_ITEMS: NavItem[] = [
+  ...NAV_STRUCTURE.flatMap((g) => g.items),
+  NAV_EMERGENCIA,
+  NAV_CONTA,
+];
 
 /**
  * Barra inferior no celular — CINCO destinos, nesta ordem exata.
@@ -168,10 +210,16 @@ export const BOTTOM_NAV: BottomNavItem[] = [
 ];
 
 /**
- * Rodapé do menu lateral. Conta e Feedback ficam fora dos quatro grupos
- * porque não são "onde eu vejo minha saúde": são manutenção do próprio app.
+ * Rodapé fixo do menu lateral — o que não é "minha saúde", é manutenção do
+ * próprio app. Só uma linha aqui: o bloco de conta (NAV_CONTA) é desenhado
+ * à parte, com as iniciais de quem está logado, e "Preferências" é o único
+ * item que continua sendo uma linha comum.
+ *
+ * "Preferências" e não "Configurações": o par Conta/Configurações fazia o
+ * paciente procurar seus dados cadastrais nos dois lugares. Agora cada um
+ * tem um nome que diz o que faz — "Minha conta" (quem sou eu, meus dados)
+ * e "Preferências" (como o app se comporta comigo).
  */
 export const NAV_FOOTER: NavItem[] = [
-  { id: "foot-conta",    label: "Minha conta", path: "/conta",    icon: User },
-  { id: "foot-feedback", label: "Feedback",    path: "/feedback", icon: MessageSquarePlus },
+  { id: "nav-preferencias", label: "Preferências", path: "/configuracoes", icon: SlidersHorizontal },
 ];

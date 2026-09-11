@@ -1,8 +1,15 @@
 /**
  * FeedbackPage — envio de feedback do paciente sobre o app.
+ *
+ * A tela é só a moldura: o formulário e a lista vivem em
+ * `components/feedback/*`, compartilhados com o médico e o admin — mexer no
+ * desenho deles daqui mudaria as outras duas áreas junto. O que esta passada
+ * fez foi dar à página a mesma coluna e o mesmo respiro das demais telas do
+ * paciente, e trocar o ícone solto do cabeçalho, que parecia um botão sem
+ * ação atrás, por nada: o título já diz o que a tela é.
  */
-import { MessageSquareHeart } from "lucide-react";
 import { PageHeader } from "@/components/shell/PageHeader";
+import { TelaPaciente } from "@/components/shell";
 import { useProfile } from "@/hooks/useProfile";
 import { FeedbackForm } from "@/components/feedback/FeedbackForm";
 import { MyFeedbackList } from "@/components/feedback/MyFeedbackList";
@@ -16,16 +23,13 @@ export default function FeedbackPage() {
   const { profile } = useProfile();
 
   return (
-    <div className="pb-10">
+    <TelaPaciente>
       <PageHeader
         title="Feedback"
         subtitle="Conte pra gente o que podemos melhorar"
-        action={<MessageSquareHeart className="h-6 w-6 text-primary" />}
       />
-      <div className="space-y-6">
-        <FeedbackForm role="patient" authorName={profile?.full_name ?? null} screens={TELAS} />
-        <MyFeedbackList authorName={profile?.full_name ?? null} />
-      </div>
-    </div>
+      <FeedbackForm role="patient" authorName={profile?.full_name ?? null} screens={TELAS} />
+      <MyFeedbackList authorName={profile?.full_name ?? null} />
+    </TelaPaciente>
   );
 }

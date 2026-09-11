@@ -4,16 +4,37 @@
  * Doses de hoje com botão enorme de "tomei", lista dos remédios ativos em
  * linguagem leiga, adesão dos últimos 7/14/30 dias e aviso de adesão baixa.
  * Nunca sugere mudar dose (regra 1 do contrato).
+ *
+ * ── O que a passada visual mudou ──────────────────────────────────────
+ * O limiar de adesão baixa (0,8 em 14 dias) e o texto de `ALERT_RULES` estão
+ * intactos. Mudou:
+ *
+ *  · A HIERARQUIA DO BOTÃO DE DOSE. Dose pendente é o único azul cheio da
+ *    tela — e há um por linha porque cada linha é uma dose diferente. Dose já
+ *    tomada perdeu o azul e virou um selo discreto com o check: a ação já
+ *    aconteceu, e um botão cheio em cima dela continuava puxando o olho para
+ *    o que não precisa mais de nada.
+ *
+ *  · As barras de adesão passaram a `BarraProporcao`, que exige rótulo em
+ *    texto. A versão anterior pintava a barra de amarelo abaixo de 80% e de
+ *    verde acima, sem dizer nada — quem não distingue as duas cores via duas
+ *    barras iguais.
+ *
+ *  · A cor verde saiu das barras de adesão. Verde num app de saúde é lido
+ *    como "seu resultado está bom", e adesão é quanto do combinado foi
+ *    marcado — não um resultado clínico. O tom de atenção continua onde a
+ *    regra do hook já o coloca: no cartão de aviso do topo.
  */
 import { useMemo } from "react";
-import { Pill, Check, Clock, AlertTriangle } from "lucide-react";
+import { Pill, Check, Clock } from "lucide-react";
 import { PageHeader } from "@/components/shell/PageHeader";
-import { SectionHeader } from "@/components/shell/SectionHeader";
 import { SurfaceCard } from "@/components/shell/SurfaceCard";
 import { EmptyState } from "@/components/shell/EmptyState";
 import { TabPageSkeleton } from "@/components/shell/Skeletons";
+import {
+  TelaPaciente, TituloSecao, BarraProporcao, AvisoDaTela,
+} from "@/components/shell";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { useCardioMedications, MED_CLASS_LABEL } from "@/hooks/useCardioMedications";
 import { ALERT_RULES } from "@/lib/clinical/cardioAlertRules";
 import type { MedClass } from "@/types/cardio";
@@ -60,55 +81,73 @@ export default function RemediosPage() {
 
   if (isLoading) {
     return (
-      <div>
+      <TelaPaciente>
         <PageHeader title="Remédios" />
         <TabPageSkeleton />
-      </div>
+      </TelaPaciente>
     );
   }
 
   return (
-    <div className="pb-10">
+    <TelaPaciente>
       <PageHeader title="Remédios" subtitle="Suas doses de hoje" />
 
       {adesaoBaixa && (
-        <SurfaceCard className="mb-5 bg-warning-bg border-0">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
-            <p className="text-sm text-foreground leading-relaxed">{ALERT_RULES.adesao_baixa.patientMessage}</p>
-          </div>
-        </SurfaceCard>
+        <AvisoDaTela tom="atencao" titulo={ALERT_RULES.adesao_baixa.label}>
+          {ALERT_RULES.adesao_baixa.patientMessage}
+        </AvisoDaTela>
       )}
 
       {/* ── Doses de hoje ────────────────────────────────────────── */}
-      <div className="mb-6">
-        <SectionHeader title="Hoje" icon={Clock} />
+      <section>
+        <TituloSecao titulo="Hoje" icone={Clock} />
         {porHorario.length === 0 ? (
           <EmptyState icon={Pill} title="Nenhum remédio cadastrado" description="Quando seu médico prescrever, seus horários aparecem aqui." variant="card" />
         ) : (
           <div className="space-y-5">
             {porHorario.map(([hora, doses]) => (
               <div key={hora}>
-                <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2">{hora}</p>
+                <p className="text-sm font-bold uppercase tracking-wide text-muted-foreground mb-2">{hora}</p>
                 <div className="space-y-2.5">
                   {doses.map((d) => (
-                    <SurfaceCard key={`${d.med.id}-${d.hora}`} className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-base font-semibold text-foreground truncate">{d.med.name}</p>
-                        <p className="text-xs text-muted-foreground">{d.med.dose} · {MED_CLASS_LABEL[d.med.med_class]}</p>
+                    <SurfaceCard key={`${d.med.id}-${d.hora}`} className="flex flex-wrap items-center justify-between gap-3">
+                      {/* `basis-40` dá ao nome uma largura mínima antes de o
+                          `flex-wrap` do cartão entrar: sem ela o nome encolhia
+                          até partir no meio ("Hidroclorotia/zida" em 360px) em
+                          vez de o botão descer para a linha de baixo. */}
+                      <div className="min-w-0 flex-1 basis-40">
+                        <p className="text-base font-semibold text-foreground break-words">{d.med.name}</p>
+                        <p className="text-sm text-muted-foreground">{d.med.dose} · {MED_CLASS_LABEL[d.med.med_class]}</p>
                       </div>
-                      <Button
-                        size="xl"
-                        variant={d.taken ? "secondary" : "default"}
-                        className={cn("shrink-0 gap-2", d.taken && "bg-success-bg text-success hover:bg-success-bg")}
-                        disabled={marcarDose.isPending}
-                        onClick={() =>
-                          marcarDose.mutate({ medicationId: d.med.id, hora: d.hora, taken: !d.taken })
-                        }
-                      >
-                        <Check className="h-5 w-5" />
-                        {d.taken ? "Tomei" : "Marcar"}
-                      </Button>
+                      {d.taken ? (
+                        /* Já feito: selo, não botão azul. Continua clicável —
+                           desmarcar é legítimo —, mas parando de disputar a
+                           atenção com as doses que ainda faltam. */
+                        <Button
+                          size="lg"
+                          variant="outline"
+                          className="shrink-0 gap-2 text-success border-success/30 bg-success-bg hover:bg-success-bg"
+                          disabled={marcarDose.isPending}
+                          onClick={() =>
+                            marcarDose.mutate({ medicationId: d.med.id, hora: d.hora, taken: false })
+                          }
+                        >
+                          <Check className="h-5 w-5" aria-hidden />
+                          Tomei
+                        </Button>
+                      ) : (
+                        <Button
+                          size="xl"
+                          className="shrink-0 gap-2"
+                          disabled={marcarDose.isPending}
+                          onClick={() =>
+                            marcarDose.mutate({ medicationId: d.med.id, hora: d.hora, taken: true })
+                          }
+                        >
+                          <Check className="h-5 w-5" aria-hidden />
+                          Marcar
+                        </Button>
+                      )}
                     </SurfaceCard>
                   ))}
                 </div>
@@ -116,12 +155,12 @@ export default function RemediosPage() {
             ))}
           </div>
         )}
-      </div>
+      </section>
 
       {/* ── Adesão ───────────────────────────────────────────────── */}
       {adesao && (
-        <div className="mb-6">
-          <SectionHeader title="Sua constância" />
+        <section>
+          <TituloSecao titulo="Sua constância" />
           <SurfaceCard>
             <div className="space-y-4">
               {[
@@ -129,27 +168,26 @@ export default function RemediosPage() {
                 { label: "Últimos 14 dias", valor: adesao.d14 },
                 { label: "Últimos 30 dias", valor: adesao.d30 },
               ].map((linha) => (
-                <div key={linha.label}>
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="text-muted-foreground">{linha.label}</span>
-                    <span className="font-semibold text-foreground">{pct(linha.valor)}</span>
-                  </div>
-                  <div className="h-2.5 rounded-full bg-secondary overflow-hidden">
-                    <div
-                      className={cn("h-full rounded-full", (linha.valor ?? 1) < 0.8 ? "bg-warning" : "bg-success")}
-                      style={{ width: `${Math.round((linha.valor ?? 0) * 100)}%` }}
-                    />
-                  </div>
-                </div>
+                <BarraProporcao
+                  key={linha.label}
+                  rotulo={linha.label}
+                  valor={pct(linha.valor)}
+                  percentual={Math.round((linha.valor ?? 0) * 100)}
+                  cor={
+                    // Atenção tem cor E o texto ao lado já diz o número. Fora
+                    // da atenção, o azul da marca — nunca verde de "está bom".
+                    (linha.valor ?? 1) < 0.8 ? "hsl(var(--warning))" : "hsl(var(--brand-cardio))"
+                  }
+                />
               ))}
             </div>
           </SurfaceCard>
-        </div>
+        </section>
       )}
 
       {/* ── Remédios ativos ──────────────────────────────────────── */}
-      <div>
-        <SectionHeader title="Seus remédios" />
+      <section>
+        <TituloSecao titulo="Seus remédios" />
         {ativas.length === 0 ? (
           <EmptyState icon={Pill} title="Nenhum remédio ativo" description="Seus remédios prescritos aparecem aqui." variant="card" />
         ) : (
@@ -157,20 +195,20 @@ export default function RemediosPage() {
             {ativas.map((m) => (
               <SurfaceCard key={m.id}>
                 <div className="flex items-start gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-cardio-50 grid place-items-center shrink-0">
-                    <Pill className="h-5 w-5 text-primary" />
+                  <div className="h-11 w-11 rounded-xl bg-cardio-50 grid place-items-center shrink-0">
+                    <Pill className="h-5 w-5 text-primary" aria-hidden />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-base font-semibold text-foreground">{m.name}</p>
-                    <p className="text-xs text-muted-foreground mb-1.5">{m.dose} · {m.schedule.join(", ")}</p>
-                    <p className="text-sm text-foreground leading-relaxed">{MED_CLASS_PARA_QUE_SERVE[m.med_class]}</p>
+                    <p className="text-base font-semibold text-foreground break-words">{m.name}</p>
+                    <p className="text-sm text-muted-foreground mb-1.5">{m.dose} · {m.schedule.join(", ")}</p>
+                    <p className="text-base text-foreground leading-relaxed">{MED_CLASS_PARA_QUE_SERVE[m.med_class]}</p>
                   </div>
                 </div>
               </SurfaceCard>
             ))}
           </div>
         )}
-      </div>
-    </div>
+      </section>
+    </TelaPaciente>
   );
 }

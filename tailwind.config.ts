@@ -80,6 +80,11 @@ export default {
           50:      "hsl(var(--brand-cardio-50))",
           100:     "hsl(var(--brand-cardio-100))",
         },
+        progresso: {
+          DEFAULT: "hsl(var(--progresso))",
+          suave:   "hsl(var(--progresso-suave))",
+          escuro:  "hsl(var(--progresso-escuro))",
+        },
         rose:  { DEFAULT: "hsl(var(--brand-rose))" },
         sepia: { DEFAULT: "hsl(var(--brand-sepia))", soft: "hsl(var(--brand-sepia-soft))" },
         peach: { DEFAULT: "hsl(var(--brand-peach))" },

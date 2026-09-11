@@ -5,11 +5,14 @@
  * com honestidade e sem culpar.
  */
 import { useMemo, useState } from "react";
-import { Printer, HeartPulse, Gauge, Pill, Footprints, Moon, Droplets, Activity } from "lucide-react";
+import {
+  Printer, HeartPulse, Gauge, Pill, Footprints, Moon, Droplets, Activity,
+  ArrowUp, ArrowDown,
+} from "lucide-react";
 import { PageHeader } from "@/components/shell/PageHeader";
-import { SectionHeader } from "@/components/shell/SectionHeader";
 import { SurfaceCard } from "@/components/shell/SurfaceCard";
 import { TabPageSkeleton } from "@/components/shell/Skeletons";
+import { TelaPaciente, TituloSecao, Lista, ItemLista } from "@/components/shell";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTargets } from "@/hooks/useCardioPatient";
@@ -150,17 +153,17 @@ export default function MeuMesPage() {
 
   if (isLoading) {
     return (
-      <div>
+      <TelaPaciente>
         <PageHeader title="Meu mês" />
         <TabPageSkeleton />
-      </div>
+      </TelaPaciente>
     );
   }
 
   const rotuloMes = opcoesDeMes.find((o) => o.valor === mesSelecionado)?.rotulo ?? "";
 
   return (
-    <div className="pb-10">
+    <TelaPaciente>
       <style>{`
         @media print {
           .no-print { display: none !important; }
@@ -171,36 +174,46 @@ export default function MeuMesPage() {
 
       <div className="no-print">
         <PageHeader title="Meu mês" subtitle="Um resumo para você e para levar à consulta" />
-        <div className="flex flex-wrap items-center gap-3 mb-5">
+        <div className="flex flex-wrap items-center gap-3">
           <Select value={mesSelecionado} onValueChange={setMesSelecionado}>
-            <SelectTrigger className="h-11 w-56"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-12 w-full min-[420px]:w-56 rounded-xl text-base" aria-label="Escolher o mês">
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               {opcoesDeMes.map((o) => <SelectItem key={o.valor} value={o.valor}>{o.rotulo}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Button onClick={() => window.print()} className="ml-auto">
-            <Printer className="h-4 w-4" /> Imprimir / salvar em PDF
+          {/* O único azul cheio da tela: imprimir é a ação pela qual ela
+              existe — o resumo serve para ir junto na consulta. */}
+          <Button size="lg" onClick={() => window.print()} className="min-[420px]:ml-auto w-full min-[420px]:w-auto">
+            <Printer className="h-5 w-5" aria-hidden /> Imprimir / salvar em PDF
           </Button>
         </div>
       </div>
 
-      <div className="print-sheet rounded-2xl border border-border bg-card p-6 md:p-8">
+      <div className="print-sheet rounded-2xl border border-border bg-card p-5 md:p-8 shadow-sm">
         <div className="border-b border-border pb-4 mb-5">
-          <h1 className="font-display text-xl font-semibold text-foreground">Meu mês — {rotuloMes}</h1>
+          <h1 className="font-display text-2xl font-semibold text-foreground break-words">Meu mês — {rotuloMes}</h1>
           <p className="text-sm text-muted-foreground mt-1">Encorpei Cardio · resumo do paciente</p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-1 min-[380px]:grid-cols-2 md:grid-cols-3 gap-3 mb-6">
           <SurfaceCard variant="stat">
             <div className="flex items-center gap-2 mb-1">
               <HeartPulse className="h-4 w-4" style={{ color: DOMAIN_COLORS.coracao }} />
-              <p className="text-xs text-muted-foreground">Idade do coração</p>
+              <p className="text-sm text-muted-foreground">Idade do coração</p>
             </div>
-            <p className="text-2xl font-bold text-foreground">
+            <p className="text-2xl font-bold text-foreground tabular-nums">
               {idadeCoracaoNoMes.atual ? `${idadeCoracaoNoMes.atual.idade_coracao} anos` : "—"}
             </p>
             {idadeCoracaoNoMes.variacao != null && (
-              <p className={`text-xs font-medium mt-1 ${idadeCoracaoNoMes.variacao <= 0 ? "text-success" : "text-error"}`}>
+              /* Cor NUNCA sozinha: a seta e a palavra dizem a direção. */
+              <p className={`text-sm font-medium mt-1 flex items-center gap-1 ${idadeCoracaoNoMes.variacao <= 0 ? "text-success" : "text-error"}`}>
+                {idadeCoracaoNoMes.variacao !== 0 && (
+                  idadeCoracaoNoMes.variacao > 0
+                    ? <ArrowUp className="h-4 w-4 shrink-0" aria-hidden />
+                    : <ArrowDown className="h-4 w-4 shrink-0" aria-hidden />
+                )}
                 {idadeCoracaoNoMes.variacao === 0 ? "Sem variação" : `${idadeCoracaoNoMes.variacao > 0 ? "+" : ""}${idadeCoracaoNoMes.variacao} desde o mês anterior`}
               </p>
             )}
@@ -212,48 +225,48 @@ export default function MeuMesPage() {
               {/* "Tempo no alvo" era mentira de rótulo: a conta é sobre AMOSTRAS
                   de pressão, não sobre tempo monitorado (ver timeInRange.ts).
                   O rótulo vem da constante para não divergir de novo. */}
-              <p className="text-xs text-muted-foreground">{ROTULO_MEDIDAS_NA_META_CURTO}</p>
+              <p className="text-sm text-muted-foreground">{ROTULO_MEDIDAS_NA_META_CURTO}</p>
             </div>
-            <p className="text-2xl font-bold text-foreground">
+            <p className="text-2xl font-bold text-foreground tabular-nums">
               {tempoNoAlvoMes.percentual != null ? `${tempoNoAlvoMes.percentual}%` : "—"}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">{tempoNoAlvoMes.total} medida{tempoNoAlvoMes.total === 1 ? "" : "s"} no mês</p>
+            <p className="text-sm text-muted-foreground mt-1">{tempoNoAlvoMes.total} medida{tempoNoAlvoMes.total === 1 ? "" : "s"} no mês</p>
           </SurfaceCard>
 
           <SurfaceCard variant="stat">
             <div className="flex items-center gap-2 mb-1">
               <Gauge className="h-4 w-4" style={{ color: DOMAIN_COLORS.pressao }} />
-              <p className="text-xs text-muted-foreground">Pressão média</p>
+              <p className="text-sm text-muted-foreground">Pressão média</p>
             </div>
-            <p className="text-2xl font-bold text-foreground">
+            <p className="text-2xl font-bold text-foreground tabular-nums">
               {pressaoMedia.sistolica != null ? `${pressaoMedia.sistolica}/${pressaoMedia.diastolica}` : "—"}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">meta: até {targets.bp_systolic_max}/{targets.bp_diastolic_max}</p>
+            <p className="text-sm text-muted-foreground mt-1">meta: até {targets.bp_systolic_max}/{targets.bp_diastolic_max}</p>
           </SurfaceCard>
 
           <SurfaceCard variant="stat">
             <div className="flex items-center gap-2 mb-1">
               <Pill className="h-4 w-4" style={{ color: DOMAIN_COLORS.metabolico }} />
-              <p className="text-xs text-muted-foreground">Adesão aos remédios</p>
+              <p className="text-sm text-muted-foreground">Adesão aos remédios</p>
             </div>
-            <p className="text-2xl font-bold text-foreground">{adesaoMes != null ? `${adesaoMes}%` : "—"}</p>
+            <p className="text-2xl font-bold text-foreground tabular-nums">{adesaoMes != null ? `${adesaoMes}%` : "—"}</p>
           </SurfaceCard>
 
           <SurfaceCard variant="stat">
             <div className="flex items-center gap-2 mb-1">
               <Footprints className="h-4 w-4" style={{ color: DOMAIN_COLORS.atividade }} />
-              <p className="text-xs text-muted-foreground">Passos por dia</p>
+              <p className="text-sm text-muted-foreground">Passos por dia</p>
             </div>
-            <p className="text-2xl font-bold text-foreground">{passosMedia != null ? passosMedia : "—"}</p>
-            <p className="text-xs text-muted-foreground mt-1">{minutosAtividade} min de atividade no mês</p>
+            <p className="text-2xl font-bold text-foreground tabular-nums">{passosMedia != null ? passosMedia : "—"}</p>
+            <p className="text-sm text-muted-foreground mt-1">{minutosAtividade} min de atividade no mês</p>
           </SurfaceCard>
 
           <SurfaceCard variant="stat">
             <div className="flex items-center gap-2 mb-1">
               <Moon className="h-4 w-4" style={{ color: DOMAIN_COLORS.sono }} />
-              <p className="text-xs text-muted-foreground">Sono médio</p>
+              <p className="text-sm text-muted-foreground">Sono médio</p>
             </div>
-            <p className="text-2xl font-bold text-foreground">
+            <p className="text-2xl font-bold text-foreground tabular-nums">
               {sonoMedioMin != null ? `${Math.floor(sonoMedioMin / 60)}h${String(Math.round(sonoMedioMin % 60)).padStart(2, "0")}` : "—"}
             </p>
           </SurfaceCard>
@@ -261,17 +274,17 @@ export default function MeuMesPage() {
           <SurfaceCard variant="stat">
             <div className="flex items-center gap-2 mb-1">
               <Droplets className="h-4 w-4" style={{ color: DOMAIN_COLORS.metabolico }} />
-              <p className="text-xs text-muted-foreground">Sódio médio por dia</p>
+              <p className="text-sm text-muted-foreground">Sódio médio por dia</p>
             </div>
-            <p className="text-2xl font-bold text-foreground">{sodioMedio != null ? `${sodioMedio} mg` : "—"}</p>
+            <p className="text-2xl font-bold text-foreground tabular-nums">{sodioMedio != null ? `${sodioMedio} mg` : "—"}</p>
           </SurfaceCard>
 
           <SurfaceCard variant="stat">
             <div className="flex items-center gap-2 mb-1">
               <Activity className="h-4 w-4 text-muted-foreground" />
-              <p className="text-xs text-muted-foreground">Capacidade</p>
+              <p className="text-sm text-muted-foreground">Capacidade</p>
             </div>
-            <p className="text-sm text-foreground leading-relaxed">
+            <p className="text-base text-foreground leading-relaxed">
               {capacidade.evolucao.caminhada.atual != null
                 ? `Caminhada de 6 min: ${capacidade.evolucao.caminhada.atual} m.`
                 : "Ainda sem teste de capacidade neste mês."}
@@ -281,53 +294,53 @@ export default function MeuMesPage() {
 
         {/* ── Sintomas relatados ────────────────────────────────── */}
         <div className="mb-5">
-          <SectionHeader title="Sintomas relatados no mês" />
+          <TituloSecao titulo="Sintomas relatados no mês" />
           {sintomasDoMes.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum sintoma registrado neste mês.</p>
+            <p className="text-base text-muted-foreground">Nenhum sintoma registrado neste mês.</p>
           ) : (
-            <ul className="space-y-2">
+            <Lista>
               {sintomasDoMes.map((s) => (
-                <li key={s.id} className="text-sm text-foreground flex items-center justify-between border-b border-border/60 pb-2">
-                  <span>{SYMPTOM_LABEL[s.symptom_type] ?? s.symptom_type}</span>
-                  <span className="text-xs text-muted-foreground">{new Date(s.occurred_at).toLocaleDateString("pt-BR")}</span>
-                </li>
+                <ItemLista key={s.id}>
+                  <span className="text-base text-foreground min-w-0 break-words">{SYMPTOM_LABEL[s.symptom_type] ?? s.symptom_type}</span>
+                  <span className="text-sm text-muted-foreground shrink-0">{new Date(s.occurred_at).toLocaleDateString("pt-BR")}</span>
+                </ItemLista>
               ))}
-            </ul>
+            </Lista>
           )}
         </div>
 
         {/* ── Exames novos ──────────────────────────────────────── */}
         <div className="mb-5">
-          <SectionHeader title="Exames novos" />
+          <TituloSecao titulo="Exames novos" />
           {examesDoMes.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum exame novo neste mês.</p>
+            <p className="text-base text-muted-foreground">Nenhum exame novo neste mês.</p>
           ) : (
-            <ul className="space-y-2">
+            <Lista>
               {examesDoMes.map((e) => (
-                <li key={e.id} className="text-sm text-foreground flex items-center justify-between border-b border-border/60 pb-2">
-                  <span>{EXAM_LABEL[e.exam_type] ?? e.exam_type}</span>
-                  <span className="text-xs text-muted-foreground">{e.performed_at ? new Date(e.performed_at).toLocaleDateString("pt-BR") : ""}</span>
-                </li>
+                <ItemLista key={e.id}>
+                  <span className="text-base text-foreground min-w-0 break-words">{EXAM_LABEL[e.exam_type] ?? e.exam_type}</span>
+                  <span className="text-sm text-muted-foreground shrink-0">{e.performed_at ? new Date(e.performed_at).toLocaleDateString("pt-BR") : ""}</span>
+                </ItemLista>
               ))}
-            </ul>
+            </Lista>
           )}
         </div>
 
         {/* ── O que o médico mudou ──────────────────────────────── */}
         {titulacoes.length > 0 && (
           <div>
-            <SectionHeader title="O que o médico mudou" />
-            <ul className="space-y-2">
+            <TituloSecao titulo="O que o médico mudou" />
+            <Lista>
               {titulacoes.map((m) => (
-                <li key={m.id} className="text-sm text-foreground flex items-center justify-between border-b border-border/60 pb-2">
-                  <span>{m.name}</span>
-                  <span className="text-xs text-muted-foreground">{m.dose} → alvo {m.target_dose}</span>
-                </li>
+                <ItemLista key={m.id}>
+                  <span className="text-base text-foreground min-w-0 break-words">{m.name}</span>
+                  <span className="text-sm text-muted-foreground shrink-0">{m.dose} → alvo {m.target_dose}</span>
+                </ItemLista>
               ))}
-            </ul>
+            </Lista>
           </div>
         )}
       </div>
-    </div>
+    </TelaPaciente>
   );
 }

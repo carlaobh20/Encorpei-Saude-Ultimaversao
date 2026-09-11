@@ -3,6 +3,24 @@
  *
  * Aviso fixo: este canal não é para emergência. Bolhas simples, envio,
  * marcação de lidas.
+ *
+ * ── O que a passada visual mudou ──────────────────────────────────────
+ * O aviso de "não é para emergência" continua fixo, no topo, antes das
+ * mensagens, com o mesmo texto e levando ao mesmo lugar. Mudou:
+ *
+ *  · O texto do aviso estava em `text-xs` sobre fundo amarelo — 13px, o
+ *    menor texto da tela, para o recado que mais importa aqui. Subiu para o
+ *    corpo legível e ganhou ícone e alvo de 48px.
+ *
+ *  · As bolhas saíram de 14px para o corpo de 17px, e a hora saiu de 10px
+ *    para 12px, que é o piso da auditoria.
+ *
+ *  · A caixa de escrever ganhou rótulo acessível (era um `Textarea` com
+ *    placeholder no lugar de rótulo) e o botão de enviar ficou em 48px.
+ *
+ * A altura calculada da tela (`100dvh - 10rem`) continua como estava: é ela
+ * que mantém a caixa de escrever acima da barra inferior e do botão
+ * flutuante de socorro.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -60,7 +78,7 @@ export default function MedicoChatPage() {
 
   if (isLoading) {
     return (
-      <div>
+      <div className="mx-auto w-full max-w-3xl">
         <PageHeader title="Meu médico" />
         <TabPageSkeleton />
       </div>
@@ -68,15 +86,16 @@ export default function MedicoChatPage() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-10rem)]">
+    <div className="mx-auto flex w-full max-w-3xl flex-col h-[calc(100dvh-10rem)]">
       <PageHeader title={medico?.display_name ?? "Meu médico"} subtitle={medico?.clinic_name ?? undefined} />
 
       <button
+        type="button"
         onClick={() => navigate("/emergencia")}
-        className="mb-4 w-full flex items-center gap-2 rounded-2xl bg-warning-bg px-4 py-3 text-left"
+        className="mb-4 w-full min-h-[56px] flex items-start gap-3 rounded-2xl border-l-4 border-warning bg-warning-bg px-4 py-3 text-left"
       >
-        <AlertTriangle className="h-4 w-4 text-warning shrink-0" />
-        <p className="text-xs text-warning">
+        <AlertTriangle className="h-6 w-6 text-warning shrink-0 mt-0.5" aria-hidden />
+        <p className="text-base text-foreground leading-relaxed">
           Este chat não é para emergência. Se não estiver bem, toque aqui para ver o que fazer.
         </p>
       </button>
@@ -88,7 +107,7 @@ export default function MedicoChatPage() {
           <div className="space-y-5">
             {grupos.map((g) => (
               <div key={g.dia}>
-                <p className="text-center text-[11px] text-muted-foreground mb-2">{fmtDia(g.itens[0].created_at)}</p>
+                <p className="text-center text-sm text-muted-foreground mb-2">{fmtDia(g.itens[0].created_at)}</p>
                 <div className="space-y-2">
                   {g.itens.map((m) => {
                     const minha = m.sender === "patient";
@@ -96,12 +115,12 @@ export default function MedicoChatPage() {
                       <div key={m.id} className={cn("flex", minha ? "justify-end" : "justify-start")}>
                         <div
                           className={cn(
-                            "max-w-[78%] rounded-2xl px-3.5 py-2.5",
+                            "max-w-[85%] sm:max-w-[78%] rounded-2xl px-4 py-3",
                             minha ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-secondary text-foreground rounded-bl-sm"
                           )}
                         >
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{m.body}</p>
-                          <p className={cn("text-[10px] mt-1", minha ? "text-primary-foreground/70" : "text-muted-foreground")}>
+                          <p className="text-base leading-relaxed whitespace-pre-wrap break-words">{m.body}</p>
+                          <p className={cn("text-xs mt-1", minha ? "text-primary-foreground/70" : "text-muted-foreground")}>
                             {fmtHora(m.created_at)}
                           </p>
                         </div>
@@ -122,10 +141,11 @@ export default function MedicoChatPage() {
           onChange={(e) => setTexto(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviarMensagem(); } }}
           placeholder="Escreva uma mensagem..."
-          className="min-h-[48px] max-h-32"
+          aria-label="Escreva uma mensagem para o seu médico"
+          className="min-h-[48px] max-h-32 rounded-xl text-base"
         />
         <Button size="icon" className="h-12 w-12 rounded-full shrink-0" onClick={enviarMensagem} disabled={!texto.trim() || enviar.isPending} aria-label="Enviar">
-          <Send className="h-5 w-5" />
+          <Send className="h-5 w-5" aria-hidden />
         </Button>
       </div>
     </div>

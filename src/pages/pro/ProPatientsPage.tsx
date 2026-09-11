@@ -55,7 +55,10 @@ const ORDEM_ESTADO: Record<EstadoFila, number> = {
 function BadgeEstado({ estado }: { estado: EstadoFila }) {
   return (
     <span className={cn(
-      "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider whitespace-nowrap",
+      // Sem `whitespace-nowrap`: na coluna "Paciente" da tabela (22% da largura,
+      // ~124px em 1024px) o selo "SEM DADOS RECENTES" saía por cima da coluna
+      // vizinha em vez de quebrar dentro da própria célula.
+      "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-left",
       TOM_ESTADO[estado].badge,
     )}>
       {estado === "sem_dados_recentes" && <EyeOff className="h-3 w-3" />}
@@ -209,12 +212,17 @@ export default function ProPatientsPage() {
             <table className="w-full text-left table-fixed">
               <thead>
                 <tr className="border-b border-border bg-muted/40 text-[10px] uppercase tracking-wide text-muted-foreground">
+                  {/* A coluna "Ação" tinha 6% (≈67px em 1440): "Abrir ›" mais o
+                      botão de encerrar vínculo não cabiam, e como a célula
+                      alinha à direita o excesso vazava para a ESQUERDA, por
+                      cima do número de adesão da linha. 12% é o que os dois
+                      botões ocupam de verdade. */}
                   <th className="font-semibold px-4 py-2.5 w-[22%]">Paciente</th>
-                  <th className="font-semibold px-4 py-2.5 w-[26%]">Motivo</th>
-                  <th className="font-semibold px-4 py-2.5 w-[16%]">Última medida</th>
+                  <th className="font-semibold px-4 py-2.5 w-[24%]">Motivo</th>
+                  <th className="font-semibold px-4 py-2.5 w-[14%]">Última medida</th>
                   <th className="font-semibold px-4 py-2.5 w-[18%]">Origem / período</th>
                   <th className="font-semibold px-4 py-2.5 w-[12%]">Adesão autorrelatada</th>
-                  <th className="font-semibold px-4 py-2.5 w-[6%] text-right">Ação</th>
+                  <th className="font-semibold px-4 py-2.5 w-[170px] text-right">Ação</th>
                 </tr>
               </thead>
               <tbody>

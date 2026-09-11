@@ -193,7 +193,13 @@ export default function AuthPage() {
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 py-10">
+      {/* `leitura-paciente` (index.css) aplicado aqui porque esta tela roda
+          FORA do AppShell — é a primeira do app, e era a única da área do
+          paciente onde `text-sm` valia 14px e `text-xs` valia 12px. Entrar e
+          criar conta é onde o paciente de 68 anos mais desiste; não é lugar
+          de ter a letra menor do produto. Nenhum texto e nenhum campo mudou:
+          a classe só sobe a escala e garante os 44px de alvo. */}
+      <div className="leitura-paciente min-h-screen bg-background flex flex-col items-center justify-center px-4 py-10">
         <div className="w-full max-w-[480px]">
 
           <a href="/landing" onClick={handleLogoClick} className="flex items-center gap-2.5 mb-8 justify-center w-fit mx-auto">
@@ -209,7 +215,7 @@ export default function AuthPage() {
               <button
                 type="button"
                 onClick={() => { setMode("login"); setMsg(null); }}
-                className="text-sm text-muted-foreground inline-flex items-center gap-1 mb-5 hover:text-foreground"
+                className="text-base text-muted-foreground inline-flex min-h-[44px] items-center gap-1 mb-3 rounded-lg hover:text-foreground"
               >
                 <ArrowLeft className="h-4 w-4" /> Voltar
               </button>
@@ -417,12 +423,12 @@ export default function AuthPage() {
             </p>
           </div>
 
-          <div className="flex items-center justify-center gap-2 mt-6 text-xs text-muted-foreground">
-            <ShieldCheck className="h-3.5 w-3.5" strokeWidth={1.75} />
+          <div className="flex items-center justify-center gap-2 mt-6 text-sm text-muted-foreground">
+            <ShieldCheck className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
             <span>Seus dados de saúde ficam protegidos e são só seus.</span>
           </div>
 
-          <p className="text-center text-xs text-muted-foreground mt-3">
+          <p className="text-center text-sm text-muted-foreground mt-3">
             É médico cardiologista?{" "}
             <Link to="/pro/auth" className="text-primary font-medium hover:underline">Entre pelo portal do médico</Link>
           </p>

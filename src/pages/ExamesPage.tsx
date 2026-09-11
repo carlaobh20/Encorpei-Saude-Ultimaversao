@@ -3,6 +3,22 @@
  *
  * Laboratório agrupado por bloco clínico, evolução do LDL contra a meta, e
  * exames de imagem/gráficos em linha do tempo com campos traduzidos.
+ *
+ * ── O que a passada visual mudou ──────────────────────────────────────
+ * Nenhuma faixa de referência, nenhum rótulo de status, nenhuma tradução de
+ * campo. O que mudou:
+ *
+ *  · Os valores de laboratório saíram de 13/14px para o corpo legível. Um
+ *    resultado de exame que o paciente precisa ler em voz alta na consulta
+ *    não pode ser o menor texto da tela.
+ *
+ *  · O gráfico do LDL passou às peças comuns: eixo com unidade (mg/dL), tick
+ *    de 13px, linha de meta tracejada COM legenda escrita — antes a linha
+ *    pontilhada aparecia sem nada dizendo o que era, e "a linha de baixo" não
+ *    é explicação.
+ *
+ *  · "Anexar resultado" continua azul e continua sendo a ação da tela; é o
+ *    único botão cheio aqui.
  */
 import { useMemo, useRef } from "react";
 import { toast } from "sonner";
@@ -10,20 +26,21 @@ import {
   FlaskConical, HeartPulse, Paperclip,
 } from "lucide-react";
 import {
-  ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip as RTooltip, ReferenceLine,
+  ResponsiveContainer, LineChart, Line, ReferenceLine,
 } from "recharts";
 import { PageHeader } from "@/components/shell/PageHeader";
-import { SectionHeader } from "@/components/shell/SectionHeader";
 import { SurfaceCard } from "@/components/shell/SurfaceCard";
 import { EmptyState } from "@/components/shell/EmptyState";
 import { TabPageSkeleton } from "@/components/shell/Skeletons";
+import {
+  TelaPaciente, TituloSecao, AreaGrafico, LegendaGrafico, usePrefereMenosMovimento,
+  gradeGrafico, eixoX, eixoY, dicaGrafico, COR_SERIE, COR_REFERENCIA,
+} from "@/components/shell";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getDevBypass } from "@/contexts/DevBypass";
 import { useLabResults, useCardioExams } from "@/hooks/useCardioClinical";
 import { useTargets } from "@/hooks/useCardioPatient";
-import { DOMAIN_COLORS } from "@/theme/colors";
 import type { LabMarkerKey, CardioExamType } from "@/types/cardio";
 
 const BLOCOS: { titulo: string; marcadores: LabMarkerKey[] }[] = [
@@ -115,6 +132,7 @@ export default function ExamesPage() {
   const { labs, ultimoPorMarcador, isLoading: loadingLabs } = useLabResults();
   const { exams, isLoading: loadingExams } = useCardioExams();
   const { targets, isLoading: loadingTargets } = useTargets();
+  const reduzirMovimento = usePrefereMenosMovimento();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const ldlHistorico = useMemo(() => {
@@ -140,21 +158,21 @@ export default function ExamesPage() {
 
   if (loadingLabs || loadingExams || loadingTargets) {
     return (
-      <div>
+      <TelaPaciente>
         <PageHeader title="Exames" />
         <TabPageSkeleton />
-      </div>
+      </TelaPaciente>
     );
   }
 
   return (
-    <div className="pb-10">
+    <TelaPaciente>
       <PageHeader
         title="Exames"
         subtitle="Resultados de laboratório e do coração"
         action={
-          <Button onClick={anexar} className="gap-2">
-            <Paperclip className="h-4 w-4" /> Anexar resultado
+          <Button size="lg" onClick={anexar} className="gap-2">
+            <Paperclip className="h-5 w-5" aria-hidden /> Anexar resultado
           </Button>
         }
       />
@@ -168,26 +186,40 @@ export default function ExamesPage() {
 
       {/* ── LDL contra a meta ────────────────────────────────────── */}
       {ldlHistorico.length > 0 && (
-        <div className="mb-6">
-          <SectionHeader title="LDL ao longo do tempo" subtitle={`sua meta: < ${targets.ldl_max} mg/dL`} />
+        <section>
+          <TituloSecao titulo="LDL ao longo do tempo" subtitulo={`sua meta: < ${targets.ldl_max} mg/dL`} />
           <SurfaceCard>
-            <ResponsiveContainer width="100%" height={180}>
-              <LineChart data={ldlHistorico} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
-                <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeDasharray="2 4" />
-                <XAxis dataKey="dia" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                <ReferenceLine y={targets.ldl_max} stroke={DOMAIN_COLORS.metabolico} strokeDasharray="4 4" />
-                <RTooltip contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} formatter={(v: number) => [`${v} mg/dL`, "LDL"]} />
-                <Line type="monotone" dataKey="ldl" stroke={DOMAIN_COLORS.metabolico} strokeWidth={2.5} dot={{ r: 3 }} />
-              </LineChart>
-            </ResponsiveContainer>
+            <AreaGrafico altura={200}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={ldlHistorico} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+                  {gradeGrafico()}
+                  {eixoX("dia")}
+                  {eixoY({ unidade: "mg/dL" })}
+                  <ReferenceLine y={targets.ldl_max} stroke={COR_REFERENCIA} strokeDasharray="4 4" />
+                  {dicaGrafico((v: never) => [`${v} mg/dL`, "LDL"])}
+                  <Line
+                    type="monotone" dataKey="ldl" name="LDL"
+                    stroke={COR_SERIE} strokeWidth={2.5} dot={{ r: 3 }}
+                    isAnimationActive={!reduzirMovimento}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </AreaGrafico>
+            {/* A linha tracejada não se explica sozinha: quem lê precisa saber
+                que ela é a meta do médico, e não mais uma medida. */}
+            <LegendaGrafico
+              itens={[
+                { cor: COR_SERIE, rotulo: "Seu LDL a cada exame" },
+                { cor: COR_REFERENCIA, rotulo: `Meta do seu médico (${targets.ldl_max} mg/dL)` },
+              ]}
+            />
           </SurfaceCard>
-        </div>
+        </section>
       )}
 
       {/* ── Laboratório por bloco ────────────────────────────────── */}
-      <div className="mb-6">
-        <SectionHeader title="Exames de laboratório" icon={FlaskConical} />
+      <section>
+        <TituloSecao titulo="Exames de laboratório" icone={FlaskConical} />
         {labs.length === 0 ? (
           <EmptyState icon={FlaskConical} title="Nenhum exame ainda" description="Seus resultados aparecem aqui assim que forem lançados." variant="card" />
         ) : (
@@ -199,22 +231,22 @@ export default function ExamesPage() {
               if (itens.length === 0) return null;
               return (
                 <div key={bloco.titulo}>
-                  <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2">{bloco.titulo}</p>
+                  <p className="text-sm font-bold uppercase tracking-wide text-muted-foreground mb-2">{bloco.titulo}</p>
                   <div className="space-y-2.5">
                     {itens.map((l) => (
                       <SurfaceCard key={l.id} className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-foreground truncate">{l.marker_label}</p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-base font-semibold text-foreground break-words">{l.marker_label}</p>
+                          <p className="text-sm text-muted-foreground">
                             {l.reference_text ? `Referência: ${l.reference_text}` : ""} · {fmtDia(l.collected_at)}
                           </p>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="text-lg font-bold text-foreground">
-                            {l.value_num ?? l.value_text ?? "—"} <span className="text-xs font-normal text-muted-foreground">{l.unit}</span>
+                          <p className="text-lg font-bold text-foreground tabular-nums">
+                            {l.value_num ?? l.value_text ?? "—"} <span className="text-sm font-normal text-muted-foreground">{l.unit}</span>
                           </p>
                           {l.status && (
-                            <span className={cn("text-[10px] font-bold uppercase tracking-wide rounded-full px-2 py-0.5", STATUS_TONE[l.status])}>
+                            <span className={cn("inline-block mt-0.5 text-xs font-bold uppercase tracking-wide rounded-full px-2 py-0.5", STATUS_TONE[l.status])}>
                               {STATUS_LABEL[l.status]}
                             </span>
                           )}
@@ -227,11 +259,11 @@ export default function ExamesPage() {
             })}
           </div>
         )}
-      </div>
+      </section>
 
       {/* ── Exames do coração — linha do tempo ───────────────────── */}
-      <div>
-        <SectionHeader title="Exames do coração" icon={HeartPulse} />
+      <section>
+        <TituloSecao titulo="Exames do coração" icone={HeartPulse} />
         {examsOrdenados.length === 0 ? (
           <EmptyState icon={HeartPulse} title="Nenhum exame do coração ainda" description="ECG, ecocardiograma, Holter e outros aparecem aqui." variant="card" />
         ) : (
@@ -239,21 +271,21 @@ export default function ExamesPage() {
             {examsOrdenados.map((e) => (
               <SurfaceCard key={e.id}>
                 <div className="flex items-start justify-between gap-3 mb-2">
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">{EXAM_TYPE_LABEL[e.exam_type] ?? e.exam_type}</p>
-                    <p className="text-xs text-muted-foreground">{fmtDia(e.performed_at)}{e.performed_by ? ` · ${e.performed_by}` : ""}</p>
+                  <div className="min-w-0">
+                    <p className="text-base font-semibold text-foreground break-words">{EXAM_TYPE_LABEL[e.exam_type] ?? e.exam_type}</p>
+                    <p className="text-sm text-muted-foreground">{fmtDia(e.performed_at)}{e.performed_by ? ` · ${e.performed_by}` : ""}</p>
                   </div>
                 </div>
                 {e.conclusion && (
-                  <p className="text-sm text-foreground leading-relaxed mb-2">{e.conclusion}</p>
+                  <p className="text-base text-foreground leading-relaxed mb-2">{e.conclusion}</p>
                 )}
                 {Object.keys(e.findings ?? {}).length > 0 && (
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 pt-2 border-t border-border-soft">
+                  <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-x-4 gap-y-2 pt-3 border-t border-border">
                     {Object.entries(e.findings).map(([chave, valor]) => (
                       valor == null || valor === "" ? null : (
                         <div key={chave} className="min-w-0">
-                          <p className="text-[10.5px] text-muted-foreground truncate">{campoLabel(chave)}</p>
-                          <p className="text-xs font-semibold text-foreground truncate">{String(valor)}</p>
+                          <p className="text-sm text-muted-foreground break-words">{campoLabel(chave)}</p>
+                          <p className="text-base font-semibold text-foreground break-words">{String(valor)}</p>
                         </div>
                       )
                     ))}
@@ -263,7 +295,7 @@ export default function ExamesPage() {
             ))}
           </div>
         )}
-      </div>
-    </div>
+      </section>
+    </TelaPaciente>
   );
 }

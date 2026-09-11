@@ -22,6 +22,13 @@
     --brand-cardio-light: 212 54% 67%;      /* #7FA9D9 */
     --brand-cardio-50:    212 62% 96%;      /* #EEF4FB */
     --brand-cardio-100:   212 59% 91%;      /* #DCE8F6 */
+
+    /* Teal de progresso — a única cor da referência que faltava.
+       Existe para uma coisa só: mostrar avanço sem competir com o azul da
+       marca nem pedir a atenção que o vermelho de alerta reserva para si. */
+    --progresso:          168 60% 47%;      /* #30C1AC */
+    --progresso-suave:    168 45% 88%;
+    --progresso-escuro:   172 65% 30%;
     --brand-rose:             0 64% 55%;        /* #D64545 — vermelho vital (coração) */
     --brand-sepia:            196 45% 55%;      /* teal de apoio */
     --brand-sepia-soft:       196 50% 94%;
@@ -48,7 +55,13 @@
     --secondary:            212 62% 96%;
     --secondary-foreground: 212 67% 26%;
     --muted:                214 30% 94%;
-    --muted-foreground:     220 9% 46%;         /* #6B7280 */
+    /* #5B6270 e não #6B7280: o cinza anterior dava 4,39:1 sobre o fundo da
+       página (#F1F4F9) e 4,19:1 sobre os selos cinza — os dois abaixo do
+       mínimo de 4,5:1 da WCAG AA para texto normal. Este token carrega TODO
+       subtítulo, legenda, unidade e data do app, então 2% de contraste a menos
+       não é detalhe: é o texto auxiliar inteiro fora do critério, na tela de
+       quem tem 70 anos. Novo valor: 5,3:1 sobre o fundo, 5,0:1 sobre o selo. */
+    --muted-foreground:     220 10% 40%;        /* #5B6270 */
     --accent:               212 69% 39%;
     --accent-foreground:    0 0% 100%;
     --destructive:          0 73% 50%;          /* #DC2626 */
@@ -302,10 +315,13 @@
 
   /* Piso para os tamanhos avulsos herdados. Escapamos os colchetes porque
      eles fazem parte do nome da classe que o Tailwind gera. */
-  .leitura-paciente .text-\[10px\] { font-size: 0.75rem;   }  /* 12px */
-  .leitura-paciente .text-\[11px\] { font-size: 0.8125rem; }  /* 13px */
-  .leitura-paciente .text-\[12px\] { font-size: 0.8125rem; }  /* 13px */
-  .leitura-paciente .text-\[13px\] { font-size: 0.9375rem; }  /* 15px */
+  .leitura-paciente .text-\[10px\]   { font-size: 0.75rem;   }  /* 12px */
+  .leitura-paciente .text-\[10\.5px\]{ font-size: 0.75rem;   }  /* 12px */
+  .leitura-paciente .text-\[11px\]   { font-size: 0.8125rem; }  /* 13px */
+  .leitura-paciente .text-\[11\.5px\]{ font-size: 0.8125rem; }  /* 13px */
+  .leitura-paciente .text-\[12px\]   { font-size: 0.8125rem; }  /* 13px */
+  .leitura-paciente .text-\[12\.5px\]{ font-size: 0.8125rem; }  /* 13px */
+  .leitura-paciente .text-\[13px\]   { font-size: 0.9375rem; }  /* 15px */
 
   /*
    * Alvo de toque. `min-height` não tem efeito em elemento inline, então

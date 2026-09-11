@@ -4,23 +4,42 @@
  * docs/ENGAJAMENTO-CARDIO.md §5: nada de contagem de calorias ou dieta
  * prescrita. O paciente escolhe o que mais se parece com o que comeu; o app
  * estima e devolve tendência, não julgamento.
+ *
+ * ── O que a passada visual mudou ──────────────────────────────────────
+ * A frase de `lerSodioDoDia`, o alvo e o tom vêm do hook e estão intactos.
+ * Mudou:
+ *
+ *  · As opções de refeição viraram `OpcaoBotao`, o mesmo controle de escolha
+ *    de Pressão, Glicemia e "Como estou". Antes cada tela desenhava o seu, e
+ *    esta em particular usava borda de 1px com padding de 3,5 — alvo de toque
+ *    apertado para quem escolhe quatro vezes por dia.
+ *
+ *  · O total do dia deixou de ser um cartão inteiro colorido. Em dia de
+ *    atenção, o cartão amarelo cheio ocupava a primeira dobra e empurrava a
+ *    pergunta ("o que você comeu hoje?") para baixo — a cor gritava e a ação
+ *    sumia. Agora o tom vive na barra e na borda, e o texto continua o mesmo.
+ *
+ *  · O gráfico de 10 dias ganhou unidade no eixo e legenda escrita para a
+ *    linha de referência, que antes era um tracejado sem nome.
  */
 import { useMemo } from "react";
-import { UtensilsCrossed, Info, CheckCircle2 } from "lucide-react";
+import { UtensilsCrossed, Info } from "lucide-react";
 import {
-  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip as RTooltip, ReferenceLine,
+  ResponsiveContainer, BarChart, Bar, ReferenceLine,
 } from "recharts";
 import { PageHeader } from "@/components/shell/PageHeader";
-import { SectionHeader } from "@/components/shell/SectionHeader";
 import { SurfaceCard } from "@/components/shell/SurfaceCard";
 import { TabPageSkeleton } from "@/components/shell/Skeletons";
+import {
+  TelaPaciente, TituloSecao, OpcaoBotao, GradeOpcoes, BarraProporcao,
+  AreaGrafico, LegendaGrafico, usePrefereMenosMovimento,
+  gradeGrafico, eixoX, eixoY, dicaGrafico, COR_SERIE, COR_REFERENCIA,
+} from "@/components/shell";
 import { cn } from "@/lib/utils";
 import { useSodio } from "@/hooks/useEngajamento";
 import {
   REFEICOES, OPCOES_REFEICAO, totalDoDia, type ChaveRefeicao,
 } from "@/lib/clinical/sodio";
-import { DOMAIN_COLORS } from "@/theme/colors";
 
 const ONDE_SE_ESCONDE = [
   "Pão e massas prontas",
@@ -38,6 +57,7 @@ function fmtDiaCurto(diaIso: string): string {
 
 export default function AlimentacaoPage() {
   const { registros, hoje, alvo, leitura, mediaSemana, isLoading, registrar } = useSodio();
+  const reduzirMovimento = usePrefereMenosMovimento();
 
   const chart10d = useMemo(() => {
     const dias: string[] = [];
@@ -56,114 +76,113 @@ export default function AlimentacaoPage() {
 
   if (isLoading) {
     return (
-      <div>
+      <TelaPaciente>
         <PageHeader title="Alimentação" />
         <TabPageSkeleton />
-      </div>
+      </TelaPaciente>
     );
   }
 
   const percentualBarra = Math.min(100, leitura.percentual);
+  const emAtencao = leitura.tom === "atencao";
 
   return (
-    <div className="pb-10">
+    <TelaPaciente>
       <PageHeader title="Alimentação" subtitle="Uma pergunta por refeição — sem tabela, sem contagem de calorias" />
 
       {/* ── Total do dia ──────────────────────────────────────────── */}
-      <SurfaceCard className={cn("mb-6 border-0", leitura.tom === "atencao" ? "bg-warning-bg" : "bg-cardio-50")}>
-        <p className="text-xs font-bold uppercase tracking-wide mb-1" style={{ color: leitura.tom === "atencao" ? "hsl(var(--warning))" : "hsl(var(--primary))" }}>
+      <SurfaceCard className={cn("border-l-4", emAtencao ? "border-l-warning" : "border-l-primary")}>
+        <p className={cn("text-sm font-bold uppercase tracking-wide mb-1", emAtencao ? "text-warning" : "text-primary")}>
           Hoje
         </p>
-        <p className="text-sm text-foreground leading-relaxed mb-3">{leitura.frase}</p>
-        <div className="h-2.5 rounded-full bg-white/60 overflow-hidden">
-          <div
-            className={cn("h-full rounded-full transition-all", leitura.tom === "atencao" ? "bg-warning" : "bg-primary")}
-            style={{ width: `${percentualBarra}%` }}
-          />
-        </div>
-        <p className="text-xs text-muted-foreground mt-2">Referência: {alvo} mg de sódio por dia</p>
+        <p className="text-base text-foreground leading-relaxed mb-3">{leitura.frase}</p>
+        <BarraProporcao
+          rotulo="Do valor de referência do dia"
+          valor={`${percentualBarra}% de ${alvo} mg`}
+          percentual={percentualBarra}
+          cor={emAtencao ? "hsl(var(--warning))" : "hsl(var(--brand-cardio))"}
+        />
       </SurfaceCard>
 
       {/* ── Uma pergunta por refeição ─────────────────────────────── */}
-      <div className="mb-6">
-        <SectionHeader title="O que você comeu hoje?" icon={UtensilsCrossed} />
+      <section>
+        <TituloSecao titulo="O que você comeu hoje?" icone={UtensilsCrossed} />
         <div className="space-y-5">
           {REFEICOES.map((refeicao) => {
             const selecionada = escolhaDoDia(refeicao.chave);
             return (
-              <div key={refeicao.chave}>
-                <p className="text-sm font-semibold text-foreground mb-2">{refeicao.rotulo}</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {OPCOES_REFEICAO.map((opcao) => {
-                    const marcado = selecionada === opcao.chave;
-                    return (
-                      <button
-                        key={opcao.chave}
-                        type="button"
-                        onClick={() => escolher(refeicao.chave, opcao.chave, opcao.sodioMg)}
-                        className={cn(
-                          "text-left rounded-2xl border p-3.5 transition-colors",
-                          marcado ? "border-primary bg-cardio-50" : "border-border bg-card"
-                        )}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <p className={cn("text-sm font-semibold", marcado ? "text-primary" : "text-foreground")}>{opcao.rotulo}</p>
-                          {marcado && <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />}
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">{opcao.exemplo}</p>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+              <fieldset key={refeicao.chave}>
+                <legend className="text-base font-semibold text-foreground mb-2">{refeicao.rotulo}</legend>
+                <GradeOpcoes>
+                  {OPCOES_REFEICAO.map((opcao) => (
+                    <OpcaoBotao
+                      key={opcao.chave}
+                      selecionado={selecionada === opcao.chave}
+                      onClick={() => escolher(refeicao.chave, opcao.chave, opcao.sodioMg)}
+                      titulo={opcao.rotulo}
+                      descricao={opcao.exemplo}
+                    />
+                  ))}
+                </GradeOpcoes>
+              </fieldset>
             );
           })}
         </div>
-      </div>
+      </section>
 
       {/* ── Média da semana ───────────────────────────────────────── */}
-      <SurfaceCard className="mb-6">
-        <p className="text-xs font-medium text-muted-foreground mb-1">Média dos últimos 7 dias</p>
-        <p className="text-3xl font-bold text-foreground">
-          {mediaSemana != null ? `${mediaSemana} mg` : "—"}
+      <SurfaceCard>
+        <p className="text-sm font-medium text-muted-foreground mb-1">Média dos últimos 7 dias</p>
+        <p className="text-3xl font-bold text-foreground tabular-nums">
+          {mediaSemana != null ? `${mediaSemana} mg` : "Sem registro"}
         </p>
       </SurfaceCard>
 
       {/* ── Gráfico 10 dias ───────────────────────────────────────── */}
-      <div className="mb-6">
-        <SectionHeader title="Últimos 10 dias" />
+      <section>
+        <TituloSecao titulo="Últimos 10 dias" />
         <SurfaceCard>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={chart10d} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
-              <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeDasharray="2 4" />
-              <XAxis dataKey="dia" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-              <ReferenceLine y={alvo} stroke="hsl(var(--success))" strokeDasharray="4 4" />
-              <RTooltip contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} formatter={(v: number) => [`${v} mg`, "Sódio"]} />
-              <Bar dataKey="mg" fill={DOMAIN_COLORS.metabolico} radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-          <p className="text-xs text-muted-foreground mt-2 text-center">A linha tracejada é a referência diária ({alvo} mg).</p>
+          <AreaGrafico altura={200}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chart10d} margin={{ top: 8, right: 8, left: -4, bottom: 0 }}>
+                {gradeGrafico()}
+                {eixoX("dia")}
+                {eixoY({ unidade: "mg", largura: 56 })}
+                <ReferenceLine y={alvo} stroke={COR_REFERENCIA} strokeDasharray="4 4" />
+                {dicaGrafico((v: never) => [`${v} mg`, "Sódio"])}
+                <Bar
+                  dataKey="mg" name="Sódio" fill={COR_SERIE} radius={[6, 6, 0, 0]}
+                  isAnimationActive={!reduzirMovimento}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </AreaGrafico>
+          <LegendaGrafico
+            itens={[
+              { cor: COR_SERIE, rotulo: "Sódio estimado no dia" },
+              { cor: COR_REFERENCIA, rotulo: `Referência diária (${alvo} mg)` },
+            ]}
+          />
         </SurfaceCard>
-      </div>
+      </section>
 
       {/* ── Onde o sal se esconde ─────────────────────────────────── */}
-      <div>
-        <SectionHeader title="Onde o sal se esconde" icon={Info} />
+      <section>
+        <TituloSecao titulo="Onde o sal se esconde" icone={Info} />
         <SurfaceCard>
-          <ul className="space-y-2">
+          <ul className="space-y-2.5">
             {ONDE_SE_ESCONDE.map((item) => (
-              <li key={item} className="flex items-start gap-2.5 text-sm text-foreground">
-                <span className="h-1.5 w-1.5 rounded-full bg-primary mt-2 shrink-0" />
+              <li key={item} className="flex items-start gap-2.5 text-base text-foreground leading-relaxed">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary mt-2.5 shrink-0" aria-hidden />
                 {item}
               </li>
             ))}
           </ul>
-          <p className="text-xs text-muted-foreground mt-3">
+          <p className="text-sm text-muted-foreground mt-3 leading-relaxed">
             A maior parte do sódio do dia costuma vir daí — não do saleiro à mesa.
           </p>
         </SurfaceCard>
-      </div>
-    </div>
+      </section>
+    </TelaPaciente>
   );
 }

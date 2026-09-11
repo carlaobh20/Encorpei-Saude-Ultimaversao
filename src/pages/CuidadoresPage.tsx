@@ -5,6 +5,23 @@
  * Do ponto de vista do PACIENTE: é ele quem convida, a pessoa convidada só
  * enxerga o que ele liberar, e o acesso pode ser encerrado a qualquer
  * momento. Nada aqui é cadastrado pelo médico ou pela clínica.
+ *
+ * ── O que a passada visual mudou ──────────────────────────────────────
+ * Nenhuma permissão, nenhum padrão de convite, nenhum texto — nem o do
+ * WhatsApp, nem o da confirmação de encerrar acesso. Mudou:
+ *
+ *  · Os campos do convite ganharam rótulo de 17px e altura de 48px
+ *    (`Formulario` + `Campo`). O modal era o lugar do app onde os campos
+ *    ficaram com a altura padrão de 40px do shadcn — a menor da área do
+ *    paciente, justo num formulário que ele preenche uma vez e sob pressão
+ *    ("quero que minha filha veja isso").
+ *
+ *  · Os botões de "Copiar código" / "Encerrar acesso" saíram de `sm` (36px)
+ *    para alvo de toque de verdade, e os dois botões só de ícone dos
+ *    convites pendentes ganharam rótulo acessível — eram dois botões sem
+ *    nome nenhum para quem usa leitor de tela.
+ *
+ *  · "Encerrar acesso" continua vermelho e continua atrás da confirmação.
  */
 import { useState } from "react";
 import {
@@ -13,15 +30,14 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shell/PageHeader";
-import { SectionHeader } from "@/components/shell/SectionHeader";
 import { SurfaceCard } from "@/components/shell/SurfaceCard";
 import { EmptyState } from "@/components/shell/EmptyState";
 import { TabPageSkeleton } from "@/components/shell/Skeletons";
 import { AppModal } from "@/components/shell/AppModal";
 import { StatusBadge } from "@/components/shell/StatusBadge";
+import { TelaPaciente, TituloSecao, Formulario, Campo } from "@/components/shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -87,7 +103,7 @@ function PermissaoToggle({
       onClick={() => onChange(!valor)}
       aria-pressed={valor}
       className={cn(
-        "w-full flex items-start gap-3 rounded-2xl border-2 p-4 text-left transition-colors",
+        "w-full min-h-[64px] flex items-start gap-3 rounded-2xl border-2 p-4 text-left transition-colors",
         valor ? "border-primary bg-primary/5" : "border-border bg-card"
       )}
     >
@@ -98,8 +114,8 @@ function PermissaoToggle({
         <Icon className={cn("h-5 w-5", valor ? "text-primary" : "text-muted-foreground")} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-foreground">{info.titulo}</p>
-        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{info.descricao}</p>
+        <p className="text-base font-semibold text-foreground leading-snug">{info.titulo}</p>
+        <p className="text-sm text-muted-foreground mt-0.5 leading-relaxed">{info.descricao}</p>
       </div>
       <div className={cn(
         "h-6 w-6 rounded-full border-2 grid place-items-center shrink-0 mt-1",
@@ -193,36 +209,36 @@ export default function CuidadoresPage() {
 
   if (isLoading) {
     return (
-      <div>
+      <TelaPaciente>
         <PageHeader title="Quem cuida de mim" />
         <TabPageSkeleton />
-      </div>
+      </TelaPaciente>
     );
   }
 
   return (
-    <div className="pb-10">
+    <TelaPaciente>
       <PageHeader
         title="Quem cuida de mim"
         subtitle="Familiares que acompanham a sua saúde"
         action={
-          <Button onClick={() => setConviteAberto(true)}>
-            <Plus className="h-4 w-4" /> Convidar alguém
+          <Button size="lg" onClick={() => setConviteAberto(true)}>
+            <Plus className="h-5 w-5" aria-hidden /> Convidar alguém
           </Button>
         }
       />
 
       {/* ── O que é ──────────────────────────────────────────────────── */}
-      <SurfaceCard className="mb-6 bg-primary/5 border border-primary/15">
+      <SurfaceCard className="bg-primary/5 border border-primary/15">
         <div className="flex items-start gap-3">
           <div className="h-11 w-11 rounded-full bg-card grid place-items-center shrink-0">
-            <Users className="h-5 w-5 text-primary" />
+            <Users className="h-5 w-5 text-primary" aria-hidden />
           </div>
           <div className="min-w-0 space-y-1.5">
-            <p className="text-sm font-semibold text-foreground">
+            <p className="text-base font-semibold text-foreground leading-snug">
               Alguém da sua família pode acompanhar você por aqui
             </p>
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p className="text-base text-muted-foreground leading-relaxed">
               A pessoa que você convidar vê seus números e é avisada se algo sair do lugar — sem
               precisar ficar te perguntando. <strong className="text-foreground">Quem convida é você</strong>,
               a pessoa só enxerga o que você liberar, e você pode encerrar o acesso a qualquer
@@ -244,74 +260,83 @@ export default function CuidadoresPage() {
       ) : (
         <>
           {ativos.length > 0 && (
-            <div className="mb-6">
-              <SectionHeader title="Cuidadores ativos" />
+            <section>
+              <TituloSecao titulo="Cuidadores ativos" />
               <div className="space-y-3">
                 {ativos.map((c) => (
                   <SurfaceCard key={c.id}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-semibold text-foreground">{c.caregiver_nome}</p>
+                          <p className="text-base font-semibold text-foreground break-words">{c.caregiver_nome}</p>
                           {c.parentesco && <StatusBadge variant="informativo">{c.parentesco}</StatusBadge>}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{listaDoQueVe(c)}</p>
+                        <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">{listaDoQueVe(c)}</p>
                       </div>
-                      <ShieldCheck className="h-5 w-5 text-success shrink-0" />
+                      <ShieldCheck className="h-6 w-6 text-success shrink-0" aria-label="Acesso ativo" />
                     </div>
-                    <div className="flex items-center gap-2 mt-4 pt-3 border-t border-border/60">
-                      <Button variant="outline" size="sm" onClick={() => abrirEdicao(c)}>
+                    {/* Nenhum azul cheio aqui: a ação azul da tela é convidar
+                        alguém, e ela já está no cabeçalho. */}
+                    <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-border">
+                      <Button variant="outline" onClick={() => abrirEdicao(c)}>
                         Ajustar permissões
                       </Button>
                       <Button
-                        variant="ghost" size="sm"
+                        variant="ghost"
                         className="text-error hover:text-error hover:bg-error/10"
                         onClick={() => setRevogando(c)}
                       >
-                        <X className="h-3.5 w-3.5" /> Encerrar acesso
+                        <X className="h-4 w-4" aria-hidden /> Encerrar acesso
                       </Button>
                     </div>
                   </SurfaceCard>
                 ))}
               </div>
-            </div>
+            </section>
           )}
 
           {pendentes.length > 0 && (
-            <div>
-              <SectionHeader title="Convites pendentes" subtitle="ainda não aceitos" />
+            <section>
+              <TituloSecao titulo="Convites pendentes" subtitulo="ainda não aceitos" />
               <div className="space-y-3">
                 {pendentes.map((c) => (
                   <SurfaceCard key={c.id} className="bg-warning-bg/40 border-warning/20">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-semibold text-foreground">{c.caregiver_nome}</p>
+                          <p className="text-base font-semibold text-foreground break-words">{c.caregiver_nome}</p>
                           {c.parentesco && <StatusBadge variant="pendente">{c.parentesco}</StatusBadge>}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1.5">
+                        <p className="text-sm text-muted-foreground mt-1.5">
                           Código: <span className="font-mono font-bold tracking-widest text-foreground">{c.invite_code}</span>
                         </p>
                       </div>
+                      {/* Botões só de ícone precisam de nome: eram dois "botão"
+                          idênticos para quem usa leitor de tela. */}
                       <div className="flex items-center gap-1 shrink-0">
                         {c.invite_code && (
-                          <Button variant="ghost" size="sm" onClick={() => copiar(c.invite_code!, "codigo")}>
-                            <Copy className="h-3.5 w-3.5" />
+                          <Button
+                            variant="ghost" size="icon"
+                            aria-label={`Copiar o código de ${c.caregiver_nome}`}
+                            onClick={() => copiar(c.invite_code!, "codigo")}
+                          >
+                            <Copy className="h-5 w-5" aria-hidden />
                           </Button>
                         )}
                         <Button
-                          variant="ghost" size="sm"
+                          variant="ghost" size="icon"
+                          aria-label={`Cancelar o convite de ${c.caregiver_nome}`}
                           className="text-muted-foreground hover:text-error"
                           onClick={() => setRevogando(c)}
                         >
-                          <X className="h-3.5 w-3.5" />
+                          <X className="h-5 w-5" aria-hidden />
                         </Button>
                       </div>
                     </div>
                   </SurfaceCard>
                 ))}
               </div>
-            </div>
+            </section>
           )}
         </>
       )}
@@ -326,52 +351,50 @@ export default function CuidadoresPage() {
         {codigoGerado ? (
           <div className="py-2 space-y-4">
             <div className="text-center py-2">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">Código do convite</p>
-              <p className="font-display text-4xl font-bold tracking-[0.2em] text-primary">{codigoGerado}</p>
+              <p className="text-sm uppercase tracking-wide text-muted-foreground mb-2">Código do convite</p>
+              <p className="font-display text-4xl font-bold tracking-[0.2em] text-primary break-all">{codigoGerado}</p>
             </div>
-            <p className="text-sm text-muted-foreground text-center leading-relaxed">
+            <p className="text-base text-muted-foreground text-center leading-relaxed">
               Envie para {nome || "a pessoa"}. Ela baixa o app, cria a conta dela, toca em
               "Sou cuidador" e digita este código.
             </p>
-            <div className="flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={() => copiar(codigoGerado, "codigo")}>
-                {copiado === "codigo" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />} Copiar código
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="lg" className="flex-1 min-w-[150px]" onClick={() => copiar(codigoGerado, "codigo")}>
+                {copiado === "codigo" ? <Check className="h-5 w-5" aria-hidden /> : <Copy className="h-5 w-5" aria-hidden />} Copiar código
               </Button>
               <Button
-                className="flex-1"
+                size="lg"
+                className="flex-1 min-w-[150px]"
                 onClick={() => copiar(mensagemWhatsApp(codigoGerado, nome, nomePaciente), "mensagem")}
               >
-                <Share2 className="h-4 w-4" /> Copiar mensagem
+                <Share2 className="h-5 w-5" aria-hidden /> Copiar mensagem
               </Button>
             </div>
-            <Button variant="ghost" className="w-full" onClick={() => fecharConvite(false)}>
+            <Button variant="ghost" size="lg" className="w-full" onClick={() => fecharConvite(false)}>
               Concluir
             </Button>
           </div>
         ) : (
-          <div className="py-2 space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="cuidador-nome">Nome da pessoa</Label>
+          <Formulario className="py-2 space-y-5">
+            <Campo rotulo="Nome da pessoa" para="cuidador-nome">
               <Input
                 id="cuidador-nome"
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
                 placeholder="Ex.: Maria"
               />
-            </div>
-            <div className="space-y-2">
-              <Label>Parentesco</Label>
+            </Campo>
+            <Campo rotulo="Parentesco">
               <Select value={parentesco} onValueChange={setParentesco}>
-                <SelectTrigger><SelectValue placeholder="Escolha uma opção" /></SelectTrigger>
+                <SelectTrigger aria-label="Parentesco"><SelectValue placeholder="Escolha uma opção" /></SelectTrigger>
                 <SelectContent>
                   {PARENTESCOS.map((p) => (
                     <SelectItem key={p} value={p}>{p}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="cuidador-email">E-mail (opcional)</Label>
+            </Campo>
+            <Campo rotulo="E-mail" ajuda="opcional" para="cuidador-email">
               <Input
                 id="cuidador-email"
                 type="email"
@@ -379,9 +402,8 @@ export default function CuidadoresPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="opcional"
               />
-            </div>
-            <div className="space-y-2">
-              <Label>O que ela vai poder ver</Label>
+            </Campo>
+            <Campo rotulo="O que ela vai poder ver">
               <div className="space-y-2.5">
                 {(Object.keys(PERMISSOES_ROTULO) as (keyof PermissoesCuidador)[]).map((chave) => (
                   <PermissaoToggle
@@ -392,16 +414,16 @@ export default function CuidadoresPage() {
                   />
                 ))}
               </div>
-            </div>
+            </Campo>
             <Button
               className="w-full"
-              size="lg"
+              size="xl"
               disabled={!nome.trim() || !parentesco || convidar.isPending}
               onClick={enviarConvite}
             >
               {convidar.isPending ? "Gerando código..." : "Gerar código de convite"}
             </Button>
-          </div>
+          </Formulario>
         )}
       </AppModal>
 
@@ -424,7 +446,7 @@ export default function CuidadoresPage() {
           </div>
           <Button
             className="w-full"
-            size="lg"
+            size="xl"
             disabled={atualizarPermissoes.isPending}
             onClick={salvarEdicao}
           >
@@ -446,10 +468,10 @@ export default function CuidadoresPage() {
                 : "deixa de ver os seus dados imediatamente. Você pode convidar de novo quando quiser."}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Voltar</AlertDialogCancel>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel className="min-h-[48px]">Voltar</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-error text-white hover:bg-error/90"
+              className="min-h-[48px] bg-error text-white hover:bg-error/90"
               onClick={() => { if (revogando) revogar.mutate(revogando.id); setRevogando(null); }}
             >
               {revogando?.status === "pending" ? "Cancelar convite" : "Encerrar acesso"}
@@ -457,6 +479,6 @@ export default function CuidadoresPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </TelaPaciente>
   );
 }

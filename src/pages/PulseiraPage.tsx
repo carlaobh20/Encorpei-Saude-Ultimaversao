@@ -31,8 +31,8 @@ import {
   ClipboardCopy, Circle, RefreshCw, CalendarClock, Loader2,
 } from "lucide-react";
 import { PageHeader } from "@/components/shell/PageHeader";
-import { SectionHeader } from "@/components/shell/SectionHeader";
 import { SurfaceCard } from "@/components/shell/SurfaceCard";
+import { TelaPaciente, TituloSecao } from "@/components/shell";
 import { StatusBadge } from "@/components/shell/StatusBadge";
 import { TabPageSkeleton } from "@/components/shell/Skeletons";
 import { Button } from "@/components/ui/button";
@@ -382,27 +382,36 @@ export default function PulseiraPage() {
 
   if (isLoading) {
     return (
-      <div>
+      <TelaPaciente>
         <PageHeader title="Pulseira" />
         <TabPageSkeleton />
-      </div>
+      </TelaPaciente>
     );
   }
 
   const bateriaVisivel = bateria ?? diagnostico?.bateria ?? null;
 
   return (
-    <div className="pb-10">
+    // A ESTRUTURA DESTA TELA NÃO MUDOU. Ela foi reorganizada há pouco — estado
+    // do aparelho, importação de arquivo, o que mede × o que estima, e ajuda
+    // técnica recolhida — e essa ordem é resultado daquela passada, não de
+    // acaso. O que esta rodada fez foi só harmonizar o acabamento com o resto
+    // do app: a coluna com teto de largura, títulos de seção na mesma voz, e
+    // o piso de 12px sobre os `text-[10.5px]` que sobraram por aqui.
+    <TelaPaciente>
       <PageHeader title="Pulseira" subtitle="O aparelho que você usa no pulso" />
 
       {/* ══ Tela principal: estado, última sincronização, uma ação ══ */}
       <div className="mb-6">
         <SurfaceCard className="border-2 border-primary/20">
-          <div className="flex items-start gap-3 mb-4">
+          {/* `flex-wrap` + `basis-40`: em 360px o selo de estado descia para a
+              linha de baixo em vez de espremer o nome do aparelho até virar
+              "Pulseira H5…" com a frase de estado numa coluna de três palavras. */}
+          <div className="flex flex-wrap items-start gap-3 mb-4">
             <div className="h-11 w-11 rounded-xl bg-cardio-50 grid place-items-center shrink-0">
               <Watch className="h-5 w-5 text-primary" />
             </div>
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 basis-40">
               <p className="text-sm font-semibold text-foreground truncate">{nomeVisivel}</p>
               <p className="text-xs text-muted-foreground">{info.frase}</p>
             </div>
@@ -411,7 +420,7 @@ export default function PulseiraPage() {
 
           {/* O número que importa: quando o dado chegou de verdade. */}
           <div className="rounded-2xl bg-cardio-50 p-4 mb-4">
-            <p className="text-[10.5px] font-bold uppercase tracking-wide text-muted-foreground mb-1">
+            <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1">
               Última vez que seus dados foram salvos
             </p>
             <p className="text-xl font-bold text-foreground leading-tight flex items-center gap-2 flex-wrap">
@@ -427,7 +436,7 @@ export default function PulseiraPage() {
 
           {/* O que chegou */}
           <div className="mb-4">
-            <p className="text-[10.5px] font-bold uppercase tracking-wide text-muted-foreground mb-1.5">
+            <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1.5">
               O que chegou nos últimos 7 dias
             </p>
             {chegou.length > 0 ? (
@@ -486,7 +495,7 @@ export default function PulseiraPage() {
 
       {/* ══ Importar arquivo ═════════════════════════════════════════ */}
       <div className="mb-6">
-        <SectionHeader title="Importar arquivo" subtitle="funciona no iPhone também" />
+        <TituloSecao titulo="Importar arquivo" subtitulo="funciona no iPhone também" />
         <SurfaceCard>
           <input
             ref={fileRef}
@@ -585,7 +594,7 @@ export default function PulseiraPage() {
 
               {previa.exemplos.length > 0 && (
                 <div className="mb-3">
-                  <p className="text-[10.5px] font-bold uppercase tracking-wide text-muted-foreground mb-1.5">
+                  <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1.5">
                     Exemplos do que li
                   </p>
                   <ul className="space-y-1.5">
@@ -668,7 +677,7 @@ export default function PulseiraPage() {
 
       {/* ══ O que mede, o que estima ═════════════════════════════════ */}
       <div className="mb-6">
-        <SectionHeader title="O que este aparelho mede — e o que ele estima" icon={Info} />
+        <TituloSecao titulo="O que este aparelho mede — e o que ele estima" icone={Info} />
         <div className="space-y-3">
           <SurfaceCard className="bg-success-bg border-0">
             <p className="text-xs font-bold uppercase tracking-wide text-success mb-1.5">Mede de verdade</p>
@@ -733,15 +742,15 @@ export default function PulseiraPage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4 text-sm">
                     <div className="rounded-xl bg-muted/50 px-3 py-2 min-w-0">
-                      <p className="text-[10.5px] font-bold uppercase tracking-wide text-muted-foreground">Nome do aparelho</p>
+                      <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Nome do aparelho</p>
                       <p className="text-foreground font-medium truncate">{diagnostico.nome}</p>
                     </div>
                     <div className="rounded-xl bg-muted/50 px-3 py-2 min-w-0">
-                      <p className="text-[10.5px] font-bold uppercase tracking-wide text-muted-foreground">Versão interna</p>
+                      <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Versão interna</p>
                       <p className="text-foreground font-medium truncate">{diagnostico.firmware ?? "não informada"}</p>
                     </div>
                     <div className="rounded-xl bg-muted/50 px-3 py-2 min-w-0">
-                      <p className="text-[10.5px] font-bold uppercase tracking-wide text-muted-foreground">Bateria</p>
+                      <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Bateria</p>
                       <p className="text-foreground font-medium flex items-center gap-1">
                         <Battery className="h-3.5 w-3.5 shrink-0" /> {diagnostico.bateria != null ? `${diagnostico.bateria}%` : "—"}
                       </p>
@@ -754,7 +763,7 @@ export default function PulseiraPage() {
                       <li key={s.uuid} className="flex items-center gap-2 text-sm text-foreground">
                         <Circle className={`h-2.5 w-2.5 shrink-0 ${s.suportado ? "fill-success text-success" : "fill-muted-foreground text-muted-foreground"}`} />
                         <span className="flex-1 min-w-0">{s.nome}</span>
-                        <span className={`text-[10.5px] font-bold uppercase tracking-wide rounded-full px-2 py-0.5 shrink-0 ${s.suportado ? "bg-success-bg text-success" : "bg-muted text-muted-foreground"}`}>
+                        <span className={`text-xs font-bold uppercase tracking-wide rounded-full px-2 py-0.5 shrink-0 ${s.suportado ? "bg-success-bg text-success" : "bg-muted text-muted-foreground"}`}>
                           {s.suportado ? "o app usa" : "só pelo app do aparelho"}
                         </span>
                       </li>
@@ -794,6 +803,6 @@ export default function PulseiraPage() {
           )}
         </SurfaceCard>
       </div>
-    </div>
+    </TelaPaciente>
   );
 }

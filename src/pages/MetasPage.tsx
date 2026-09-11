@@ -37,6 +37,24 @@
  * o paciente ajuste tratamento por conta própria. "Combinar caminhar mais" é
  * comportamento. "Baixar o alvo de pressão" seria conduta — e por isso só
  * existe aqui na forma de pergunta ao médico.
+ *
+ * ── O que a passada visual mudou ──────────────────────────────────────
+ * As duas listas, quem escreve cada uma, os passos dos −/+, os limites de
+ * sanidade e todos os textos seguem idênticos. Mudou:
+ *
+ *  · A barra de progresso das metas do médico ganhou o número em texto ao
+ *    lado do rótulo (`BarraProporcao`). Ela já vinha com o selo "No alvo" /
+ *    "Fora do alvo" escrito — o que faltava era a barra em si não ser só
+ *    cor e comprimento.
+ *
+ *  · O aviso de "você ainda não tem médico acompanhando" virou o bloco de
+ *    aviso comum do app, em vez de um cartão amarelo cheio que competia com
+ *    o cartão de explicação azul logo acima dele.
+ *
+ *  · Um azul cheio por tela: "Guardar meu combinado". O botão "Quero falar
+ *    com meu médico sobre esta meta" continua secundário, como já era — o
+ *    que mudou foi ele parar de ser o único controle com desenho próprio,
+ *    inventado dentro desta página.
  */
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -45,9 +63,11 @@ import {
   MessageSquare, Lock, Save, Footprints, Timer, Moon, Salad, PenLine,
 } from "lucide-react";
 import { PageHeader } from "@/components/shell/PageHeader";
-import { SectionHeader } from "@/components/shell/SectionHeader";
 import { SurfaceCard } from "@/components/shell/SurfaceCard";
 import { TabPageSkeleton } from "@/components/shell/Skeletons";
+import {
+  TelaPaciente, TituloSecao, BarraProporcao, AvisoDaTela,
+} from "@/components/shell";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -99,40 +119,35 @@ function MetaClinicaCard({ meta, onPedir }: { meta: TargetProgress; onPedir?: ()
   return (
     <SurfaceCard>
       <div className="flex items-start justify-between gap-3 mb-2">
-        <p className="text-sm font-semibold text-foreground">{meta.label}</p>
-        <span className={cn("text-[10.5px] font-bold uppercase tracking-wide rounded-full px-2.5 py-1 shrink-0", tone.bg, tone.text)}>
+        <p className="text-base font-semibold text-foreground">{meta.label}</p>
+        <span className={cn("text-xs font-bold uppercase tracking-wide rounded-full px-2.5 py-1 shrink-0", tone.bg, tone.text)}>
           {tone.label}
         </span>
       </div>
-      <div className="flex items-end justify-between mb-2">
-        <p className="text-2xl font-bold text-foreground">
-          {meta.current != null ? meta.current : "—"} <span className="text-sm font-normal text-muted-foreground">{meta.unit}</span>
-        </p>
-        <p className="text-xs text-muted-foreground">
-          {meta.lowerIsBetter ? "meta: até" : "meta:"} {meta.target} {meta.unit}
-        </p>
-      </div>
-      <div className="h-2 rounded-full bg-secondary overflow-hidden">
-        <div
-          className={cn(
-            "h-full rounded-full",
-            meta.status === "on_target" ? "bg-success"
-              : meta.status === "near" ? "bg-warning"
-                : meta.status === "off_target" ? "bg-error" : "bg-muted-foreground/30",
-          )}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
+      <p className="text-2xl font-bold text-foreground tabular-nums mb-2">
+        {meta.current != null ? meta.current : "—"} <span className="text-base font-normal text-muted-foreground">{meta.unit}</span>
+      </p>
+      <BarraProporcao
+        rotulo={meta.lowerIsBetter ? "Meta: até" : "Meta:"}
+        valor={`${meta.target} ${meta.unit}`}
+        percentual={pct}
+        cor={
+          meta.status === "on_target" ? "hsl(var(--status-success))"
+            : meta.status === "near" ? "hsl(var(--warning))"
+              : meta.status === "off_target" ? "hsl(var(--status-danger))"
+                : "hsl(var(--muted-foreground) / 0.3)"
+        }
+      />
 
       {onPedir && (
-        <button
-          type="button"
+        <Button
+          variant="outline"
           onClick={onPedir}
-          className="mt-3 w-full min-h-[48px] rounded-xl bg-secondary px-4 text-sm font-medium text-foreground flex items-center justify-center gap-2 active:scale-[0.99] transition-transform"
+          className="mt-4 w-full h-12 justify-center gap-2 whitespace-normal text-base"
         >
-          <MessageSquare className="h-4 w-4 shrink-0" />
+          <MessageSquare className="h-5 w-5 shrink-0" aria-hidden />
           Quero falar com meu médico sobre esta meta
-        </button>
+        </Button>
       )}
     </SurfaceCard>
   );
@@ -223,7 +238,7 @@ function CombinadoCard({
         </div>
         <div className="min-w-0">
           <p className="text-base font-semibold text-foreground leading-tight">{campo.rotulo}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">{campo.ajuda}</p>
+          <p className="text-sm text-muted-foreground mt-0.5 leading-relaxed">{campo.ajuda}</p>
         </div>
       </div>
 
@@ -231,7 +246,7 @@ function CombinadoCard({
         <button
           type="button"
           onClick={() => onChange(campo.padrao)}
-          className="w-full min-h-[52px] rounded-xl border-2 border-dashed border-border px-4 text-sm font-medium text-muted-foreground active:scale-[0.99] transition-transform"
+          className="w-full min-h-[56px] rounded-xl border-2 border-dashed border-border px-4 text-base font-medium text-muted-foreground active:scale-[0.99] transition-transform motion-reduce:transition-none"
         >
           Ainda não combinei nada — toque para combinar
         </button>
@@ -251,7 +266,7 @@ function CombinadoCard({
               <p className="text-3xl font-bold text-foreground tabular-nums leading-none">
                 {fmt(valor)}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">{campo.unidade}</p>
+              <p className="text-sm text-muted-foreground mt-1">{campo.unidade}</p>
             </div>
 
             <button
@@ -266,7 +281,7 @@ function CombinadoCard({
 
           <div className="mt-3 space-y-1">
             {atual != null && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm text-muted-foreground leading-relaxed">
                 Nos últimos dias você tem ficado em <b className="text-foreground">{fmt(atual)} {campo.unidade}</b>.
               </p>
             )}
@@ -274,14 +289,14 @@ function CombinadoCard({
               // Aparece como REFERÊNCIA, nunca como validação do combinado. O
               // paciente pode combinar menos do que a referência: é o combinado
               // dele, e um número que ele cumpre vale mais que um que ele ignora.
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm text-muted-foreground leading-relaxed">
                 Seu médico usa <b className="text-foreground">{fmt(referenciaMedico)} {campo.unidade}</b> como referência.
               </p>
             )}
             <button
               type="button"
               onClick={() => onChange(null)}
-              className="text-xs text-muted-foreground underline underline-offset-2 min-h-[32px]"
+              className="text-sm text-muted-foreground underline underline-offset-2 min-h-[44px] text-left"
             >
               Não quero combinar isto agora
             </button>
@@ -417,25 +432,25 @@ export default function MetasPage() {
 
   if (isLoading) {
     return (
-      <div>
+      <TelaPaciente>
         <PageHeader title="Minhas metas" />
         <TabPageSkeleton />
-      </div>
+      </TelaPaciente>
     );
   }
 
   return (
-    <div className="pb-10">
+    <TelaPaciente>
       <PageHeader
         title="Minhas metas"
         subtitle="o que seu médico definiu e o que você combinou com você"
       />
 
       {/* A frase que explica a tela inteira, na primeira dobra e sem jargão. */}
-      <SurfaceCard variant="highlight" className="mb-6">
+      <SurfaceCard variant="highlight">
         <div className="flex items-start gap-3">
-          <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-          <p className="text-sm text-foreground leading-relaxed">
+          <Info className="h-6 w-6 text-primary shrink-0 mt-0.5" aria-hidden />
+          <p className="text-base text-foreground leading-relaxed">
             Aqui tem duas listas. Os números do seu médico são a <b>receita do seu
             tratamento</b> — só ele muda. Os de baixo são o <b>combinado que você faz
             com você mesmo</b> — esses são seus, mude quando quiser.
@@ -444,22 +459,21 @@ export default function MetasPage() {
       </SurfaceCard>
 
       {/* ── 1. O que seu médico definiu ─────────────────────────────── */}
-      <div className="mb-2">
-        <SectionHeader
-          title="O que seu médico definiu"
-          icon={Stethoscope}
-          subtitle={
-            ehPrescricao
-              ? `definido em ${fmtData(definidoEm)}${medico?.display_name ? ` por ${medico.display_name}` : ""}`
-              : "valores de referência"
-          }
-        />
-      </div>
+      <TituloSecao
+        titulo="O que seu médico definiu"
+        icone={Stethoscope}
+        subtitulo={
+          ehPrescricao
+            ? `definido em ${fmtData(definidoEm)}${medico?.display_name ? ` por ${medico.display_name}` : ""}`
+            : "valores de referência"
+        }
+        className="mb-0"
+      />
 
       {ehPrescricao ? (
-        <div className="flex items-start gap-2 mb-3 px-1">
-          <Lock className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-          <p className="text-xs text-muted-foreground leading-relaxed">
+        <div className="flex items-start gap-2 px-1">
+          <Lock className="h-4 w-4 text-muted-foreground shrink-0 mt-1" aria-hidden />
+          <p className="text-sm text-muted-foreground leading-relaxed">
             Estes números são a receita do seu tratamento e são eles que ligam os
             avisos do aplicativo. Por isso só o seu médico pode mudá-los.
           </p>
@@ -468,21 +482,16 @@ export default function MetasPage() {
         // Sem médico vinculado (ou linha só de referência, plantada pelo próprio
         // app): dizer "seu médico definiu" seria inventar um médico. Isso não é
         // preciosismo — é a diferença entre referência e prescrição.
-        <SurfaceCard className="mb-3 bg-warning-bg border-0">
-          <div className="flex items-start gap-3">
-            <Info className="h-5 w-5 text-warning shrink-0 mt-0.5" />
-            <p className="text-sm text-foreground leading-relaxed">
-              Você ainda não tem um médico acompanhando por aqui. Os números abaixo
-              são <b>valores de referência gerais</b>, e não uma receita feita para
-              você. Quando um cardiologista assumir o seu acompanhamento, ele define
-              os seus.
-              {ehSugestao ? "" : " Enquanto isso, eles servem só para você se situar."}
-            </p>
-          </div>
-        </SurfaceCard>
+        <AvisoDaTela tom="atencao">
+          Você ainda não tem um médico acompanhando por aqui. Os números abaixo
+          são <b>valores de referência gerais</b>, e não uma receita feita para
+          você. Quando um cardiologista assumir o seu acompanhamento, ele define
+          os seus.
+          {ehSugestao ? "" : " Enquanto isso, eles servem só para você se situar."}
+        </AvisoDaTela>
       )}
 
-      <div className="space-y-3 mb-8">
+      <div className="space-y-3">
         {metasClinicas.map((m) => (
           <MetaClinicaCard
             key={m.label}
@@ -492,7 +501,7 @@ export default function MetasPage() {
         ))}
 
         {!medico && (
-          <p className="text-xs text-muted-foreground px-1 leading-relaxed">
+          <p className="text-sm text-muted-foreground px-1 leading-relaxed">
             Quando você estiver vinculado a um cardiologista, aparece aqui um botão
             para pedir uma conversa sobre qualquer uma destas metas.
           </p>
@@ -500,17 +509,16 @@ export default function MetasPage() {
       </div>
 
       {/* ── 2. O que eu combinei comigo ─────────────────────────────── */}
-      <div className="mb-2">
-        <SectionHeader
-          title="O que eu combinei comigo"
-          icon={HeartHandshake}
-          subtitle={metas?.updated_at ? `guardado em ${fmtData(metas.updated_at)}` : "ainda não combinado"}
-        />
-      </div>
+      <TituloSecao
+        titulo="O que eu combinei comigo"
+        icone={HeartHandshake}
+        subtitulo={metas?.updated_at ? `guardado em ${fmtData(metas.updated_at)}` : "ainda não combinado"}
+        className="mb-0 mt-2"
+      />
 
-      <div className="flex items-start gap-2 mb-3 px-1">
-        <PenLine className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-        <p className="text-xs text-muted-foreground leading-relaxed">
+      <div className="flex items-start gap-2 px-1">
+        <PenLine className="h-4 w-4 text-muted-foreground shrink-0 mt-1" aria-hidden />
+        <p className="text-sm text-muted-foreground leading-relaxed">
           Estes são seus. Nada aqui vira aviso nem cobrança — é o que você resolveu
           tentar. Seu médico consegue ver, e isso ajuda na consulta.
         </p>
@@ -538,7 +546,7 @@ export default function MetasPage() {
             </div>
             <div className="min-w-0">
               <p className="text-base font-semibold text-foreground leading-tight">Meu recado para mim</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="text-sm text-muted-foreground mt-0.5 leading-relaxed">
                 escreva do seu jeito o que você combinou — ex.: “caminhar até a padaria de manhã”
               </p>
             </div>
@@ -551,14 +559,15 @@ export default function MetasPage() {
               setRascunho((r) => ({ ...r, observacao: v.trim() === "" ? null : v }));
             }}
             placeholder="Escreva aqui..."
-            className="min-h-[96px] text-base"
+            aria-label="Meu recado para mim"
+            className="min-h-[96px] rounded-xl text-base"
           />
         </SurfaceCard>
       </div>
 
       <Button
-        size="lg"
-        className="mt-4 w-full min-h-[56px] text-base"
+        size="xl"
+        className="w-full"
         disabled={!mudou || salvar.isPending}
         onClick={() => {
           salvar.mutate(rascunho, { onSuccess: () => setTocado(false) });
@@ -568,14 +577,14 @@ export default function MetasPage() {
         {salvar.isPending ? "Guardando…" : "Guardar meu combinado"}
       </Button>
       {!mudou && (
-        <p className="text-center text-xs text-muted-foreground mt-2">
+        <p className="text-center text-sm text-muted-foreground">
           Tudo já está guardado.
         </p>
       )}
 
       {/* ── Pedir conversa sobre uma meta do médico ─────────────────── */}
       <Dialog open={!!pedido} onOpenChange={(o) => { if (!o) setPedido(null); }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-md rounded-3xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5" />
@@ -591,12 +600,12 @@ export default function MetasPage() {
           <Textarea
             value={textoPedido}
             onChange={(e) => setTextoPedido(e.target.value)}
-            className="min-h-[132px] text-base"
+            className="min-h-[132px] rounded-xl text-base"
             aria-label="Mensagem para o médico"
           />
 
-          <DialogFooter>
-            <Button variant="outline" className="min-h-[48px]" onClick={() => setPedido(null)}>
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" className="min-h-[48px]" onClick={() => setPedido(null)}>
               Cancelar
             </Button>
             <Button
@@ -610,6 +619,6 @@ export default function MetasPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </TelaPaciente>
   );
 }

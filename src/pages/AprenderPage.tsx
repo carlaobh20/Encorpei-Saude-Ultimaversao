@@ -4,14 +4,28 @@
  *
  * Não é uma biblioteca de artigos. Lições curtas, agrupadas por categoria,
  * não lidas primeiro, e recolhidas por baixo depois de lidas.
+ *
+ * ── O que a passada visual mudou ──────────────────────────────────────
+ * Nenhum texto de lição, nenhuma regra de quais lições aparecem. Mudou:
+ *
+ *  · O corpo da lição já era 16px — aqui ele foi o único lugar do app que
+ *    tinha acertado a escala antes da reforma. O que estava errado era o
+ *    resto em volta: título de seção de 13px, botões de "Entendi" em `sm`
+ *    (36px de altura, abaixo do alvo de toque) e cartão de lição lida com
+ *    opacidade — cinza claro sobre branco não é estado, é sujeira de tela.
+ *    Lição lida agora se marca pelo BOTÃO desabilitado que diz "Entendido".
+ *
+ *  · O bloco "você já leu todas" saiu do verde. Verde num app de saúde é
+ *    lido como resultado clínico bom; ter lido as lições não é resultado
+ *    clínico de coisa nenhuma.
  */
 import { useMemo, useState } from "react";
 import { ChevronDown, ThumbsUp, Check, BookOpen } from "lucide-react";
 import { PageHeader } from "@/components/shell/PageHeader";
-import { SectionHeader } from "@/components/shell/SectionHeader";
 import { SurfaceCard } from "@/components/shell/SurfaceCard";
 import { EmptyState } from "@/components/shell/EmptyState";
 import { TabPageSkeleton } from "@/components/shell/Skeletons";
+import { TelaPaciente, TituloSecao } from "@/components/shell";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAprender } from "@/hooks/useEngajamento";
@@ -43,28 +57,19 @@ function LicaoCard({
   onUtil: () => void;
 }) {
   return (
-    <SurfaceCard className={lida ? "bg-card/70" : undefined}>
-      <p className="text-xs font-medium text-primary mb-1.5">{licao.origem}</p>
-      <h3 className="text-base font-semibold text-foreground mb-2">{licao.titulo}</h3>
-      <p className="text-[16px] leading-[1.7] text-foreground/90">{licao.corpo}</p>
-      <div className="flex items-center gap-2 mt-4 pt-3 border-t border-border/60">
-        <Button
-          variant={lida ? "secondary" : "outline"}
-          size="sm"
-          className="rounded-xl"
-          onClick={onEntendi}
-          disabled={lida}
-        >
-          <Check className="h-3.5 w-3.5" /> {lida ? "Entendido" : "Entendi"}
+    <SurfaceCard>
+      <p className="text-sm font-medium uppercase tracking-wide text-primary mb-1.5">{licao.origem}</p>
+      <h3 className="font-display text-xl font-semibold leading-snug text-foreground mb-2">{licao.titulo}</h3>
+      <p className="text-[17px] leading-[1.7] text-foreground/90">{licao.corpo}</p>
+      {/* Dois botões secundários, nenhum azul cheio: ler uma lição não é a
+          ação que a tela está pedindo — é o que o paciente já está fazendo.
+          `flex-wrap` porque em 360px os dois rótulos não cabem lado a lado. */}
+      <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-border">
+        <Button variant="outline" className="rounded-xl" onClick={onEntendi} disabled={lida}>
+          <Check className="h-4 w-4" aria-hidden /> {lida ? "Entendido" : "Entendi"}
         </Button>
-        <Button
-          variant={util ? "secondary" : "ghost"}
-          size="sm"
-          className="rounded-xl"
-          onClick={onUtil}
-          disabled={util}
-        >
-          <ThumbsUp className="h-3.5 w-3.5" /> {util ? "Marcado como útil" : "Isso me ajudou"}
+        <Button variant="ghost" className="rounded-xl" onClick={onUtil} disabled={util}>
+          <ThumbsUp className="h-4 w-4" aria-hidden /> {util ? "Marcado como útil" : "Isso me ajudou"}
         </Button>
       </div>
     </SurfaceCard>
@@ -83,16 +88,16 @@ export default function AprenderPage() {
 
   if (isLoading) {
     return (
-      <div>
+      <TelaPaciente>
         <PageHeader title="Aprender" />
         <TabPageSkeleton />
-      </div>
+      </TelaPaciente>
     );
   }
 
   if (licoes.length === 0) {
     return (
-      <div>
+      <TelaPaciente>
         <PageHeader title="Aprender" subtitle="O que puxamos do seu caso" />
         <EmptyState
           icon={BookOpen}
@@ -100,17 +105,17 @@ export default function AprenderPage() {
           description="Conforme seus exames e receitas forem registrados, aparecem aqui explicações sobre o seu próprio caso."
           variant="card"
         />
-      </div>
+      </TelaPaciente>
     );
   }
 
   return (
-    <div className="pb-10">
+    <TelaPaciente>
       <PageHeader title="Aprender" subtitle="Explicações a partir do seu próprio caso" />
 
       {naoLidas.length === 0 && (
-        <SurfaceCard className="mb-5 bg-success-bg border-0">
-          <p className="text-sm font-medium text-foreground">Você já leu todas as lições disponíveis por enquanto.</p>
+        <SurfaceCard className="bg-cardio-50 border-0">
+          <p className="text-base font-medium text-foreground">Você já leu todas as lições disponíveis por enquanto.</p>
         </SurfaceCard>
       )}
 
@@ -118,8 +123,8 @@ export default function AprenderPage() {
         const doGrupo = gruposNaoLidas.get(cat) ?? [];
         if (doGrupo.length === 0) return null;
         return (
-          <div key={cat} className="mb-6">
-            <SectionHeader title={CATEGORIA_LABEL[cat]} />
+          <section key={cat}>
+            <TituloSecao titulo={CATEGORIA_LABEL[cat]} />
             <div className="space-y-3">
               {doGrupo.map((l) => (
                 <LicaoCard
@@ -135,7 +140,7 @@ export default function AprenderPage() {
                 />
               ))}
             </div>
-          </div>
+          </section>
         );
       })}
 
@@ -143,10 +148,11 @@ export default function AprenderPage() {
         <div>
           <button
             onClick={() => setMostrarLidas((v) => !v)}
-            className="w-full flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 mb-3"
+            aria-expanded={mostrarLidas}
+            className="w-full min-h-[48px] flex items-center justify-between rounded-2xl border border-border bg-card px-4 py-3 mb-3 shadow-sm"
           >
-            <span className="text-sm font-semibold text-foreground">Já lidas ({lidasLista.length})</span>
-            <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", mostrarLidas && "rotate-180")} />
+            <span className="text-base font-semibold text-foreground">Já lidas ({lidasLista.length})</span>
+            <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform motion-reduce:transition-none", mostrarLidas && "rotate-180")} aria-hidden />
           </button>
           {mostrarLidas && (
             <div>
@@ -155,7 +161,7 @@ export default function AprenderPage() {
                 if (doGrupo.length === 0) return null;
                 return (
                   <div key={cat} className="mb-6">
-                    <SectionHeader title={CATEGORIA_LABEL[cat]} />
+                    <TituloSecao titulo={CATEGORIA_LABEL[cat]} />
                     <div className="space-y-3">
                       {doGrupo.map((l) => (
                         <LicaoCard
@@ -178,6 +184,6 @@ export default function AprenderPage() {
           )}
         </div>
       )}
-    </div>
+    </TelaPaciente>
   );
 }
