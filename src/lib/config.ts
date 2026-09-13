@@ -11,14 +11,51 @@ export const env = resolveEnv();
 export const isDev = env === "development";
 export const isProd = env === "production";
 
-// ── Supabase — Encorpei Cardio ────────────────────────────────────
-// Sem fallback de credencial real: o projeto é preenchido no .env
-// (VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY).
-const URL_ENV = import.meta.env.VITE_SUPABASE_URL ?? "";
-const KEY_ENV = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "";
+// ══════════════════════════════════════════════════════════════════════
+// SUPABASE — por que o projeto padrão está escrito aqui, no código
+// ══════════════════════════════════════════════════════════════════════
+//
+// Estas duas constantes PARECEM segredo e não são. A chave "publishable"
+// (anon) é desenhada para ficar pública: ela viaja dentro do pacote de
+// JavaScript que todo navegador baixa. Qualquer pessoa lê o valor com um
+// `curl` na URL do site — com ou sem variável de ambiente, o resultado
+// publicado é byte por byte o mesmo.
+//
+// O que protege o banco NÃO é esconder esta chave: é a RLS. Com ela, a chave
+// anônima só alcança as linhas que as políticas permitem — e este projeto tem
+// RLS em todas as 41 tabelas, verificada contra banco real.
+//
+// Então por que escrever aqui em vez de deixar só na variável de ambiente?
+// Porque a variável de ambiente é um passo manual, invisível, fora do
+// repositório, que precisa ser repetido a cada novo ambiente — e que, quando
+// esquecido, não quebra: o app SOBE, bonito, rodando em modo demonstração,
+// parecendo pronto. Foi exatamente o que aconteceu: o banco ficou dias no ar
+// sem ninguém conseguir se cadastrar, porque o site publicado apontava para
+// `placeholder.supabase.co`. Um esquecimento silencioso que parece sucesso é
+// pior que um erro barulhento.
+//
+// A variável de ambiente CONTINUA valendo e tem precedência: é assim que um
+// ambiente de teste aponta para outro banco sem tocar no código. O valor
+// abaixo é só o destino padrão de produção.
+//
+// O QUE NUNCA PODE VIR PARA CÁ: a `service_role`. Essa sim é segredo — ela
+// ignora a RLS inteira. Vive só nas Edge Functions, do lado do servidor.
+
+const PROJETO_PADRAO = {
+  url: "https://rmodoqflmabzfsqieiln.supabase.co",
+  chave: "sb_publishable_47xoBuULGGAehheD2sAZ0w_KBqb_vMh",
+  id: "rmodoqflmabzfsqieiln",
+} as const;
+
+const URL_ENV = import.meta.env.VITE_SUPABASE_URL || PROJETO_PADRAO.url;
+const KEY_ENV = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || PROJETO_PADRAO.chave;
 
 /** Há um banco configurado? Falso = o app só roda em modo demonstração. */
 export const SUPABASE_CONFIGURADO = Boolean(URL_ENV && KEY_ENV);
+
+/** De onde veio a configuração — aparece na tela de diagnóstico (/status). */
+export const ORIGEM_DA_CONFIGURACAO: "ambiente" | "padrao" =
+  import.meta.env.VITE_SUPABASE_URL ? "ambiente" : "padrao";
 
 /**
  * Placeholder quando falta configuração.
@@ -31,7 +68,7 @@ export const SUPABASE_CONFIGURADO = Boolean(URL_ENV && KEY_ENV);
  */
 export const SUPABASE_URL = URL_ENV || "https://placeholder.supabase.co";
 export const SUPABASE_ANON_KEY = KEY_ENV || "public-anon-key-placeholder";
-export const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID ?? "";
+export const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID || PROJETO_PADRAO.id;
 export const SUPABASE_FUNCTIONS_URL = `${SUPABASE_URL}/functions/v1`;
 
 export const APP_NAME = "Encorpei Cardio";
@@ -51,6 +88,10 @@ export const EMERGENCIA_TELEFONE = "192";
 
 if (!SUPABASE_CONFIGURADO) {
   console.warn(
-    "[Config] Sem VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY: o app abre, mas só o modo demonstração funciona."
+    "[Config] Sem banco configurado: o app abre, mas só o modo demonstração funciona."
   );
+} else if (ORIGEM_DA_CONFIGURACAO === "padrao" && isProd) {
+  // Não é erro — é o caminho esperado. O aviso existe para que, num ambiente
+  // de teste criado no futuro, ninguém escreva em produção sem perceber.
+  console.info("[Config] Usando o projeto Supabase padrão (nenhuma variável de ambiente definida).");
 }
