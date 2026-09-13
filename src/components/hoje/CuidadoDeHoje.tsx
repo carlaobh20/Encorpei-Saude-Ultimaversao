@@ -24,7 +24,7 @@
  */
 
 import {
-  CheckCircle2, ChevronRight, CalendarCheck, Gauge, Scale, HeartPulse,
+  CheckCircle2, ChevronRight, CalendarCheck, ClipboardList, Check, Gauge, Scale, HeartPulse,
   Activity, Droplet, Pill, Stethoscope, Footprints, Salad, Moon, Smile,
   type LucideIcon,
 } from "lucide-react";
@@ -73,7 +73,47 @@ export function CuidadoDeHoje({
   const Icone = prioritaria ? ICONE_DA_METRICA[prioritaria.metric] : CalendarCheck;
 
   return (
-    <CartaoDestaque>
+    <CartaoDestaque className="care-today">
+      <div className="care-mobile lg:hidden">
+        <h2>Seu cuidado de hoje</h2>
+        {total > 0 && (
+          <div className="care-mobile-progress">
+            <p>{concluidasCount} de {total} cuidados concluídos <span>{concluidasCount}/{total}</span></p>
+            <BarraProgresso feitos={concluidasCount} total={total} />
+          </div>
+        )}
+        {prioritaria ? (
+          <>
+            <div className="care-mobile-task">
+              <ClipboardList aria-hidden="true" />
+              <div>
+                <p>{prioritaria.metric === "bp" ? "Registrar sua pressão" : rotuloAcao}</p>
+                {prioritaria.esperados > 1 && <small>{prioritaria.feitos} de {prioritaria.esperados} registros hoje</small>}
+                {prioritaria.instrucao && <small>{prioritaria.instrucao}</small>}
+              </div>
+              <ChevronRight aria-hidden="true" />
+            </div>
+            <button type="button" className="care-mobile-action" onClick={() => onResolver(prioritaria.metric)}>
+              Registrar agora
+            </button>
+          </>
+        ) : (
+          <p className="care-mobile-finished">{total > 0 ? "Tudo registrado por hoje." : "Nada combinado para hoje."}</p>
+        )}
+        {concluidas.length > 0 && (
+          <ul className="care-mobile-checks">
+            {concluidas.map((p) => (
+              <li key={p.metric}><span><Check aria-hidden="true" /></span>{p.metric === "medication" ? "Medicação" : ROTULO_METRICA[p.metric]}</li>
+            ))}
+          </ul>
+        )}
+        <details className="care-mobile-details">
+          <summary>{prescrito ? "Plano do seu cardiologista" : "Sugestão do app"}{demaisAbertas.length > 0 ? ` · +${demaisAbertas.length} cuidado(s)` : ""}</summary>
+          <p>{origem}</p>
+          {demaisAbertas.map((p) => <button type="button" key={p.metric} onClick={() => onResolver(p.metric)}>{ROTULO_METRICA[p.metric]}<ChevronRight aria-hidden="true" /></button>)}
+        </details>
+      </div>
+      <div className="hidden lg:block">
       <h2 className="font-display text-xl md:text-2xl font-semibold leading-tight">
         Seu cuidado de hoje
       </h2>
@@ -185,6 +225,7 @@ export function CuidadoDeHoje({
           ))}
         </ul>
       )}
+      </div>
     </CartaoDestaque>
   );
 }

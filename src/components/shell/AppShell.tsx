@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
-  ChevronDown, ChevronRight, LogOut, MessageCircle, Plus, Siren, X,
+  ChevronDown, ChevronRight, LogOut, MessageCircle, Plus, Siren, X, Bell, HeartPulse,
 } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { NavLink } from "@/components/NavLink";
@@ -532,7 +532,7 @@ function BotaoEmergencia() {
   const location = useLocation();
   // Não repete onde a própria tela já é sobre isso — inclusive em /hoje, que
   // deixou de ter o botão duplicado no fim da página.
-  if (location.pathname === "/emergencia" || location.pathname === "/como-estou") return null;
+  if (location.pathname === "/hoje" || location.pathname === "/emergencia" || location.pathname === "/como-estou") return null;
 
   return (
     <NavLink
@@ -584,7 +584,7 @@ function BarraInferior({
   return (
     <nav
       aria-label="Navegação principal"
-      className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-card border-t border-border pb-[env(safe-area-inset-bottom)]"
+      className="patient-bottom-nav lg:hidden fixed bottom-0 inset-x-0 z-40 bg-card border-t border-border pb-[env(safe-area-inset-bottom)]"
     >
       {/* grid-cols-5 com min-w-0 em cada célula: em 360px os rótulos mais
           longos ("Minha equipe") quebram em duas linhas em vez de estourar
@@ -665,7 +665,7 @@ function BotaoRegistrar({ item, onClick }: { item: BottomNavItem; onClick: () =>
       onClick={onClick}
       aria-label={item.descricao ?? item.label}
       aria-haspopup="dialog"
-      className={cn(CELULA_BARRA, "justify-end pb-1.5 text-primary")}
+      className={cn(CELULA_BARRA, "mobile-register-nav justify-end pb-1.5 text-primary")}
     >
       <span
         className={cn(
@@ -681,32 +681,12 @@ function BotaoRegistrar({ item, onClick }: { item: BottomNavItem; onClick: () =>
   );
 }
 
-/**
- * Topo do app no celular: a marca da clínica do paciente quando ela existe, a
- * marca da plataforma quando não. Quem cuida dele assina a tela — é isso que
- * faz o paciente sentir que o app é do consultório dele, e não de um
- * fornecedor.
- */
+/** Marca do aplicativo no mobile; a identificação da clínica permanece no menu e na equipe. */
 function MarcaNoTopo() {
-  const { marca, temMarca } = useMarcaClinica();
-
-  if (!temMarca) {
-    return <img src="/logo-symbol.png" alt={APP_NAME} width={30} height={30} className="object-contain" style={{ width: 30, height: 30 }} />;
-  }
-
-  return (
-    <div className="flex items-center gap-2 min-w-0">
-      {marca.logoUrl ? (
-        <img src={marca.logoUrl} alt={marca.clinica ?? marca.medico} className="h-8 w-8 rounded-md object-contain" />
-      ) : null}
-      <div className="min-w-0 leading-tight">
-        <p className="text-sm font-semibold truncate">{marca.clinica ?? marca.medico}</p>
-        {marca.subtitulo ? (
-          <p className="text-xs text-muted-foreground truncate">{marca.subtitulo}</p>
-        ) : null}
-      </div>
-    </div>
-  );
+  return <NavLink to="/hoje" className="mobile-brand" aria-label="Encorpei Saúde Cardio — início">
+      <HeartPulse aria-hidden="true" strokeWidth={1.5} />
+      <span><strong>Encorpei</strong><span>Saúde Cardio</span></span>
+    </NavLink>;
 }
 
 /**
@@ -720,6 +700,7 @@ export function AppShell() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [registroAberto, setRegistroAberto] = useState(false);
   const location = useLocation();
+  const naoLidas = useMensagensNaoLidas();
 
   // Toda troca de tela volta ao topo — sem isso, quem vem de uma lista longa
   // abre a próxima página no meio dela.
@@ -733,7 +714,7 @@ export function AppShell() {
     // tamanho dentro do app do paciente — sem mexer nas telas do médico, que
     // são densas de propósito (docs/CONTRATO-DE-CODIGO.md, "Tom de escrita").
     // `--barra-inferior` é a altura reservada embaixo: barra + área segura.
-    <div className="leitura-paciente flex min-h-screen w-full bg-background" style={ESTILO_SHELL}>
+    <div className={cn("patient-shell leitura-paciente flex min-h-screen w-full bg-background", location.pathname === "/hoje" && "patient-home-shell")} style={ESTILO_SHELL}>
       {/* Menu lateral — desktop. Branco sobre o fundo cinza-azulado da página,
           com uma borda fina de 1px em vez de sombra: a lateral é chão, não
           cartão, e sombra aqui faria ela competir com o conteúdo. */}
@@ -748,8 +729,12 @@ export function AppShell() {
             de baixo, ao alcance do polegar, e repetir um menu aqui em cima
             criaria dois caminhos para a mesma coisa em telas onde o topo é
             justamente a parte mais difícil de alcançar. */}
-        <header className="lg:hidden sticky top-0 z-30 flex items-center bg-card/95 backdrop-blur border-b border-border px-4 py-2.5">
+        <header className="patient-mobile-header lg:hidden sticky top-0 z-30 flex items-center justify-between px-4 py-2.5">
           <MarcaNoTopo />
+          <NavLink to="/medico" className="mobile-message-bell" aria-label={naoLidas > 0 ? `Abrir mensagens da equipe — ${naoLidas} não lidas` : "Abrir mensagens da equipe"}>
+            <Bell aria-hidden="true" strokeWidth={1.75} />
+            {naoLidas > 0 && <span className="mobile-unread-dot" aria-hidden="true" />}
+          </NavLink>
         </header>
 
         <CabecalhoConteudo />
@@ -776,7 +761,7 @@ export function AppShell() {
         */}
         <main
           className={cn(
-            "flex-1 w-full px-4 py-5 lg:px-8 lg:py-8",
+            "patient-main flex-1 w-full px-4 py-5 lg:px-8 lg:py-8",
             "pb-[calc(9.5rem_+_env(safe-area-inset-bottom,0px))] lg:pb-28"
           )}
         >

@@ -1,8 +1,8 @@
 import {
   Home, HeartPulse, Activity, Moon, Pill, CalendarDays, FlaskConical,
   MessageCircle, User, MessageSquarePlus, Watch, Target, Siren, Heart,
-  Footprints, Salad, GraduationCap, FileText, Users, Stethoscope, Scale,
-  Plus, Menu, SlidersHorizontal, Droplet, AlertTriangle,
+  Footprints, Salad, GraduationCap, FileText, Users, Scale,
+  Plus, SlidersHorizontal, Droplet, AlertTriangle, LayoutGrid,
   type LucideIcon,
 } from "lucide-react";
 
@@ -205,8 +205,8 @@ export const BOTTOM_NAV: BottomNavItem[] = [
   { id: "bn-hoje",      label: "Hoje",        path: "/hoje",        icon: Home,       descricao: "Hoje — o que fazer agora" },
   { id: "bn-saude",     label: "Minha saúde", path: "/meu-coracao", icon: Heart,      descricao: "Minha saúde — meus números e minha evolução" },
   { id: "bn-registrar", label: "Registrar",   acao: "registrar",    icon: Plus,       descricao: "Registrar uma medida agora" },
-  { id: "bn-equipe",    label: "Minha equipe", path: "/medico",     icon: Stethoscope, badge: "medico", descricao: "Minha equipe — médico, consultas e quem cuida de mim" },
-  { id: "bn-mais",      label: "Mais",        acao: "mais",         icon: Menu,       descricao: "Mais — abrir o menu com todas as telas" },
+  { id: "bn-equipe",    label: "Minha equipe", path: "/medico",     icon: Users, badge: "medico", descricao: "Minha equipe — médico, consultas e quem cuida de mim" },
+  { id: "bn-mais",      label: "Mais",        acao: "mais",         icon: LayoutGrid, descricao: "Mais — abrir o menu com todas as telas" },
 ];
 
 /**

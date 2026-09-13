@@ -9,3 +9,5 @@ dist-ssr
 *.log
 .vercel
 *.zip
+.npm-cache-layout/
+artifacts/layout-mobile/

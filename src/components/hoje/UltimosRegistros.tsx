@@ -20,7 +20,7 @@
  */
 
 import { Link } from "react-router-dom";
-import { Gauge, HeartPulse, Scale } from "lucide-react";
+import { Gauge, HeartPulse, Scale, Stethoscope, Heart, FileText, Watch, ChevronRight } from "lucide-react";
 import { CartaoMedida, type MedidaExibida } from "@/components/shell";
 import { useBloodPressure, useHeartRate, useWeight } from "@/hooks/useCardioReadings";
 import { rotuloProveniencia } from "@/lib/wearable/normalize";
@@ -79,14 +79,14 @@ export function UltimosRegistros() {
   ];
 
   return (
-    <section>
-      <div className="flex items-baseline justify-between gap-3 mb-3">
+    <section className="latest-readings">
+      <div className="latest-readings-heading flex items-baseline justify-between gap-3 mb-3">
         <h2 className="font-display text-xl font-semibold leading-tight">Seus últimos registros</h2>
         <Link
           to="/meu-coracao"
           className="text-base font-medium text-primary shrink-0 rounded-lg px-1"
         >
-          Ver todos
+          Ver todos <ChevronRight className="inline h-4 w-4 lg:hidden" aria-hidden="true" />
         </Link>
       </div>
 
@@ -95,7 +95,22 @@ export function UltimosRegistros() {
         quebrar no meio), 2 no celular comum, 3 no desktop. `min-w-0` vive
         dentro do primitivo, então nada estoura a grade.
       */}
-      <div className="grid grid-cols-1 min-[380px]:grid-cols-2 xl:grid-cols-3 gap-3">
+      <div className="mobile-readings-grid lg:hidden">
+        {medidas.slice(0, 2).map((m, i) => {
+          const Icon = i === 0 ? Stethoscope : Heart;
+          const SourceIcon = m.origem?.toLowerCase().includes("manual") ? FileText : Watch;
+          return (
+            <Link to={m.para ?? "/meu-coracao"} key={m.rotulo} className="mobile-reading-card">
+              <div className="mobile-reading-label"><Icon aria-hidden="true" /><span>{m.rotulo}</span></div>
+              <p className={m.valor == null ? "mobile-reading-empty" : "mobile-reading-value"}>{m.valor ?? "Sem registro"}{i === 1 && m.valor != null && <span> bpm</span>}</p>
+              {m.quando && <p className="mobile-reading-time">{i === 0 ? "mmHg · " : ""}{m.quando}</p>}
+              {m.origem && <p className="mobile-reading-source"><SourceIcon aria-hidden="true" />{m.origem === "Registro manual" ? "Manual" : m.origem}</p>}
+              {m.estimativa && <p className="mobile-reading-estimate">Estimativa do aparelho</p>}
+            </Link>
+          );
+        })}
+      </div>
+      <div className="hidden lg:grid grid-cols-2 xl:grid-cols-3 gap-3">
         {medidas.map((m) => (
           <CartaoMedida key={m.rotulo} m={m} />
         ))}

@@ -53,6 +53,7 @@ import { UltimosRegistros } from "@/components/hoje/UltimosRegistros";
 import { MinhaEvolucao } from "@/components/hoje/MinhaEvolucao";
 import { PainelPulseira } from "@/components/hoje/PainelPulseira";
 import { PainelEquipe } from "@/components/hoje/PainelEquipe";
+import { ResumoMobile } from "@/components/hoje/ResumoMobile";
 import { useProfile } from "@/hooks/useProfile";
 import { useBloodPressure } from "@/hooks/useCardioReadings";
 import { useCardioAlerts, useRiskAssessment } from "@/hooks/useCardioClinical";
@@ -61,16 +62,6 @@ import {
   useQualidadeDeVida, PERGUNTAS_QOL, OPCOES_QOL,
 } from "@/hooks/useEngajamento";
 import { cn } from "@/lib/utils";
-
-const FRASES_DO_DIA = [
-  "Um dia de cada vez, um número de cada vez.",
-  "Cada medida é uma prova de que você está cuidando de você.",
-  "Pequenos hábitos de hoje são o coração de amanhã.",
-  "Você não precisa ser perfeito — precisa ser constante.",
-  "Seu coração registra cada esforço, mesmo quando você não vê.",
-  "Hoje é mais um dia a favor do seu coração.",
-  "Cuidar do coração é um ato de carinho com quem você ama.",
-];
 
 /**
  * Como se resolve cada pendência do plano.
@@ -205,7 +196,6 @@ export default function HojePage() {
   const [registroAberto, setRegistroAberto] = useState(false);
 
   const nome = primeiroNome(profile?.full_name);
-  const frase = FRASES_DO_DIA[new Date().getDay() % FRASES_DO_DIA.length];
 
   const isLoading = loadingProfile || bp.isLoading || plano.isLoading || tempoNoAlvo.isLoading;
 
@@ -255,15 +245,15 @@ export default function HojePage() {
   const melhorConquista = conquistas[0] ?? null;
 
   return (
-    <div className="pb-4">
+    <div className="patient-home pb-4">
       <LayoutPainel
         principal={
           <>
             {/* ── 1. Saudação ─────────────────────────────────────── */}
-            <PageHeader
+            <div className="home-greeting"><PageHeader
               title={nome ? `${saudacao()}, ${nome}` : saudacao()}
-              subtitle={frase}
-            />
+              subtitle="Seu cuidado, um dia de cada vez."
+            /></div>
 
             {/* ── 2. Aviso prioritário, só quando existe ───────────── */}
             {alertaAberto && (
@@ -320,6 +310,7 @@ export default function HojePage() {
 
             {/* ── 5. Minha evolução ────────────────────────────────── */}
             <MinhaEvolucao />
+            <ResumoMobile />
 
             {/* ── 6. Aprender e Meu mês, em peso menor ─────────────── */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
@@ -407,7 +398,7 @@ export default function HojePage() {
           </>
         }
         apoio={
-          <>
+          <div className="hidden lg:block space-y-6">
             {/* ── Coluna de apoio: contexto que se consulta ────────── */}
             <PainelPulseira />
             <PainelEquipe />
@@ -429,7 +420,7 @@ export default function HojePage() {
                 <Atalho icone={Target} rotulo="Metas" para="/metas" />
               </div>
             </Painel>
-          </>
+          </div>
         }
       />
 

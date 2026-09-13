@@ -19,7 +19,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Activity } from "lucide-react";
+import { Activity, ChevronRight } from "lucide-react";
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip as RTooltip,
@@ -55,14 +55,14 @@ function usePrefereMenosMovimento(): boolean {
 
 function Legenda() {
   return (
-    <ul className="flex flex-wrap items-center gap-x-5 gap-y-1 mt-3">
+    <ul className="evolution-legend flex flex-wrap items-center gap-x-5 gap-y-1 mt-3">
       <li className="flex items-center gap-2 text-base text-muted-foreground">
         <span
           className="h-2.5 w-6 rounded-full shrink-0"
           style={{ background: "hsl(var(--brand-cardio))" }}
           aria-hidden
         />
-        Sistólica (o número maior)
+        <span><span className="lg:hidden">Sistólica</span><span className="hidden lg:inline">Sistólica (o número maior)</span></span>
       </li>
       <li className="flex items-center gap-2 text-base text-muted-foreground">
         <span
@@ -70,7 +70,7 @@ function Legenda() {
           style={{ background: "hsl(var(--progresso))" }}
           aria-hidden
         />
-        Diastólica (o número menor)
+        <span><span className="lg:hidden">Diastólica</span><span className="hidden lg:inline">Diastólica (o número menor)</span></span>
       </li>
     </ul>
   );
@@ -112,7 +112,7 @@ export function MinhaEvolucao() {
   }, [bp.readings]);
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-4 md:p-5 shadow-sm">
+    <section className="mobile-evolution rounded-2xl border border-border bg-card p-4 md:p-5 shadow-sm">
       {/* `flex-wrap` + `basis-48`: em 360–390px o link da direita ("Ver evolução
           completa") comia a linha inteira e sobrava uma coluna de 130px, onde o
           título quebrava em duas linhas e o subtítulo em três. Agora o link
@@ -126,7 +126,7 @@ export function MinhaEvolucao() {
         </div>
         <Link
           to="/meu-coracao"
-          className="text-base font-medium text-primary shrink-0 rounded-lg px-1"
+          className="hidden lg:block text-base font-medium text-primary shrink-0 rounded-lg px-1"
         >
           Ver evolução completa
         </Link>
@@ -150,7 +150,7 @@ export function MinhaEvolucao() {
         <>
           {/* Altura fixa: o ResponsiveContainer precisa de um pai com altura
               resolvida, senão colapsa para zero e o gráfico some sem erro. */}
-          <div className="mt-4 h-[220px] w-full">
+          <div className="evolution-chart mt-4 h-[220px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={dados} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
                 {/* Grade só na horizontal e discreta: ela serve para ler
@@ -215,12 +215,13 @@ export function MinhaEvolucao() {
 
           <Legenda />
 
-          <p className="text-sm text-muted-foreground mt-3 leading-relaxed">
+          <p className="evolution-provenance text-sm text-muted-foreground mt-3 leading-relaxed">
             {dados.length} medida{dados.length > 1 ? "s" : ""} no gráfico
             {origens.length > 0 ? ` · ${origens.join(" · ")}` : ""}
           </p>
         </>
       )}
+      <Link to="/meu-coracao" className="mobile-evolution-link lg:hidden">Ver minha evolução <ChevronRight aria-hidden="true" /></Link>
     </section>
   );
 }
