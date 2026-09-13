@@ -77,12 +77,44 @@ function fmtData(iso: string): string {
   return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
 }
 
+/**
+ * Endereço EXATO da área do cuidador.
+ *
+ * ── Por que isto deixou de ser um nome de botão (auditoria de setembro/2026) ──
+ * O convite mandava a pessoa "tocar em Sou cuidador". Essa string não existe
+ * em lugar nenhum do produto: nem na landing, nem no login, nem em menu
+ * algum. A rota `/cuidador` existe e funciona (publicRoutes.tsx), mas não há
+ * um único link apontando para ela — ou seja, o recurso inteiro de cuidador
+ * estava construído, com permissões e tela, e inalcançável para quem foi
+ * convidado. O convidado abria o app, procurava um botão inexistente e
+ * desistia; o paciente concluía que "não funciona".
+ *
+ * Enquanto não existir esse link na tela de entrada, o convite descreve o
+ * caminho que EXISTE: o endereço direto. `window.location.origin` garante que
+ * o link enviado é o mesmo ambiente de onde o convite saiu — em produção, em
+ * homologação ou no celular de quem está testando.
+ */
+function enderecoDoCuidador(codigo?: string): string {
+  const base = typeof window !== "undefined" ? window.location.origin : "";
+  return codigo ? `${base}/cuidador?codigo=${encodeURIComponent(codigo)}` : `${base}/cuidador`;
+}
+
+/**
+ * O link do convite LEVA o código.
+ *
+ * Mandar só o endereço e o código em linhas separadas obriga quem recebeu a
+ * guardar seis caracteres embaralhados na cabeça enquanto troca de aplicativo
+ * e cria uma conta — e quem recebe este convite tem, em média, 65 anos. Com o
+ * código na URL, a tela do cuidador já abre com o campo preenchido. O código
+ * continua escrito na mensagem, à parte: se o mensageiro cortar o link, ou se
+ * a pessoa abrir no computador e o app no celular, ela ainda consegue digitar.
+ */
 function mensagemWhatsApp(codigo: string, nomeCuidador: string, nomePaciente: string): string {
   return (
     `Oi, ${nomeCuidador}! Quero que você acompanhe minha saúde do coração pelo Encorpei Cardio.\n\n` +
-    `1. Baixe o app Encorpei Cardio\n` +
-    `2. Crie sua conta\n` +
-    `3. Toque em "Sou cuidador" e digite este código: ${codigo}\n\n` +
+    `1. Abra este link no celular: ${enderecoDoCuidador(codigo)}\n` +
+    `2. Crie sua conta (ou entre, se já tiver)\n` +
+    `3. O código ${codigo} já vem no link; se ele pedir, digite esse código.\n\n` +
     `Assim você vai ver como ${nomePaciente || "eu"} está, sem precisar ficar perguntando toda hora.`
   );
 }
@@ -355,8 +387,10 @@ export default function CuidadoresPage() {
               <p className="font-display text-4xl font-bold tracking-[0.2em] text-primary break-all">{codigoGerado}</p>
             </div>
             <p className="text-base text-muted-foreground text-center leading-relaxed">
-              Envie para {nome || "a pessoa"}. Ela baixa o app, cria a conta dela, toca em
-              "Sou cuidador" e digita este código.
+              Envie para {nome || "a pessoa"}. Ela abre{" "}
+              <span className="font-semibold text-foreground break-all">{enderecoDoCuidador(codigoGerado)}</span>{" "}
+              e cria a conta dela — o código já vai dentro do link. O botão "Copiar mensagem"
+              monta esse texto pronto para enviar.
             </p>
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="lg" className="flex-1 min-w-[150px]" onClick={() => copiar(codigoGerado, "codigo")}>

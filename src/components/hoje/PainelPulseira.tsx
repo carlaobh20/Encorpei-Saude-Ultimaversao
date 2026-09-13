@@ -22,7 +22,7 @@ import { Watch, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Painel } from "@/components/shell";
 import { useDevices } from "@/hooks/useCardioClinical";
-import { quandoLegivel, diasDesde } from "./formato";
+import { quandoLegivel, diasDesde } from "@/lib/formato";
 
 /** Acima disso, o aparelho não está trazendo dado novo — e a tela diz isso. */
 const DIAS_PARA_ATRASO = 2;

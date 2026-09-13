@@ -40,6 +40,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useDevices } from "@/hooks/useCardioClinical";
+import { useMedicoVinculado } from "@/hooks/useMarcaClinica";
 import {
   useActivity, useBloodPressure, useHeartRate, useSleep, useSpo2,
 } from "@/hooks/useCardioReadings";
@@ -86,8 +87,13 @@ const ESTADO: Record<EstadoPulseira, {
     variante: "informativo",
   },
   atualizada: {
+    // A segunda metade da frase é uma AFIRMAÇÃO SOBRE O MUNDO, não um elogio:
+    // "seu médico consegue ver" só é verdade se houver médico vinculado. Sem
+    // vínculo, ela fazia o paciente esperar um retorno que nunca viria — e o
+    // app dizia isso na mesma sessão em que /conta oferecia "conecte-se ao seu
+    // médico". Ver `fraseDoEstado`, logo abaixo.
     titulo: "Atualizada",
-    frase: "Suas medidas foram salvas e seu médico consegue ver.",
+    frase: "Suas medidas foram salvas.",
     variante: "concluido",
   },
   falhou: {
@@ -101,6 +107,21 @@ const ESTADO: Record<EstadoPulseira, {
     variante: "atencao",
   },
 };
+
+/**
+ * A frase do estado, sabendo se existe médico do outro lado.
+ *
+ * Só o estado "atualizada" muda: é o único que fala de quem RECEBE o dado.
+ * Com médico vinculado, a frase volta a ser a de antes (é informação útil e
+ * verdadeira); sem médico, ela para na parte verificável e diz onde o
+ * paciente resolve isso — em vez de afirmar um leitor que não existe.
+ */
+function fraseDoEstado(estado: EstadoPulseira, temMedico: boolean): string {
+  if (estado !== "atualizada") return ESTADO[estado].frase;
+  return temMedico
+    ? "Suas medidas foram salvas e seu médico consegue ver."
+    : "Suas medidas foram salvas. Elas ficam guardadas para você — quando um médico assumir seu acompanhamento, ele passa a ver.";
+}
 
 /** A partir de quantos dias sem gravação a tela chama o dado de atrasado. */
 const DIAS_PARA_ATRASO = 3;
@@ -129,6 +150,7 @@ const ORDEM_CAMPOS: CampoImportado[] = [
 ];
 
 export default function PulseiraPage() {
+  const { medico } = useMedicoVinculado();
   const { devices, isLoading } = useDevices();
   const sync = useWearableSync();
   const hr = useHeartRate();
@@ -333,7 +355,13 @@ export default function PulseiraPage() {
       setResumo(r);
       if (r.importados > 0) setUltimaGravacao(new Date().toISOString());
       if (sync.demo) toast.info("Modo demo: nada foi salvo.");
-      else if (r.importados > 0) toast.success("Arquivo importado. Seu médico já consegue ver.");
+      else if (r.importados > 0) {
+        toast.success(
+          medico
+            ? "Arquivo importado. Seu médico já consegue ver."
+            : "Arquivo importado. As medidas ficaram guardadas no seu histórico.",
+        );
+      }
       else if (r.ignorados > 0) toast.info("Esse arquivo já tinha sido importado. Nada novo foi adicionado.");
       else toast.error("Não consegui salvar nada deste arquivo.");
       cancelarImportacao();
@@ -413,7 +441,7 @@ export default function PulseiraPage() {
             </div>
             <div className="min-w-0 flex-1 basis-40">
               <p className="text-sm font-semibold text-foreground truncate">{nomeVisivel}</p>
-              <p className="text-xs text-muted-foreground">{info.frase}</p>
+              <p className="text-xs text-muted-foreground">{fraseDoEstado(estado, !!medico)}</p>
             </div>
             <StatusBadge variant={info.variante} className="shrink-0">{info.titulo}</StatusBadge>
           </div>

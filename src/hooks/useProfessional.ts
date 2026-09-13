@@ -22,6 +22,7 @@ import {
   type AgregadoPaciente, type EstadoFila,
 } from "@/hooks/useCarteiraIndicadores";
 import { idadeEmAnos } from "@/lib/clinical/scores";
+import { classeDaRegra, rotuloDaRegra, type ClasseDeAlerta } from "@/lib/clinical/cardioAlertRules";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -454,6 +455,10 @@ export interface AlertaComFluxo extends CardioAlert {
   resolution_note?: string | null;
   resolved_at?: string | null;
   resolved_by?: string | null;
+  /** `rule_code` traduzido — ver `rotuloDaRegra` em cardioAlertRules. */
+  rotulo?: string;
+  /** Risco clínico ou atraso operacional. */
+  classe?: ClasseDeAlerta;
 }
 
 export function fluxoDoAlerta(a: AlertaComFluxo): AlertWorkflowStatus {
@@ -463,17 +468,24 @@ export function fluxoDoAlerta(a: AlertaComFluxo): AlertWorkflowStatus {
 /**
  * Risco clínico × atraso operacional.
  *
- * `adesao_baixa` e `sem_dados` não descrevem o coração do paciente: descrevem a
- * relação dele com o tratamento e com o app. Misturados aos alertas de PA e de
- * ritmo, eles inflam a fila crítica e treinam o médico a ignorar a lista — que
- * é o pior desfecho possível para uma tela de alerta. Separados, viram trabalho
- * de secretaria (ligar, reagendar, ensinar o app) e param de competir com
- * decisão clínica.
+ * Um alerta de adesão ou de silêncio não descreve o coração do paciente:
+ * descreve a relação dele com o tratamento e com o app. Misturados aos alertas
+ * de PA e de ritmo, eles inflam a fila crítica e treinam o médico a ignorar a
+ * lista — que é o pior desfecho possível para uma tela de alerta. Separados,
+ * viram trabalho de secretaria (ligar, reagendar, ensinar o app) e param de
+ * competir com decisão clínica.
+ *
+ * AUDITORIA: o conjunto aqui era `{"adesao_baixa","sem_dados"}` — os códigos
+ * do motor do CLIENTE, que nunca são gravados em `cardio_alerts`. O banco
+ * emite `bp_*`, `hr_*`, `spo2_*`, `weight_*`, `no_data`, `adherence_low` e
+ * `symptom_*`. Resultado: `ehOperacional` devolvia falso para toda linha real
+ * e a aba "Atraso operacional" nunca teve conteúdo. A classificação passa a
+ * sair da régua canônica em cardioAlertRules, que conhece as duas
+ * nomenclaturas — se um gatilho novo nascer no banco, ele nasce lá e as duas
+ * abas continuam corretas sem ninguém tocar neste arquivo.
  */
-const REGRAS_OPERACIONAIS = new Set(["adesao_baixa", "sem_dados"]);
-
 export function ehOperacional(a: CardioAlert): boolean {
-  return REGRAS_OPERACIONAIS.has(a.rule_code);
+  return classeDaRegra(a.rule_code) === "operacional";
 }
 
 export function useProfessionalAlerts() {
@@ -518,20 +530,35 @@ export function useProfessionalAlerts() {
     },
   });
 
+  // Mesma regra do lado do paciente: `.update()` sem `.select()` devolve
+  // sucesso com zero linhas quando a RLS barra. Aqui a política do médico
+  // existe (`alerts_doctor`), mas um alerta de paciente já desvinculado cai
+  // fora dela — e o médico via "marcado" sem nada ter sido marcado.
+  const escreverAlerta = async (id: string, patch: Record<string, unknown>) => {
+    const { data, error } = await (supabase as any)
+      .from("cardio_alerts")
+      .update(patch)
+      .eq("id", id)
+      .select("id");
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      throw new Error("Nenhuma linha foi alterada — o alerta pode não pertencer mais à sua carteira.");
+    }
+  };
+
   const marcarLido = useMutation({
     mutationFn: async (id: string) => {
       if (demo) return;
-      const { error } = await (supabase as any).from("cardio_alerts").update({ is_read: true }).eq("id", id);
-      if (error) throw error;
+      await escreverAlerta(id, { is_read: true });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.alerts.all }),
+    onError: (e: unknown) => toastError(e, "Não consegui marcar o alerta como lido."),
   });
 
   const dispensar = useMutation({
     mutationFn: async (id: string) => {
       if (demo) { toast.info("Modo demo: nada é salvo."); return; }
-      const { error } = await (supabase as any).from("cardio_alerts").update({ is_dismissed: true }).eq("id", id);
-      if (error) throw error;
+      await escreverAlerta(id, { is_dismissed: true });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.alerts.all }),
     onError: (e: unknown) => toastError(e, "Não consegui dispensar o alerta."),
@@ -561,8 +588,7 @@ export function useProfessionalAlerts() {
         patch.resolved_at = agora;
         patch.resolved_by = user?.id ?? null;
       }
-      const { error } = await (supabase as any).from("cardio_alerts").update(patch).eq("id", input.id);
-      if (error) throw error;
+      await escreverAlerta(input.id, patch);
     },
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: queryKeys.alerts.all });
@@ -572,7 +598,18 @@ export function useProfessionalAlerts() {
     onError: (e: unknown) => toastError(e, "Não consegui atualizar o alerta."),
   });
 
-  const alerts = query.data ?? [];
+  // A tradução do `rule_code` sai daqui já pronta — mesma ponte usada no lado
+  // do paciente (`useCardioAlerts`), para que o mesmo alerta tenha o mesmo
+  // nome nas duas telas.
+  const alerts = useMemo<AlertaComFluxo[]>(
+    () =>
+      (query.data ?? []).map((a) => ({
+        ...a,
+        rotulo: rotuloDaRegra(a.rule_code),
+        classe: classeDaRegra(a.rule_code),
+      })),
+    [query.data]
+  );
   const clinicos = alerts.filter((a) => !ehOperacional(a));
   const operacionais = alerts.filter(ehOperacional);
 
@@ -648,19 +685,47 @@ export function usePatientMessages(
     onError: (e: unknown) => toastError(e, "Não consegui enviar a mensagem."),
   });
 
+  /**
+   * Marcar como lidas as mensagens do OUTRO lado.
+   *
+   * AUDITORIA — o que estava e o que não estava errado aqui:
+   *
+   *  · O gatilho `mensagem_imutavel` (20260912000000 §4) NÃO está invertido.
+   *    Ele desfaz a mudança de `read_at` quando `old.sender_user_id =
+   *    auth.uid()`, isto é, quando quem escreve é o REMETENTE. Quem recebeu
+   *    passa. É a regra certa. Mesmo assim ele foi reescrito na migração
+   *    20260917000000 para (a) comparar com `is distinct from`, que continua
+   *    valendo se `sender_user_id` vier nulo, e (b) rejeitar em vez de
+   *    silenciosamente desfazer — desfazer em silêncio foi metade do motivo
+   *    de este bug ter durado tanto.
+   *
+   *  · O que estava errado é isto aqui: `.update()` sem `.select()`. O filtro
+   *    `.eq("sender", outroLado)` mais o gatilho podem resultar em ZERO linhas
+   *    com `error === null`; o `onSuccess` rodava, a thread era invalidada e o
+   *    contador de não lidas voltava intacto no refetch. Agora a escrita
+   *    devolve as linhas afetadas, e o contador de não lidas é atualizado no
+   *    cache com o que o servidor DE FATO gravou — não com o que se esperava
+   *    que gravasse.
+   *
+   * Zero linhas não é erro: quando não há nada por ler, zero é a resposta
+   * correta. O que é erro é o servidor recusar — e isso vem em `error`.
+   */
   const marcarLidas = useMutation({
-    mutationFn: async () => {
-      if (demo || !patientUserId) return;
+    mutationFn: async (): Promise<number> => {
+      if (demo || !patientUserId) return 0;
       const outroLado = sender === "doctor" ? "patient" : "doctor";
-      const { error } = await (supabase as any)
+      const { data, error } = await (supabase as any)
         .from("patient_messages")
         .update({ read_at: new Date().toISOString() })
         .eq("patient_user_id", patientUserId)
         .eq("sender", outroLado)
-        .is("read_at", null);
+        .is("read_at", null)
+        .select("id, read_at");
       if (error) throw error;
+      return (data ?? []).length;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+    onError: (e: unknown) => toastError(e, "Não consegui marcar as mensagens como lidas."),
   });
 
   const messages = query.data ?? [];

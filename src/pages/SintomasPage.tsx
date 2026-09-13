@@ -39,6 +39,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useSymptoms } from "@/hooks/useCardioClinical";
 import { classificarNyha, NYHA_DESCRICAO } from "@/lib/clinical/scores";
+import { GATILHO, QUALIFICADOR, type GatilhoDaDor } from "@/lib/clinical/cardioAlertRules";
 import type { SymptomType } from "@/types/cardio";
 
 interface SymptomDef {
@@ -60,21 +61,52 @@ const SINTOMAS: SymptomDef[] = [
   { type: "dizziness", label: "Tontura", icon: Gauge },
 ];
 
+/**
+ * Onde a tela pergunta "de 0 a 10, quanto?".
+ *
+ * AUDITORIA: `intensity` só era enviada para `fatigue`; ia `null` para dor no
+ * peito, falta de ar e palpitação. Com isso o escalonamento por intensidade do
+ * gatilho do banco (`coalesce(new.intensity,0) >= 8`) nunca disparava — a
+ * coluna existia, a regra existia, e nada nunca chegava lá. Agora a pergunta é
+ * feita nos sintomas em que um número de 0 a 10 significa alguma coisa, e o
+ * valor é enviado sempre que foi coletado.
+ */
+const COLETA_INTENSIDADE = new Set<SymptomType>(["chest_pain", "dyspnea", "palpitations", "fatigue"]);
+
 /** Linha de escolhas que quebra em vez de estourar a largura em 360px. */
 function LinhaOpcoes({ children }: { children: React.ReactNode }) {
   return <div className="flex flex-wrap gap-2">{children}</div>;
 }
 
+/**
+ * A pergunta de 0 a 10, com o mesmo desenho em todos os sintomas.
+ * Número grande porque é para ser lido e conferido por quem tem 70 anos e
+ * está com o sintoma acontecendo.
+ */
+function CampoIntensidade({
+  id, rotulo, valor, aoMudar,
+}: { id: string; rotulo: string; valor: string; aoMudar: (v: string) => void }) {
+  return (
+    <Campo rotulo={rotulo} para={id}>
+      <Input
+        id={id} inputMode="numeric" value={valor}
+        onChange={(e) => aoMudar(e.target.value.replace(/\D/g, "").slice(0, 2))}
+        className="h-14 w-24 text-2xl font-bold text-center tabular-nums"
+      />
+    </Campo>
+  );
+}
+
 export default function SintomasPage() {
   const navigate = useNavigate();
-  const { registrar } = useSymptoms();
+  const { registrar, registrarEmergencia } = useSymptoms();
   const [selecionado, setSelecionado] = useState<SymptomType | null>(null);
 
   // Dor no peito
   const [local, setLocal] = useState("");
   const [tipo, setTipo] = useState<string | null>(null);
   const [duracao, setDuracao] = useState("");
-  const [gatilho, setGatilho] = useState<"effort" | "rest" | "emotion" | null>(null);
+  const [gatilho, setGatilho] = useState<GatilhoDaDor | null>(null);
   const [irradiacao, setIrradiacao] = useState("");
   const [associados, setAssociados] = useState<string[]>([]);
 
@@ -114,12 +146,20 @@ export default function SintomasPage() {
   const toggleAssociado = (s: string) =>
     setAssociados((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
 
+  /** 0–10 digitado, ou `null` quando a tela não perguntou / veio vazio. */
+  const intensidadeColetada = (type: SymptomType): number | null => {
+    if (!COLETA_INTENSIDADE.has(type)) return null;
+    const n = Number(intensidade);
+    if (!intensidade.trim() || !Number.isFinite(n)) return null;
+    return Math.min(10, Math.max(0, Math.round(n)));
+  };
+
   const salvarESeguir = (qualifiers: Record<string, string | number | boolean>, duracaoMin: number | null) => {
     registrar.mutate({
       symptom_type: selecionado!,
       occurred_at: new Date().toISOString(),
       duration_minutes: duracaoMin,
-      intensity: selecionado === "fatigue" ? Number(intensidade) : null,
+      intensity: intensidadeColetada(selecionado!),
       qualifiers,
       notes: notas.trim() || null,
     });
@@ -127,11 +167,56 @@ export default function SintomasPage() {
     limpar();
   };
 
-  // ── Desmaio: emergência imediata, sem formulário, sem fila ──────────
+  /**
+   * ══════════════════════════════════════════════════════════════════
+   * GRAVA PRIMEIRO, NAVEGA DEPOIS — e a gravação não segura ninguém.
+   * ══════════════════════════════════════════════════════════════════
+   *
+   * AUDITORIA, o buraco mais grave do app: síncope e dor torácica em repouso
+   * chamavam `navigate("/emergencia")` e davam `return` ANTES de qualquer
+   * escrita. Os dois sintomas mais graves do domínio eram os únicos que nunca
+   * entravam em `symptom_reports`: nenhum gatilho do banco rodava, nenhum
+   * alerta era criado, e o cardiologista descobria — se descobrisse — pelo
+   * telefone do pronto-socorro.
+   *
+   * A ordem correta tem duas metades e as duas são inegociáveis:
+   *
+   *  1. a escrita é DISPARADA antes da navegação (`registrarEmergencia` é
+   *     chamada aqui, não depois de um `await` que talvez nunca volte);
+   *  2. a navegação NÃO espera a escrita. Nada de `await`: a promise fica
+   *     solta no hook, que não é desmontado com esta tela, e a rota troca no
+   *     mesmo tick. Se a rede estiver ruim, o paciente vê o 192 na hora e o
+   *     registro chega quando chegar. Se falhar de vez, o hook avisa — mas
+   *     nunca antes de o paciente já estar na tela certa.
+   */
+  const gravarEIrParaEmergencia = (
+    type: SymptomType,
+    qualifiers: Record<string, string | number | boolean>,
+    duracaoMin: number | null
+  ) => {
+    void registrarEmergencia({
+      symptom_type: type,
+      occurred_at: new Date().toISOString(),
+      duration_minutes: duracaoMin,
+      intensity: intensidadeColetada(type),
+      qualifiers,
+      notes: notas.trim() || null,
+      // O app diz o que ele próprio concluiu. O gatilho do banco recalcula e
+      // confirma; ter os dois registrados é o que permite auditar depois
+      // divergência entre a triagem da tela e a do servidor.
+      triaged_as: "emergency",
+    });
+    navigate("/emergencia");
+  };
+
+  // ── Desmaio: emergência imediata, sem formulário, mas COM registro ──
   const escolher = (type: SymptomType) => {
     if (type === "syncope") {
       toast.error("Desmaio é emergência.");
-      navigate("/emergencia");
+      // Desmaio não tem formulário — e não precisa ter. O que ele precisa é
+      // existir em `symptom_reports`: é o relato que faz o gatilho abrir um
+      // alerta `emergency` para o médico enquanto o paciente vai ao PS.
+      gravarEIrParaEmergencia(type, {}, null);
       return;
     }
     setSelecionado(type);
@@ -139,22 +224,51 @@ export default function SintomasPage() {
 
   const enviarDorNoPeito = () => {
     const min = duracao.trim() ? Number(duracao) : null;
-    // REGRA CRÍTICA: dor em repouso não vira registro para depois.
+    const qualifiers = {
+      local,
+      tipo: tipo ?? "",
+      [QUALIFICADOR.GATILHO]: gatilho ?? "",
+      irradiacao,
+      associados: associados.join(", "),
+    };
+
+    // REGRA CRÍTICA: dor em repouso não vira card na fila — vira tela de
+    // emergência. O que mudou é que agora ela também vira LINHA no banco.
     //
     // Duração DESCONHECIDA conta como longa, de propósito. O caso que essa
     // linha protege é o pior possível: alguém com dor torácica em repouso
     // que não sabe (ou não consegue) dizer há quanto tempo. Tratar o campo
     // vazio como "curta" é a única leitura que mata; tratá-lo como longa
     // custa, no máximo, uma tela de emergência a mais.
-    if (gatilho === "rest" && (min == null || min > 10)) {
-      navigate("/emergencia");
+    if (gatilho === GATILHO.REPOUSO && (min == null || min > 10)) {
+      gravarEIrParaEmergencia("chest_pain", qualifiers, min);
       return;
     }
-    salvarESeguir(
-      { local, tipo: tipo ?? "", gatilho: gatilho ?? "", irradiacao, associados: associados.join(", ") },
-      min
-    );
+    salvarESeguir(qualifiers, min);
   };
+
+  /**
+   * O atalho do aviso no topo do formulário de dor no peito.
+   *
+   * Era o mesmo buraco em versão menor: quem clicava aqui ia para /emergencia
+   * sem deixar rastro. Agora grava com o que já foi preenchido — mesmo que
+   * seja quase nada. O gatilho é assumido como "repouso" quando não marcado
+   * porque é exatamente o que o aviso diz ao paciente antes do clique ("está
+   * acontecendo agora, não passa e você está em repouso").
+   */
+  const emergenciaPeloAviso = () =>
+    gravarEIrParaEmergencia(
+      "chest_pain",
+      {
+        local,
+        tipo: tipo ?? "",
+        [QUALIFICADOR.GATILHO]: gatilho ?? GATILHO.REPOUSO,
+        irradiacao,
+        associados: associados.join(", "),
+        pelo_aviso_da_tela: true,
+      },
+      duracao.trim() ? Number(duracao) : null
+    );
 
   const nyhaClasse = classificarNyha({
     sintomaEmRepouso: repouso,
@@ -182,7 +296,7 @@ export default function SintomasPage() {
                   pode encontrá-lo depois de seis perguntas. */}
               <AvisoDaTela tom="atencao">
                 Se a dor está acontecendo agora, não passa e você está em repouso, não espere — vá direto para{" "}
-                <button type="button" className="underline font-semibold" onClick={() => navigate("/emergencia")}>emergência</button>.
+                <button type="button" className="underline font-semibold" onClick={emergenciaPeloAviso}>emergência</button>.
               </AvisoDaTela>
 
               <Campo rotulo="Onde dói" para="dor-local">
@@ -203,9 +317,13 @@ export default function SintomasPage() {
 
               <Campo rotulo="Quando começou">
                 <LinhaOpcoes>
-                  <OpcaoBotao className="w-auto" selecionado={gatilho === "effort"} onClick={() => setGatilho("effort")} titulo="Durante esforço" />
-                  <OpcaoBotao className="w-auto" selecionado={gatilho === "rest"} onClick={() => setGatilho("rest")} titulo="Em repouso" />
-                  <OpcaoBotao className="w-auto" selecionado={gatilho === "emotion"} onClick={() => setGatilho("emotion")} titulo="Com emoção/estresse" />
+                  {/* Os valores gravados são os canônicos de `GATILHO`, em
+                      português. Antes a tela gravava "rest" e o motor de risco
+                      procurava `qualifiers.trigger` — chave e dicionário
+                      diferentes, regra que nunca disparava. */}
+                  <OpcaoBotao className="w-auto" selecionado={gatilho === GATILHO.ESFORCO} onClick={() => setGatilho(GATILHO.ESFORCO)} titulo="Durante esforço" />
+                  <OpcaoBotao className="w-auto" selecionado={gatilho === GATILHO.REPOUSO} onClick={() => setGatilho(GATILHO.REPOUSO)} titulo="Em repouso" />
+                  <OpcaoBotao className="w-auto" selecionado={gatilho === GATILHO.EMOCAO} onClick={() => setGatilho(GATILHO.EMOCAO)} titulo="Com emoção/estresse" />
                 </LinhaOpcoes>
               </Campo>
 
@@ -220,6 +338,13 @@ export default function SintomasPage() {
                   ))}
                 </LinhaOpcoes>
               </Campo>
+
+              <CampoIntensidade
+                id="dor-intensidade"
+                rotulo="De 0 (nada) a 10 (a pior possível), quanto dói?"
+                valor={intensidade}
+                aoMudar={setIntensidade}
+              />
 
               <Button size="xl" className="w-full" onClick={enviarDorNoPeito} disabled={registrar.isPending}>
                 Registrar
@@ -240,7 +365,9 @@ export default function SintomasPage() {
               </Campo>
 
               <SurfaceCard className="bg-cardio-50 border-0">
-                <p className="text-sm font-bold uppercase tracking-wide text-primary mb-1">Classificação (NYHA {nyhaClasse})</p>
+                <p className="text-sm font-bold uppercase tracking-wide text-primary mb-1">
+                  Classe de esforço do coração (NYHA) — classe {nyhaClasse}
+                </p>
                 <p className="text-base text-foreground leading-relaxed">{NYHA_DESCRICAO[nyhaClasse]}</p>
               </SurfaceCard>
 
@@ -250,9 +377,23 @@ export default function SintomasPage() {
 
               <OpcaoBotao selecionado={dpn} onClick={() => setDpn((v) => !v)} titulo="Já acordei à noite sem conseguir respirar" />
 
+              <CampoIntensidade
+                id="falta-ar-intensidade"
+                rotulo="De 0 (nada) a 10 (muito forte), quanta falta de ar?"
+                valor={intensidade}
+                aoMudar={setIntensidade}
+              />
+
+              {/* `nyha` é a classe ABSOLUTA do momento (1–4), não a variação.
+                  Quem calcula "piorou" é o motor de risco, comparando com o
+                  relato anterior do próprio paciente — antes ele esperava um
+                  campo `nyha_change` que ninguém nunca gravou. */}
               <Button
                 size="xl" className="w-full" disabled={registrar.isPending}
-                onClick={() => salvarESeguir({ nyha: nyhaClasse, travesseiros: Number(travesseiros), dispneia_paroxistica_noturna: dpn }, null)}
+                onClick={() => salvarESeguir(
+                  { [QUALIFICADOR.NYHA]: nyhaClasse, travesseiros: Number(travesseiros), dispneia_paroxistica_noturna: dpn },
+                  null
+                )}
               >
                 Registrar
               </Button>
@@ -280,6 +421,13 @@ export default function SintomasPage() {
               <Campo rotulo="Quanto tempo durou (minutos)" para="palpitacao-duracao">
                 <Input id="palpitacao-duracao" inputMode="numeric" value={duracaoPalpitacao} onChange={(e) => setDuracaoPalpitacao(e.target.value.replace(/\D/g, ""))} className="tabular-nums" />
               </Campo>
+
+              <CampoIntensidade
+                id="palpitacao-intensidade"
+                rotulo="De 0 (nada) a 10 (muito forte), quanto incomodou?"
+                valor={intensidade}
+                aoMudar={setIntensidade}
+              />
 
               <Button
                 size="xl" className="w-full" disabled={registrar.isPending}
@@ -399,13 +547,12 @@ export default function SintomasPage() {
           <SurfaceCard>
             <Formulario className="space-y-5">
               {selecionado === "fatigue" && (
-                <Campo rotulo="De 0 (nada) a 10 (muito forte), quanto cansaço?" para="cansaco-intensidade">
-                  <Input
-                    id="cansaco-intensidade" inputMode="numeric" value={intensidade}
-                    onChange={(e) => setIntensidade(e.target.value.replace(/\D/g, ""))}
-                    className="h-14 w-24 text-2xl font-bold text-center tabular-nums"
-                  />
-                </Campo>
+                <CampoIntensidade
+                  id="cansaco-intensidade"
+                  rotulo="De 0 (nada) a 10 (muito forte), quanto cansaço?"
+                  valor={intensidade}
+                  aoMudar={setIntensidade}
+                />
               )}
               <Campo rotulo="Quer contar mais alguma coisa?" para="sintoma-notas">
                 <Textarea

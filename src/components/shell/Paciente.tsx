@@ -31,7 +31,8 @@
  */
 
 import { type ReactNode } from "react";
-import { AlertTriangle, RefreshCw, type LucideIcon } from "lucide-react";
+import { AlertTriangle, ChevronRight, RefreshCw, type LucideIcon } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -50,12 +51,24 @@ import { cn } from "@/lib/utils";
  * caracteres — o limite clássico de leitura — e onde um gráfico de 14 barras
  * ainda respira.
  *
- * ── Por que NÃO é `LayoutPainel` ──────────────────────────────────────
- * Duas colunas só fazem sentido quando existe conteúdo de CONSULTA para pôr
- * na coluna de apoio, que é o caso da home (pulseira, equipe, atalhos). Nas
- * telas de assunto único — pressão, peso, glicemia — a segunda coluna seria
- * preenchida com pedaço arbitrário do fluxo principal, e o paciente passaria
- * a ler em zigue-zague.
+ * ── Quando é `LayoutPainel` (revisão de desktop, setembro/2026) ───────
+ * O raciocínio anterior — "duas colunas só na home, porque nas telas de
+ * assunto único a segunda coluna viraria pedaço arbitrário do fluxo" — se
+ * provou errado na medição. Em 1440px o `<main>` de /pressao tem 1188px e a
+ * coluna de leitura ocupa 768: sobravam ~420px de branco à direita enquanto
+ * a página inteira tinha 3142px de altura. O paciente rolava três telas para
+ * achar o histórico que caberia ao lado do formulário.
+ *
+ * O recorte que faz sentido não é "metade do fluxo de cada lado": é
+ * SEPARAR O QUE SE FAZ DO QUE SE CONSULTA. Registrar fica à esquerda, e o
+ * que só se lê — histórico, cobertura, pontes para outras telas — vai para a
+ * direita. Não é zigue-zague porque não há continuação: a coluna da direita
+ * não é a segunda metade do formulário, é outro assunto.
+ *
+ * Por isso existe `largura="painel"`: o mesmo invólucro, com o teto de
+ * 1440px do `LayoutPainel`, para as telas que adotaram as duas colunas. Nas
+ * larguras abaixo de `xl` o `LayoutPainel` empilha — mesma ordem, uma
+ * coluna, celular intocado.
  *
  * `space-y-5` é o respiro entre blocos, igual em todas as telas: a diferença
  * de espaçamento entre telas era o que mais fazia o app parecer costurado de
@@ -69,14 +82,17 @@ export function TelaPaciente({
 }: {
   children: ReactNode;
   className?: string;
-  /** "leitura" (padrão, 768px) · "larga" para grades de cartão (1024px). */
-  largura?: "leitura" | "larga";
+  /**
+   * "leitura" (padrão, 768px) · "larga" para grades de cartão (1024px) ·
+   * "painel" (1440px) para as telas que usam `LayoutPainel` por dentro.
+   */
+  largura?: "leitura" | "larga" | "painel";
 }) {
   return (
     <div
       className={cn(
         "mx-auto w-full space-y-5 pb-6",
-        largura === "larga" ? "max-w-5xl" : "max-w-3xl",
+        largura === "painel" ? "max-w-[1440px]" : largura === "larga" ? "max-w-5xl" : "max-w-3xl",
         className
       )}
     >
@@ -365,7 +381,13 @@ export function BarraProporcao({
   cor,
   className,
 }: {
-  /** 0–100. Quem chama já arredondou. */
+  /**
+   * Percentual já arredondado por quem chama. PODE passar de 100 — e quando
+   * passa, a barra desenha o excesso em vez de fingir que ele não existe
+   * (ver `BarraProgresso` em Primitivos, mesma correção, mesmo motivo: uma
+   * barra cheia dizendo 100% embaixo de um texto dizendo "acima da
+   * referência" é a tela brigando consigo mesma).
+   */
   percentual: number;
   rotulo: string;
   /** O número em texto ("82%", "6h30 · 34%"). Fica à direita do rótulo. */
@@ -374,7 +396,12 @@ export function BarraProporcao({
   cor?: string;
   className?: string;
 }) {
-  const pct = Math.max(0, Math.min(100, percentual));
+  const pct = Math.max(0, percentual);
+  const tinta = cor ?? "hsl(var(--brand-cardio))";
+  const regua = Math.max(100, pct);
+  const larguraBase = (Math.min(pct, 100) / regua) * 100;
+  const larguraExcesso = pct > 100 ? ((pct - 100) / regua) * 100 : 0;
+
   return (
     <div className={className}>
       <div className="mb-1.5 flex items-baseline justify-between gap-3">
@@ -382,17 +409,30 @@ export function BarraProporcao({
         <span className="text-base font-semibold text-foreground tabular-nums shrink-0">{valor}</span>
       </div>
       <div
-        className="h-2.5 w-full overflow-hidden rounded-full bg-muted"
+        className="flex h-2.5 w-full items-stretch overflow-hidden rounded-full bg-muted"
         role="progressbar"
-        aria-valuenow={pct}
+        aria-valuenow={Math.round(pct)}
         aria-valuemin={0}
-        aria-valuemax={100}
+        aria-valuemax={Math.max(100, Math.round(pct))}
         aria-label={`${rotulo}: ${valor}`}
       >
         <div
-          className="h-full rounded-full transition-[width] duration-500 motion-reduce:transition-none"
-          style={{ width: `${pct}%`, background: cor ?? "hsl(var(--brand-cardio))" }}
+          className="h-full transition-[width] duration-500 motion-reduce:transition-none"
+          style={{ width: `${larguraBase}%`, background: tinta }}
         />
+        {larguraExcesso > 0 ? (
+          // Hachura depois de um traço: forma, não cor. O primitivo não sabe
+          // se passar da referência é bom (passos da semana) ou ruim (sódio
+          // do dia) — pintar de vermelho aqui seria dar laudo por conta
+          // própria, e é quem chama que escreve o que o excesso significa.
+          <div
+            className="h-full border-l-2 border-card transition-[width] duration-500 motion-reduce:transition-none"
+            style={{
+              width: `${larguraExcesso}%`,
+              backgroundImage: `repeating-linear-gradient(135deg, ${tinta} 0 3px, transparent 3px 7px)`,
+            }}
+          />
+        ) : null}
       </div>
     </div>
   );
@@ -490,5 +530,174 @@ export function CartaoErro({
         </div>
       </div>
     </div>
+  );
+}
+
+// ── Período e cobertura do histórico ─────────────────────────────────
+
+/**
+ * O seletor de período dos históricos (auditoria de desktop, setembro/2026).
+ *
+ * O problema que resolve: /pressao listava exatamente 12 leituras e parava.
+ * /peso, 14 dias. /glicemia, idem. Sem "ver mais", sem paginação, sem filtro.
+ * Na consulta o paciente precisa mostrar o mês inteiro e não tinha como — a
+ * tela simplesmente não oferecia o resto do dado que já estava carregado.
+ *
+ * Três períodos e só três. Um campo de datas livre é precisão que ninguém
+ * pediu e um teclado a mais para quem tem 68 anos; 7 / 30 / 90 são as três
+ * perguntas reais ("esta semana", "este mês", "desde a última consulta").
+ *
+ * `role="group"` + `aria-pressed` em cada botão: é assim que o leitor de tela
+ * anuncia "30 dias, pressionado" em vez de três botões idênticos sem estado.
+ */
+export const PERIODOS_DIAS = [7, 30, 90] as const;
+export type PeriodoDias = (typeof PERIODOS_DIAS)[number];
+
+export function SeletorPeriodo({
+  valor,
+  onMudar,
+  className,
+}: {
+  valor: PeriodoDias;
+  onMudar: (dias: PeriodoDias) => void;
+  className?: string;
+}) {
+  return (
+    <div
+      role="group"
+      aria-label="Período do histórico"
+      className={cn("inline-flex flex-wrap gap-1.5", className)}
+    >
+      {PERIODOS_DIAS.map((d) => (
+        <button
+          key={d}
+          type="button"
+          aria-pressed={valor === d}
+          onClick={() => onMudar(d)}
+          className={cn(
+            "min-h-[44px] rounded-xl border px-3.5 text-base font-medium transition-colors",
+            valor === d
+              ? "border-primary bg-cardio-50 text-primary font-semibold"
+              : "border-border bg-card text-muted-foreground hover:border-primary/40"
+          )}
+        >
+          {d} dias
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * A linha que diz o que a lista acima realmente cobre.
+ *
+ * "28 medidas nos últimos 30 dias" não é enfeite: uma lista de doze linhas
+ * tem a mesma aparência quando é o total do período e quando é o começo de
+ * cento e vinte. O `truncado` vem de `Cobertura` (useCardioReadings) e existe
+ * exatamente para isto — enquanto ele for verdadeiro, qualquer resumo do
+ * período está incompleto, e a tela precisa dizer em vez de deixar o paciente
+ * achar que aquilo é tudo.
+ *
+ * Não interpreta nada: conta linhas e repete o período pedido.
+ */
+export function CoberturaDoPeriodo({
+  quantidade,
+  dias,
+  substantivo = "medida",
+  truncado = false,
+  className,
+}: {
+  quantidade: number;
+  dias: number;
+  /** "medida", "registro", "pesagem" — no singular; o plural é o "s". */
+  substantivo?: string;
+  truncado?: boolean;
+  className?: string;
+}) {
+  return (
+    <div className={cn("text-sm text-muted-foreground leading-relaxed", className)}>
+      <p>
+        {quantidade === 0
+          ? `Nenhuma ${substantivo} nos últimos ${dias} dias.`
+          : `${quantidade} ${substantivo}${quantidade > 1 ? "s" : ""} nos últimos ${dias} dias.`}
+      </p>
+      {truncado ? (
+        <p className="mt-1 flex items-start gap-1.5 text-warning-forte">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" aria-hidden />
+          <span>
+            Há mais registros nesse período do que o app conseguiu carregar de uma vez — o que está
+            acima é uma parte, não o total.
+          </span>
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Ponte para outra tela: uma linha com verbo, não um cartão decorativo.
+ *
+ * Existe porque a auditoria encontrou telas que terminam no nada — o
+ * paciente lê o número e a página acaba. Cada ponte responde "e agora?" com
+ * um destino concreto, e por ser `<Link>` de verdade ela funciona no
+ * teclado, no leitor de tela e no clique do meio.
+ */
+export function Ponte({
+  para,
+  icone: Icone,
+  titulo,
+  detalhe,
+  className,
+}: {
+  para: string;
+  icone: LucideIcon;
+  titulo: string;
+  detalhe?: string;
+  className?: string;
+}) {
+  return (
+    <Link
+      to={para}
+      className={cn(
+        "flex items-center gap-3 min-h-[56px] w-full rounded-xl border border-border bg-card px-3.5 py-2.5",
+        "transition-colors hover:border-primary/40 hover:bg-cardio-50/50",
+        className
+      )}
+    >
+      <Icone className="h-5 w-5 shrink-0 text-primary" strokeWidth={1.75} aria-hidden />
+      <span className="min-w-0 flex-1">
+        <span className="block text-base font-medium text-foreground leading-snug">{titulo}</span>
+        {detalhe ? (
+          <span className="block text-sm text-muted-foreground leading-snug mt-0.5">{detalhe}</span>
+        ) : null}
+      </span>
+      <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+    </Link>
+  );
+}
+
+/**
+ * A marca de campo obrigatório.
+ *
+ * Nasceu da auditoria de desktop: em /pressao o botão "Salvar pressão" ficava
+ * cinza sem que NADA na tela dissesse qual campo faltava. Um asterisco solto
+ * não resolveria — asterisco é convenção de quem já preencheu mil formulários
+ * na internet, não de quem tem 68 anos e usa o app três vezes por semana.
+ * Por isso a palavra está escrita.
+ *
+ * `aria-hidden` porque o campo já carrega `aria-required`: sem isso, o leitor
+ * de tela anunciaria "obrigatório" duas vezes no mesmo rótulo.
+ */
+export function ObrigatorioMarca({ className }: { className?: string }) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "ml-1 align-middle rounded-md bg-muted px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground",
+        className
+      )}
+    >
+      obrigatório
+    </span>
   );
 }

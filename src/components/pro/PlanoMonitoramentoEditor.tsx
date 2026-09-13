@@ -21,7 +21,10 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getDevBypass } from "@/contexts/DevBypass";
 import { cn } from "@/lib/utils";
-import { ROTULO_METRICA, ROTULO_FREQUENCIA, type MetricaPlano, type Frequencia } from "@/hooks/usePlanoMonitoramento";
+import {
+  ROTULO_METRICA, ROTULO_FREQUENCIA, ROTULO_HORARIO,
+  type MetricaPlano, type Frequencia, type ItemPlano,
+} from "@/hooks/usePlanoMonitoramento";
 import { queryKeys } from "@/lib/queryKeys";
 
 const METRICAS: MetricaPlano[] = [
@@ -31,10 +34,36 @@ const METRICAS: MetricaPlano[] = [
 
 const FREQUENCIAS: Frequencia[] = ["twice_daily", "daily", "weekly", "biweekly", "monthly", "as_needed"];
 
+type Horario = NonNullable<ItemPlano["preferred_time"]>;
+
+/**
+ * `preferred_time`: FICA, e passa a ser escrito.
+ *
+ * As duas colunas do plano nunca gravadas eram `preferred_time` e
+ * `days_of_week`. A decisão foi diferente para cada uma, e o critério é o
+ * mesmo: serve para o paciente saber o que fazer?
+ *
+ *  · `preferred_time` SERVE. "Peso de manhã, em jejum" e "peso à noite" são
+ *    medidas diferentes; pressão à noite não substitui a da manhã. É uma
+ *    palavra que muda o comportamento e cabe na frase que o paciente lê.
+ *    Passa a ser gravada e a aparecer no app dele (InstrucaoDoMedico e
+ *    PlanoDoMedicoCard).
+ *
+ *  · `days_of_week` SAI do modelo mental — não é oferecida aqui e é gravada
+ *    como NULL explícito. Ela cria um segundo calendário que brigaria com a
+ *    frequência: "semanal" já é verificada por JANELA MÓVEL de 7 dias, e
+ *    "toda terça" exigiria que a pendência soubesse virar dívida na quarta e
+ *    sumir na quinta. Duas noções de prazo, uma delas invisível ao paciente,
+ *    para um ganho clínico que ninguém pediu. A coluna fica no banco, sem uso
+ *    — e sem um campo na tela fingindo que ela faz algo.
+ */
+const HORARIOS: Horario[] = ["any", "morning", "afternoon", "evening"];
+
 interface Linha {
   metric: MetricaPlano;
   ativo: boolean;
   frequency: Frequencia;
+  preferred_time: Horario;
   instructions: string;
 }
 
@@ -69,6 +98,7 @@ export function PlanoMonitoramentoEditor({
         metric: m,
         ativo: existente ? existente.is_active : false,
         frequency: (existente?.frequency ?? "daily") as Frequencia,
+        preferred_time: (existente?.preferred_time ?? "any") as Horario,
         instructions: existente?.instructions ?? "",
       };
     }
@@ -91,20 +121,44 @@ export function PlanoMonitoramentoEditor({
         metric: m,
         frequency: linhas[m].frequency,
         times_per_day: linhas[m].frequency === "twice_daily" ? 2 : 1,
+        preferred_time: linhas[m].preferred_time,
+        // NULL explícito: ver a nota sobre `days_of_week` no topo do arquivo.
+        days_of_week: null,
         is_active: linhas[m].ativo,
         instructions: linhas[m].instructions.trim() || null,
       }));
-      const { error } = await (supabase as any)
+      const { data, error } = await (supabase as any)
         .from("monitoring_plan")
-        .upsert(registros, { onConflict: "patient_user_id,metric" });
+        .upsert(registros, { onConflict: "patient_user_id,metric" })
+        .select("id");
       if (error) throw error;
+      /**
+       * O `.select()` existe por causa de um jeito específico de falhar: a
+       * RLS de `monitoring_plan` exige vínculo ativo com a paciente. Quando o
+       * vínculo não está ativo, o upsert afeta ZERO linhas e devolve
+       * `error: null` — e o toast dizia "Plano salvo. O paciente já vê na
+       * tela inicial dele" para um plano que não existia em lugar nenhum. O
+       * médico saía da consulta achando que tinha prescrito.
+       */
+      if (!data || data.length === 0) {
+        throw new Error("O plano não foi gravado: confirme o vínculo ativo com a paciente.");
+      }
+      if (data.length < registros.length) {
+        throw new Error(`Só ${data.length} de ${registros.length} itens foram gravados. Recarregue e confira o plano.`);
+      }
     },
     onSuccess: () => {
       setRascunho(null);
       qc.invalidateQueries({ queryKey: queryKeys.monitoringPlan.all });
-      toast.success("Plano salvo. O paciente já vê na tela inicial dele.");
+      // Em demonstração nada é gravado; dizer "o paciente já vê" ali era a
+      // mesma mentira do caso da RLS, só que garantida.
+      if (demo) toast.info("Modo demo: nada é salvo.");
+      else toast.success("Plano salvo. O paciente já vê na tela inicial dele.");
     },
-    onError: () => toast.error("Não consegui salvar o plano."),
+    // A mensagem do erro é específica (vínculo, gravação parcial) e precisa
+    // chegar inteira ao médico — um "não consegui salvar" genérico esconde
+    // justamente a causa que ele consegue resolver.
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Não consegui salvar o plano."),
   });
 
   const ativos = METRICAS.filter((m) => linhas[m].ativo).length;
@@ -147,6 +201,22 @@ export function PlanoMonitoramentoEditor({
                   >
                     {FREQUENCIAS.map((f) => (
                       <option key={f} value={f}>{ROTULO_FREQUENCIA[f]}</option>
+                    ))}
+                  </select>
+                ) : null}
+
+                {/* Horário preferido só faz sentido em item cobrado todo dia:
+                    em "uma vez por mês" a palavra "de manhã" não orienta nada.
+                    Some da linha em vez de aparecer desabilitada. */}
+                {l.ativo && (l.frequency === "daily" || l.frequency === "twice_daily") ? (
+                  <select
+                    value={l.preferred_time}
+                    onChange={(e) => mudar(m, { preferred_time: e.target.value as Horario })}
+                    aria-label={`Horário preferido para ${ROTULO_METRICA[m]}`}
+                    className="h-9 rounded-lg border border-border bg-background px-2 text-sm"
+                  >
+                    {HORARIOS.map((h) => (
+                      <option key={h} value={h}>{ROTULO_HORARIO[h]}</option>
                     ))}
                   </select>
                 ) : null}

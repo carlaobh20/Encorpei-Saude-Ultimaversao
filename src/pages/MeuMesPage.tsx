@@ -19,7 +19,10 @@ import { useTargets } from "@/hooks/useCardioPatient";
 import { useBloodPressure, useActivity, useSleep } from "@/hooks/useCardioReadings";
 import { useCardioMedications } from "@/hooks/useCardioMedications";
 import { useSymptoms, useCardioExams } from "@/hooks/useCardioClinical";
-import { useCapacidade, useIdadeDoCoracao, useSodio } from "@/hooks/useEngajamento";
+import { useCapacidade, useIdadeDoCoracao, useSodio, useQualidadeDeVida } from "@/hooks/useEngajamento";
+import { ResultadoQualidadeDeVida } from "@/components/paciente/ResultadoQualidadeDeVida";
+import { PlanoDoMedicoCard } from "@/components/paciente/PlanoDoMedicoCard";
+import { HistoricoTitulacao } from "@/components/paciente/HistoricoTitulacao";
 import { calcularTempoNoAlvo, ROTULO_MEDIDAS_NA_META_CURTO } from "@/lib/clinical/timeInRange";
 import { DOMAIN_COLORS } from "@/theme/colors";
 import type { SymptomType } from "@/types/cardio";
@@ -78,6 +81,10 @@ export default function MeuMesPage() {
   const idadeCoracao = useIdadeDoCoracao();
   const sodio = useSodio();
   const capacidade = useCapacidade();
+  // O paciente responde o questionário todo mês e o resultado ia só para a
+  // tela do médico. Aqui ele recebe o próprio número de volta — e é a tela
+  // certa para isso, porque é a que ele leva impressa para a consulta.
+  const qol = useQualidadeDeVida();
 
   const isLoading = loadingTargets || bp.isLoading || meds.isLoading || loadingSymptoms || loadingExams || idadeCoracao.isLoading || capacidade.isLoading;
 
@@ -146,9 +153,19 @@ export default function MeuMesPage() {
     return { atual, variacao: atual && anterior ? atual.idade_coracao - anterior.idade_coracao : null };
   }, [idadeCoracao.historico, inicio, fim]);
 
-  const titulacoes = useMemo(
+  /** Doses que ainda estão subindo rumo à dose-alvo. Não é "o que mudou". */
+  const emTitulacao = useMemo(
     () => meds.medications.filter((m) => m.status === "active" && m.target_dose && m.target_dose !== m.dose),
     [meds.medications]
+  );
+
+  // O que REALMENTE mudou no mês — de `medication_titrations`, a tabela que
+  // era escrita e nunca lida. Antes esta seção mostrava a dose-alvo e a
+  // chamava de "o que o médico mudou": o alvo é para onde se vai, não o que
+  // aconteceu.
+  const titulacoesDoMes = useMemo(
+    () => meds.titulacoes.filter((t) => noRange(+new Date(t.created_at))),
+    [meds.titulacoes, inicio, fim]
   );
 
   if (isLoading) {
@@ -326,12 +343,21 @@ export default function MeuMesPage() {
           )}
         </div>
 
-        {/* ── O que o médico mudou ──────────────────────────────── */}
-        {titulacoes.length > 0 && (
-          <div>
-            <TituloSecao titulo="O que o médico mudou" />
+        {/* ── O que o médico mudou de verdade, no mês ────────────── */}
+        <div className="mb-5">
+          <HistoricoTitulacao
+            titulacoes={titulacoesDoMes}
+            titulo="Mudanças de dose neste mês"
+            subtitulo="registradas pelo seu médico"
+          />
+        </div>
+
+        {/* ── Doses ainda em titulação ──────────────────────────── */}
+        {emTitulacao.length > 0 && (
+          <div className="mb-5">
+            <TituloSecao titulo="Doses que ainda vão subir" subtitulo="dose de hoje e a dose que seu médico quer alcançar" />
             <Lista>
-              {titulacoes.map((m) => (
+              {emTitulacao.map((m) => (
                 <ItemLista key={m.id}>
                   <span className="text-base text-foreground min-w-0 break-words">{m.name}</span>
                   <span className="text-sm text-muted-foreground shrink-0">{m.dose} → alvo {m.target_dose}</span>
@@ -340,6 +366,14 @@ export default function MeuMesPage() {
             </Lista>
           </div>
         )}
+
+        {/* ── Seu questionário de qualidade de vida ──────────────── */}
+        <div className="mb-5">
+          <ResultadoQualidadeDeVida qol={qol} />
+        </div>
+
+        {/* ── O plano do médico, com as instruções de cada item ──── */}
+        <PlanoDoMedicoCard />
       </div>
     </TelaPaciente>
   );

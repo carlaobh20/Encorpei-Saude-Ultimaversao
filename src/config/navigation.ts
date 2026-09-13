@@ -1,8 +1,8 @@
 import {
   Home, HeartPulse, Activity, Moon, Pill, CalendarDays, FlaskConical,
   MessageCircle, User, MessageSquarePlus, Watch, Target, Siren, Heart,
-  Footprints, Salad, GraduationCap, FileText, Users, Scale,
-  Plus, SlidersHorizontal, Droplet, AlertTriangle, LayoutGrid,
+  Footprints, Salad, GraduationCap, FileText, Users, Stethoscope, Scale,
+  Plus, Menu, SlidersHorizontal, Droplet, AlertTriangle,
   type LucideIcon,
 } from "lucide-react";
 
@@ -61,6 +61,18 @@ export interface NavGroup {
  *      estava registrada, mas nenhum menu chegava até ela — auditoria de
  *      setembro/2026) e "Configurações" vira "Preferências", para não
  *      concorrer com "Minha conta" como se fossem a mesma coisa.
+ * v6 = UM DESTINO, UM NOME (auditoria de setembro/2026). O mesmo lugar tinha
+ *      até três nomes — menu "Meu Cardiologista", barra "Minha equipe",
+ *      título da tela "Meu médico" — e o paciente não tem como saber que são
+ *      a mesma coisa: ele conclui que existem três telas e que perdeu alguma.
+ *      A regra passou a ser: **o rótulo do menu é o título da tela**, e o
+ *      rótulo curto da barra inferior é uma ABREVIAÇÃO desse nome, nunca um
+ *      sinônimo ("Minha evolução" → "Evolução", e não "Minha saúde").
+ *      Pares desfeitos: Meu Cardiologista/Minha equipe → Meu médico ·
+ *      Minha evolução/Minha saúde → Minha evolução (barra: Evolução) ·
+ *      Consultas → Agenda · Meus Remédios → Remédios · Minha Pulseira →
+ *      Pulseira · Caminhada & Testes → Caminhada · Pressão & Coração →
+ *      Pressão e coração · Minhas Metas → Minhas metas · Meu Mês → Meu mês.
  * v5 = o menu lateral passou a ter grupos RECOLHÍVEIS, e três itens saíram
  *      das listas recolhíveis para lugares onde estão sempre à vista:
  *      "Como estou agora" virou o bloco vermelho "Não estou bem" (fora de
@@ -71,7 +83,7 @@ export interface NavGroup {
  *      altura na tela. "Feedback" desceu para "Mais recursos", porque
  *      rodapé com quatro linhas voltava a ser uma lista.
  */
-export const NAV_STRUCTURE_VERSION = 5;
+export const NAV_STRUCTURE_VERSION = 6;
 
 export const NAV_STRUCTURE: NavGroup[] = [
   {
@@ -90,20 +102,20 @@ export const NAV_STRUCTURE: NavGroup[] = [
     label: "Minha saúde",
     items: [
       { id: "nav-meu-coracao", label: "Minha evolução",      path: "/meu-coracao", icon: Heart },
-      { id: "nav-pressao",     label: "Pressão & Coração",   path: "/pressao",     icon: HeartPulse },
+      { id: "nav-pressao",     label: "Pressão e coração",   path: "/pressao",     icon: HeartPulse },
       { id: "nav-peso",        label: "Peso",                path: "/peso",        icon: Scale },
       // Glicemia ficou órfã até setembro/2026: a tela e a rota existiam, mas
       // não havia porta de entrada. Mora aqui porque, para o paciente, açúcar
       // no sangue é mais um número do corpo dele — do mesmo tipo de pressão e
       // peso — e não um assunto à parte.
       { id: "nav-glicemia",    label: "Glicemia",            path: "/glicemia",    icon: Droplet },
-      { id: "nav-remedios",    label: "Meus Remédios",       path: "/remedios",    icon: Pill },
+      { id: "nav-remedios",    label: "Remédios",            path: "/remedios",    icon: Pill },
       { id: "nav-atividade",   label: "Atividade",           path: "/atividade",   icon: Activity },
       { id: "nav-sono",        label: "Sono",                path: "/sono",        icon: Moon },
       { id: "nav-alimentacao", label: "Alimentação",         path: "/alimentacao", icon: Salad },
       { id: "nav-exames",      label: "Exames",              path: "/exames",      icon: FlaskConical },
-      { id: "nav-caminhada",   label: "Caminhada & Testes",  path: "/caminhada",   icon: Footprints },
-      { id: "nav-metas",       label: "Minhas Metas",        path: "/metas",       icon: Target },
+      { id: "nav-caminhada",   label: "Caminhada",           path: "/caminhada",   icon: Footprints },
+      { id: "nav-metas",       label: "Minhas metas",        path: "/metas",       icon: Target },
     ],
   },
   {
@@ -112,10 +124,13 @@ export const NAV_STRUCTURE: NavGroup[] = [
     key: "equipe",
     label: "Minha equipe",
     items: [
-      { id: "nav-medico",     label: "Meu Cardiologista",  path: "/medico",     icon: MessageCircle, badge: "medico" },
-      { id: "nav-agenda",     label: "Consultas",          path: "/agenda",     icon: CalendarDays },
+      // Os rótulos daqui são os títulos das próprias telas — ver v6. "Meu
+      // médico" e não "Meu Cardiologista" porque é o que a tela se chama e
+      // porque nem todo profissional vinculado é cardiologista.
+      { id: "nav-medico",     label: "Meu médico",         path: "/medico",     icon: MessageCircle, badge: "medico" },
+      { id: "nav-agenda",     label: "Agenda",             path: "/agenda",     icon: CalendarDays },
       { id: "nav-cuidadores", label: "Quem cuida de mim",  path: "/cuidadores", icon: Users },
-      { id: "nav-meu-mes",    label: "Meu Mês",            path: "/meu-mes",    icon: FileText },
+      { id: "nav-meu-mes",    label: "Meu mês",            path: "/meu-mes",    icon: FileText },
     ],
   },
   {
@@ -130,7 +145,7 @@ export const NAV_STRUCTURE: NavGroup[] = [
     key: "mais",
     label: "Mais recursos",
     items: [
-      { id: "nav-pulseira",      label: "Minha Pulseira",   path: "/pulseira",      icon: Watch },
+      { id: "nav-pulseira",      label: "Pulseira",         path: "/pulseira",      icon: Watch },
       { id: "nav-aprender",      label: "Aprender",         path: "/aprender",      icon: GraduationCap },
       { id: "nav-feedback",      label: "Feedback",         path: "/feedback",      icon: MessageSquarePlus },
       { id: "nav-emergencia",    label: "Emergência",       path: "/emergencia",    icon: Siren, tone: "danger" },
@@ -185,6 +200,11 @@ export const NAV_ITEMS: NavItem[] = [
  * Por isso o tipo aqui é diferente do NavItem do menu: item de barra pode
  * ser link OU ação. Deixar `path` opcional evita o truque de rota falsa
  * (`path: "#"`), que quebraria teclado e leitor de tela.
+ *
+ * REGRA DE RÓTULO (v6): a barra pode encurtar, não pode renomear. O rótulo
+ * curto tem de ser um pedaço literal do nome longo do destino — "Minha
+ * evolução" vira "Evolução", nunca "Minha saúde". Um sinônimo aqui faz o
+ * paciente acreditar que a barra leva a outro lugar que o menu.
  */
 export type NavAcao = "registrar" | "mais";
 
@@ -203,10 +223,10 @@ export interface BottomNavItem {
 
 export const BOTTOM_NAV: BottomNavItem[] = [
   { id: "bn-hoje",      label: "Hoje",        path: "/hoje",        icon: Home,       descricao: "Hoje — o que fazer agora" },
-  { id: "bn-saude",     label: "Minha saúde", path: "/meu-coracao", icon: Heart,      descricao: "Minha saúde — meus números e minha evolução" },
+  { id: "bn-saude",     label: "Evolução",    path: "/meu-coracao", icon: Heart,      descricao: "Minha evolução — meus números e se estou melhorando" },
   { id: "bn-registrar", label: "Registrar",   acao: "registrar",    icon: Plus,       descricao: "Registrar uma medida agora" },
-  { id: "bn-equipe",    label: "Minha equipe", path: "/medico",     icon: Users, badge: "medico", descricao: "Minha equipe — médico, consultas e quem cuida de mim" },
-  { id: "bn-mais",      label: "Mais",        acao: "mais",         icon: LayoutGrid, descricao: "Mais — abrir o menu com todas as telas" },
+  { id: "bn-equipe",    label: "Meu médico",  path: "/medico",      icon: Stethoscope, badge: "medico", descricao: "Meu médico — a conversa com quem acompanha você" },
+  { id: "bn-mais",      label: "Mais",        acao: "mais",         icon: Menu,       descricao: "Mais — abrir o menu com todas as telas" },
 ];
 
 /**

@@ -77,13 +77,14 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTargets } from "@/hooks/useCardioPatient";
 import { useMetasPaciente, useSalvarMetasPaciente, type MetasPacienteEdit } from "@/hooks/useMetasPaciente";
-import { useMyProfessionals } from "@/hooks/useMyProfessionals";
+import { useMedicoVinculado } from "@/hooks/useMarcaClinica";
 import { usePatientMessages } from "@/hooks/useProfessional";
 import { useBloodPressure, useHeartRate, useWeight, useActivity, useSleep } from "@/hooks/useCardioReadings";
 import { useLabResults } from "@/hooks/useCardioClinical";
 import { useSodio } from "@/hooks/useEngajamento";
 import { mediaMrpa } from "@/lib/clinical/cardioRiskEngine";
 import { avaliarMeta, type TargetProgress } from "@/lib/clinical/cardioTargets";
+import { numero, dataPorExtenso } from "@/lib/formato";
 
 const STATUS_TONE: Record<TargetProgress["status"], { bg: string; text: string; label: string }> = {
   on_target: { bg: "bg-success-bg", text: "text-success", label: "No alvo" },
@@ -93,8 +94,7 @@ const STATUS_TONE: Record<TargetProgress["status"], { bg: string; text: string; 
 };
 
 function fmtData(iso: string | null): string {
-  if (!iso) return "";
-  return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+  return dataPorExtenso(iso) ?? "";
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -125,11 +125,11 @@ function MetaClinicaCard({ meta, onPedir }: { meta: TargetProgress; onPedir?: ()
         </span>
       </div>
       <p className="text-2xl font-bold text-foreground tabular-nums mb-2">
-        {meta.current != null ? meta.current : "—"} <span className="text-base font-normal text-muted-foreground">{meta.unit}</span>
+        {meta.current != null ? numero(meta.current) : "—"} <span className="text-base font-normal text-muted-foreground">{meta.unit}</span>
       </p>
       <BarraProporcao
         rotulo={meta.lowerIsBetter ? "Meta: até" : "Meta:"}
-        valor={`${meta.target} ${meta.unit}`}
+        valor={`${numero(meta.target)} ${meta.unit}`}
         percentual={pct}
         cor={
           meta.status === "on_target" ? "hsl(var(--status-success))"
@@ -220,7 +220,11 @@ function CombinadoCard({
   onChange: (v: number | null) => void;
 }) {
   const Icone = campo.icone;
-  const fmt = (v: number) => v.toFixed(campo.casas ?? 0);
+  // `toFixed` devolve "7.5" em qualquer idioma — e o campo logo ao lado
+  // (o marcador de peso, o valor de referência) é escrito com vírgula. Duas
+  // notações na mesma tela é o caminho mais curto para o paciente digitar
+  // errado; o app inteiro escreve com vírgula.
+  const fmt = (v: number) => numero(v, campo.casas ?? 0) ?? "—";
 
   const ajustar = (delta: number) => {
     const base = valor ?? campo.padrao;
@@ -318,8 +322,17 @@ export default function MetasPage() {
   const { targets, ehSugestao, ehPrescricao, definidoEm, isLoading: loadingTargets } = useTargets();
   const { metas, isLoading: loadingMetas } = useMetasPaciente();
   const salvar = useSalvarMetasPaciente();
-  const { professionals } = useMyProfessionals();
-  const medico = professionals[0] ?? null;
+  /**
+   * Quem responde "tenho médico?" é `useMedicoVinculado`, e só ele.
+   *
+   * Esta tela perguntava ao vínculo do banco, que no modo demonstração
+   * responde sempre "não" (o demo não consulta banco). O resultado era a tela
+   * dizer, na mesma rolagem, "definido em 06 de agosto de 2026" (a prescrição
+   * do demo existia) logo acima de "você ainda não tem um médico acompanhando
+   * por aqui". Fora do demo nada muda: sem vínculo, `medico` é `null` e o
+   * aviso continua aparecendo — ele só passou a aparecer quando é verdade.
+   */
+  const { medico } = useMedicoVinculado();
   const { enviar } = usePatientMessages(user?.id, "patient", user?.id);
 
   const bp = useBloodPressure();
@@ -408,7 +421,7 @@ export default function MetasPage() {
   const mudou = CHAVES.some((k) => (rascunho[k] ?? null) !== (metas?.[k] ?? null));
 
   const abrirPedido = (meta: TargetProgress) => {
-    const alvo = `${meta.target} ${meta.unit}`;
+    const alvo = `${numero(meta.target)} ${meta.unit}`;
     setPedido({ label: meta.label, alvo });
     // Mensagem já redigida — e editável. O paciente pede; quem decide é o
     // médico. Em nenhum ponto o texto sugere que ele possa mudar sozinho.
@@ -464,7 +477,7 @@ export default function MetasPage() {
         icone={Stethoscope}
         subtitulo={
           ehPrescricao
-            ? `definido em ${fmtData(definidoEm)}${medico?.display_name ? ` por ${medico.display_name}` : ""}`
+            ? `definido em ${fmtData(definidoEm)}${medico?.nome ? ` por ${medico.nome}` : ""}`
             : "valores de referência"
         }
         className="mb-0"

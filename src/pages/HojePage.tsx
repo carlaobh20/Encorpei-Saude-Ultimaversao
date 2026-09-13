@@ -53,7 +53,6 @@ import { UltimosRegistros } from "@/components/hoje/UltimosRegistros";
 import { MinhaEvolucao } from "@/components/hoje/MinhaEvolucao";
 import { PainelPulseira } from "@/components/hoje/PainelPulseira";
 import { PainelEquipe } from "@/components/hoje/PainelEquipe";
-import { ResumoMobile } from "@/components/hoje/ResumoMobile";
 import { useProfile } from "@/hooks/useProfile";
 import { useBloodPressure } from "@/hooks/useCardioReadings";
 import { useCardioAlerts, useRiskAssessment } from "@/hooks/useCardioClinical";
@@ -62,6 +61,16 @@ import {
   useQualidadeDeVida, PERGUNTAS_QOL, OPCOES_QOL,
 } from "@/hooks/useEngajamento";
 import { cn } from "@/lib/utils";
+
+const FRASES_DO_DIA = [
+  "Um dia de cada vez, um número de cada vez.",
+  "Cada medida é uma prova de que você está cuidando de você.",
+  "Pequenos hábitos de hoje são o coração de amanhã.",
+  "Você não precisa ser perfeito — precisa ser constante.",
+  "Seu coração registra cada esforço, mesmo quando você não vê.",
+  "Hoje é mais um dia a favor do seu coração.",
+  "Cuidar do coração é um ato de carinho com quem você ama.",
+];
 
 /**
  * Como se resolve cada pendência do plano.
@@ -99,6 +108,61 @@ const PESO_DA_METRICA: Record<MetricaPlano, number> = {
   medication: 0, bp: 1, weight: 2, wellbeing: 3, symptoms: 4, spo2: 5,
   glucose: 6, walk: 7, sodium: 8, sleep: 9, hr: 10, steps: 11,
 };
+
+/**
+ * ── O aviso que não levava a lugar nenhum (auditoria de desktop) ──────
+ *
+ * "Pressão alta repetida — 3+ medidas acima do alvo em 7 dias" era um
+ * `<section>`: não era link, não era botão, não tinha para onde ir. O
+ * paciente lê "pressão alta", não tem onde clicar e não sabe o que fazer —
+ * e o aviso, que existe justamente para provocar uma ação, vira só susto.
+ *
+ * Todo aviso passa a levar AO DADO QUE O GEROU: a tela da métrica. O mapa
+ * abaixo é de navegação, não de clínica — ele não decide quando o alerta
+ * dispara, o que ele significa nem o que fazer a respeito; só responde
+ * "onde eu vejo isso". Cobre as duas nomenclaturas que convivem no sistema
+ * (o `rule_code` do banco, em inglês, e o do motor do cliente, em
+ * português — ver src/lib/clinical/cardioAlertRules.ts).
+ *
+ * Código desconhecido cai em /meu-coracao, que é a visão geral dos números:
+ * destino genérico e honesto é melhor que beco sem saída, e muito melhor
+ * que um destino específico errado.
+ */
+const ROTA_DO_ALERTA: Record<string, string> = {
+  // Pressão e coração
+  bp_crisis: "/pressao", bp_hypotension: "/pressao", bp_above_target: "/pressao",
+  pa_crise: "/pressao", pa_baixa: "/pressao", pa_alta_sustentada: "/pressao",
+  hr_bradycardia: "/pressao", hr_tachycardia: "/pressao", hr_above_target: "/pressao",
+  hr_irregular: "/pressao", fc_bradi: "/pressao", fc_taqui_repouso: "/pressao",
+  ritmo_irregular: "/pressao",
+  // Oxigenação: a dessaturação que o app acompanha é a do sono.
+  spo2_low: "/sono", spo2_borderline: "/sono", spo2_baixa: "/sono", spo2_noturna: "/sono",
+  // Peso
+  weight_gain_3d: "/peso", weight_loss: "/peso", peso_ic_dia: "/peso",
+  // Operacionais
+  adherence_low: "/remedios", adesao_baixa: "/remedios",
+  no_data: "/meu-coracao", sem_dados: "/meu-coracao",
+};
+
+/** Onde se vê o dado que gerou este aviso. */
+function rotaDoAlerta(ruleCode?: string | null): string {
+  if (!ruleCode) return "/meu-coracao";
+  if (ROTA_DO_ALERTA[ruleCode]) return ROTA_DO_ALERTA[ruleCode];
+  // Sintoma relatado: o dado que gerou o aviso é o próprio relato.
+  if (ruleCode.startsWith("symptom_")) return "/sintomas";
+  return "/meu-coracao";
+}
+
+/**
+ * O aviso manda falar com o médico? Então o caminho para o médico aparece.
+ *
+ * A leitura é do TEXTO, não de uma nova regra: o que decide se é caso de
+ * procurar a equipe continua sendo a frase que o motor clínico escreveu.
+ * Aqui só se pergunta se ela já disse isso — para então oferecer a porta.
+ */
+function mandaFalarComMedico(...textos: (string | null | undefined)[]): boolean {
+  return textos.some((t) => t && /m[ée]dic[oa]|equipe|consult/i.test(t));
+}
 
 function primeiroNome(nome?: string | null): string {
   if (!nome) return "";
@@ -196,6 +260,7 @@ export default function HojePage() {
   const [registroAberto, setRegistroAberto] = useState(false);
 
   const nome = primeiroNome(profile?.full_name);
+  const frase = FRASES_DO_DIA[new Date().getDay() % FRASES_DO_DIA.length];
 
   const isLoading = loadingProfile || bp.isLoading || plano.isLoading || tempoNoAlvo.isLoading;
 
@@ -245,15 +310,15 @@ export default function HojePage() {
   const melhorConquista = conquistas[0] ?? null;
 
   return (
-    <div className="patient-home pb-4">
+    <div className="pb-4">
       <LayoutPainel
         principal={
           <>
             {/* ── 1. Saudação ─────────────────────────────────────── */}
-            <div className="home-greeting"><PageHeader
+            <PageHeader
               title={nome ? `${saudacao()}, ${nome}` : saudacao()}
-              subtitle="Seu cuidado, um dia de cada vez."
-            /></div>
+              subtitle={frase}
+            />
 
             {/* ── 2. Aviso prioritário, só quando existe ───────────── */}
             {alertaAberto && (
@@ -276,6 +341,30 @@ export default function HojePage() {
                     <p className="text-base text-muted-foreground mt-1 leading-relaxed">
                       {alertaAberto.description}
                     </p>
+
+                    {/* As saídas do aviso. A primeira é sempre o dado que o
+                        gerou — é ali que o paciente vê de onde saiu a frase.
+                        A segunda só aparece quando o próprio texto do alerta
+                        mandou procurar a equipe. Links de verdade: funcionam
+                        no teclado, no leitor de tela e no clique do meio. */}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Link
+                        to={rotaDoAlerta(alertaAberto.rule_code)}
+                        className="inline-flex items-center gap-1.5 min-h-[44px] rounded-xl border border-border bg-card px-3.5 text-base font-medium text-cardio-dark hover:bg-cardio-50"
+                      >
+                        Ver o que gerou este aviso
+                        <ChevronRight className="h-4 w-4 shrink-0" aria-hidden />
+                      </Link>
+                      {mandaFalarComMedico(alertaAberto.title, alertaAberto.description) && (
+                        <Link
+                          to="/medico"
+                          className="inline-flex items-center gap-1.5 min-h-[44px] rounded-xl border border-border bg-card px-3.5 text-base font-medium text-cardio-dark hover:bg-cardio-50"
+                        >
+                          <Stethoscope className="h-4 w-4 shrink-0" aria-hidden />
+                          Falar com meu médico
+                        </Link>
+                      )}
+                    </div>
                   </div>
                 </div>
               </section>
@@ -288,7 +377,31 @@ export default function HojePage() {
               >
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="h-6 w-6 shrink-0 mt-0.5 text-warning-forte" aria-hidden="true" />
-                  <p className="text-base text-foreground leading-relaxed">{sinalDeAtencao}</p>
+                  <div className="min-w-0">
+                    <p className="text-base text-foreground leading-relaxed">{sinalDeAtencao}</p>
+                    {/* Mesmo princípio do bloco acima: o sinal de risco vem da
+                        avaliação geral, então o destino é a tela que reúne os
+                        números dela. Nenhum aviso desta página termina sem
+                        um lugar para ir. */}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Link
+                        to="/meu-coracao"
+                        className="inline-flex items-center gap-1.5 min-h-[44px] rounded-xl border border-border bg-card px-3.5 text-base font-medium text-cardio-dark hover:bg-cardio-50"
+                      >
+                        Ver os números por trás disto
+                        <ChevronRight className="h-4 w-4 shrink-0" aria-hidden />
+                      </Link>
+                      {mandaFalarComMedico(sinalDeAtencao) && (
+                        <Link
+                          to="/medico"
+                          className="inline-flex items-center gap-1.5 min-h-[44px] rounded-xl border border-border bg-card px-3.5 text-base font-medium text-cardio-dark hover:bg-cardio-50"
+                        >
+                          <Stethoscope className="h-4 w-4 shrink-0" aria-hidden />
+                          Falar com meu médico
+                        </Link>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </section>
             )}
@@ -310,7 +423,6 @@ export default function HojePage() {
 
             {/* ── 5. Minha evolução ────────────────────────────────── */}
             <MinhaEvolucao />
-            <ResumoMobile />
 
             {/* ── 6. Aprender e Meu mês, em peso menor ─────────────── */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
@@ -398,7 +510,7 @@ export default function HojePage() {
           </>
         }
         apoio={
-          <div className="hidden lg:block space-y-6">
+          <>
             {/* ── Coluna de apoio: contexto que se consulta ────────── */}
             <PainelPulseira />
             <PainelEquipe />
@@ -420,7 +532,7 @@ export default function HojePage() {
                 <Atalho icone={Target} rotulo="Metas" para="/metas" />
               </div>
             </Painel>
-          </div>
+          </>
         }
       />
 

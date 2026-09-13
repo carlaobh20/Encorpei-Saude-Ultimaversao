@@ -19,6 +19,16 @@ export interface DevBypassData {
   role: DevBypassRole;
   userId: string;
   name: string;
+  /**
+   * E-mail que a demonstração MOSTRA.
+   *
+   * O objeto `User` falso do AuthContext usa `dev+<id>@encorpei.test`, que é
+   * um endereço de infraestrutura e serve para depurar. A tela /conta estampa
+   * esse campo — e /conta é justamente a tela que o cardiologista olha quando
+   * alguém demonstra o produto no celular. Endereço de teste ali não é
+   * detalhe: é o app se apresentando como rascunho.
+   */
+  email: string;
 }
 
 export const DEV_MOCK: Record<DevBypassRole, DevBypassData> = {
@@ -26,11 +36,17 @@ export const DEV_MOCK: Record<DevBypassRole, DevBypassData> = {
     role: "paciente",
     userId: "demo-user-paciente-001",
     name: "Antônio (Demo)",
+    email: "antonio.ribeiro@exemplo.com",
   },
   medico: {
+    // UM médico no demo inteiro, e é o mesmo da marca da clínica
+    // (MARCA_DEMO, em useMarcaClinica.ts). Antes eram dois: a barra lateral
+    // dizia "Marcelo Puzzi" e a conversa vinha de uma "Dra. Helena Prado" —
+    // o paciente não conseguia responder quem estava olhando os dados dele.
     role: "medico",
     userId: "demo-user-medico-001",
-    name: "Dra. Helena Prado (Demo)",
+    name: "Dr. Marcelo Puzzi (Demo)",
+    email: "consultorio@exemplo.com",
   },
 };
 
@@ -80,11 +96,11 @@ export const DEV_PROFILE = {
 export const DEV_PRO_PROFILE = {
   id: "demo-pro-001",
   user_id: "demo-user-medico-001",
-  display_name: "Dra. Helena Prado (Demo)",
+  display_name: "Dr. Marcelo Puzzi (Demo)",
   registration_number: "00000",
   registration_state: "PR",
   specialty: "cardiologist",
-  clinic_name: "Clínica do Coração (Demo)",
+  clinic_name: "Clínica Marcelo Puzzi (Demo)",
   bio: null,
   avatar_url: null,
   plan_type: "clinica" as const,

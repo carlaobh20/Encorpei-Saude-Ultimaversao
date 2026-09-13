@@ -32,11 +32,12 @@ import {
   AreaGrafico, LegendaGrafico, usePrefereMenosMovimento,
   gradeGrafico, eixoX, eixoY, dicaGrafico, COR_SERIE, COR_REFERENCIA,
 } from "@/components/shell";
+import { numero, porcentagem, diaCurto } from "@/lib/formato";
 import { useActivity } from "@/hooks/useCardioReadings";
 import { useTargets } from "@/hooks/useCardioPatient";
 
 function fmtDia(iso: string): string {
-  return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  return diaCurto(iso) ?? "—";
 }
 
 export default function AtividadePage() {
@@ -53,9 +54,18 @@ export default function AtividadePage() {
       .map((r) => ({ dia: fmtDia(r.activity_date), passos: r.steps ?? 0 }));
   }, [activity.records]);
 
+  /**
+   * Mesmo erro que o sódio cometia, do lado de cá: a barra e o texto usavam o
+   * percentual SATURADO, e a semana de 207 min contra uma meta de 150 min
+   * aparecia como "207 min / 100% de 150 min". Os dois números estão na mesma
+   * linha e se contradizem — e o "100%" é o que o olho pega. A barra continua
+   * saturando (é o comprimento máximo que existe); o texto diz 138%.
+   */
   const mvpaSemana = activity.mvpaSemana;
   const metaMvpa = targets.mvpa_minutes_week;
-  const pctMvpa = Math.min(100, Math.round((mvpaSemana / Math.max(1, metaMvpa)) * 100));
+  const pctMvpaReal = Math.round((mvpaSemana / Math.max(1, metaMvpa)) * 100);
+  const pctMvpaBarra = Math.min(100, pctMvpaReal);
+  const passouDaMeta = pctMvpaReal > 100;
 
   if (isLoading) {
     return (
@@ -134,10 +144,15 @@ export default function AtividadePage() {
           </p>
           <BarraProporcao
             className="mt-3"
-            rotulo="Da meta semanal"
-            valor={`${pctMvpa}% de ${metaMvpa} min`}
-            percentual={pctMvpa}
+            rotulo={passouDaMeta ? "Acima da meta semanal" : "Da meta semanal"}
+            valor={`${porcentagem(pctMvpaReal)} de ${numero(metaMvpa)} min`}
+            percentual={pctMvpaBarra}
           />
+          {passouDaMeta && (
+            <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
+              A barra chega ao fim em {numero(metaMvpa)} min; esta semana você passou disso.
+            </p>
+          )}
         </SurfaceCard>
       </section>
 
@@ -171,7 +186,7 @@ export default function AtividadePage() {
                     <p className="text-base font-semibold text-foreground">{fmtDia(r.activity_date)}</p>
                     <p className="text-sm text-muted-foreground">
                       {(r.moderate_minutes ?? 0) + (r.vigorous_minutes ?? 0)} min ativos
-                      {r.distance_km ? ` · ${r.distance_km.toFixed(1)} km` : ""}
+                      {r.distance_km ? ` · ${numero(r.distance_km, 1)} km` : ""}
                     </p>
                   </div>
                   <p className="text-lg font-bold text-foreground tabular-nums shrink-0">

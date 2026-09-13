@@ -1,7 +1,10 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  useCallback, useEffect, useMemo, useRef, useState,
+  type CSSProperties, type ReactNode,
+} from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
-  ChevronDown, ChevronRight, LogOut, MessageCircle, Plus, Siren, X, Bell, HeartPulse,
+  ChevronDown, ChevronRight, LogOut, MessageCircle, Plus, Siren, X,
 } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { NavLink } from "@/components/NavLink";
@@ -48,6 +51,41 @@ import { useMarcaClinica } from "@/hooks/useMarcaClinica";
  * Os grupos nascem FECHADOS, menos o que contém a rota atual: abrir todos
  * seria reconstruir a parede que acabamos de derrubar, e fechar todos faria
  * o paciente perder de vista onde ele está.
+ *
+ * ── A altura da lateral (auditoria de desktop, setembro/2026) ──────────
+ *
+ * O problema medido: em 1440×900, com "Minha saúde" aberto, a área que rola
+ * tinha `clientHeight 558` para `scrollHeight 872`. Faltavam 314px — e como
+ * a área de rolagem encosta direto no bloco vermelho "Não estou bem", o item
+ * que calhava na fronteira aparecia CORTADO AO MEIO atrás dele. Pior: não
+ * havia nenhum sinal de que existia mais coisa embaixo, então o paciente não
+ * descobria Exames, Metas, Consultas nem o canal com o médico. Metade do app
+ * era invisível num notebook comum.
+ *
+ * Quatro correções, nesta ordem de importância — e nenhuma delas é "mais um
+ * `overflow`", que era exatamente o que já existia e não bastava:
+ *
+ *  1. ACORDEÃO EXCLUSIVO. Só UM grupo fica aberto por vez. Dois grupos
+ *     abertos somavam 15 linhas de menu e não cabiam em altura nenhuma;
+ *     com um só, o pior caso cai para o grupo de 11 itens. É também o
+ *     modelo mental mais simples: "abri este, fechou o outro".
+ *
+ *  2. O RODAPÉ ENCOLHEU. "Preferências" e "Sair" eram duas linhas de 48px
+ *     empilhadas; viraram uma linha de dois botões. O rodapé saiu de ~185px
+ *     para ~120px, e cada pixel devolvido ao rodapé é um pixel de menu.
+ *
+ *  3. SINAL DE QUE HÁ MAIS. A borda de baixo da área que rola ganhou um
+ *     esmaecimento e, quando ainda há conteúdo abaixo, um botão "mais
+ *     opções" que rola a lista. Item cortado atrás de bloco fixo lê-se como
+ *     defeito; item que esmaece sob um degradê lê-se como "continua".
+ *
+ *  4. O GRUPO ABERTO SE APRESENTA. Ao abrir um grupo, o cabeçalho dele rola
+ *     para dentro da vista — sem isso, abrir "Mais recursos" lá embaixo não
+ *     mostrava nada do que foi aberto.
+ *
+ * O que NÃO fizemos: encolher a linha de menu abaixo de 48px. Alvo de toque
+ * é meta de produto para 60–75 anos; ganhar 60px de altura fazendo o
+ * paciente errar o clique é trocar um defeito por outro.
  */
 
 function Logo({ compact }: { compact?: boolean }) {
@@ -57,7 +95,7 @@ function Logo({ compact }: { compact?: boolean }) {
   // e a plataforma vira a linha de baixo, discreta. Sem marca: só a plataforma.
   if (temMarca) {
     return (
-      <div className="flex items-center gap-2.5 px-4 py-5 border-b border-border">
+      <div className="flex items-center gap-2.5 px-4 py-3.5 border-b border-border">
         <img
           src={marca.logoUrl ?? "/logo-symbol.png"}
           alt={marca.clinica ?? marca.medico}
@@ -82,7 +120,7 @@ function Logo({ compact }: { compact?: boolean }) {
   }
 
   return (
-    <div className="flex items-center gap-2.5 px-4 py-5 border-b border-border">
+    <div className="flex items-center gap-2.5 px-4 py-3.5 border-b border-border">
       <img
         src="/logo-symbol.png"
         alt={APP_NAME}
@@ -182,18 +220,22 @@ function GrupoRecolhivel({
   titulo,
   aberto,
   onAlternar,
+  refCabecalho,
   children,
 }: {
   id: string;
   titulo: string;
   aberto: boolean;
   onAlternar: () => void;
+  /** Só o grupo recém-aberto recebe a ref — é ele que precisa rolar para a vista. */
+  refCabecalho?: (el: HTMLButtonElement | null) => void;
   children: ReactNode;
 }) {
   return (
     <div>
       <button
         type="button"
+        ref={refCabecalho}
         onClick={onAlternar}
         aria-expanded={aberto}
         aria-controls={id}
@@ -290,11 +332,22 @@ function iniciaisDe(nome: string): string {
 }
 
 /**
- * Rodapé fixo do menu: "Preferências" e o bloco de conta.
+ * Rodapé fixo do menu: o bloco de conta e, numa linha só, "Preferências" e
+ * "Sair".
  *
  * O nome é o de quem está logado de verdade (perfil > e-mail), nunca um nome
  * de exemplo: um app de saúde que mostra o nome errado na lateral é um app em
  * que o paciente para de confiar nos números da tela do lado.
+ *
+ * ── Por que as duas últimas linhas viraram uma ────────────────────────
+ * Eram três blocos empilhados de 48–56px: Preferências, conta, Sair. Somados
+ * com o respiro, 185px de uma lateral de 900px — mais de um quinto da altura
+ * gasto no que o paciente usa uma vez por mês, enquanto o menu propriamente
+ * dito ficava sem 314px e escondia Exames e Consultas (ver o comentário de
+ * altura no topo do arquivo). Agora "Preferências" e "Sair" dividem uma
+ * linha de 44px, lado a lado: continuam sendo alvo de toque legítimo, com
+ * ícone E texto, e devolvem ~65px ao menu. O bloco de conta continua com a
+ * altura que tinha — ele é o único dos três que o paciente procura.
  */
 function RodapeMenu({ onItemClick }: { onItemClick?: () => void }) {
   const { user, signOut } = useAuth();
@@ -305,17 +358,13 @@ function RodapeMenu({ onItemClick }: { onItemClick?: () => void }) {
   const iniciais = iniciaisDe(profile?.full_name?.trim() || user?.email || "");
 
   return (
-    <div className="border-t border-border p-3 space-y-1">
-      {NAV_FOOTER.map((item) => (
-        <ItemNav key={item.id} item={item} ativo={location.pathname === item.path} onClick={onItemClick} />
-      ))}
-
+    <div className="border-t border-border p-2.5 space-y-1">
       <NavLink
         to={NAV_CONTA.path}
         onClick={onItemClick}
         aria-current={location.pathname === NAV_CONTA.path ? "page" : undefined}
         className={cn(
-          "flex items-center gap-3 min-h-[56px] rounded-2xl px-2 py-2 transition-colors hover:bg-cardio-50",
+          "flex items-center gap-3 min-h-[52px] rounded-2xl px-2 py-1.5 transition-colors hover:bg-cardio-50",
           location.pathname === NAV_CONTA.path && "bg-cardio-50"
         )}
       >
@@ -335,13 +384,40 @@ function RodapeMenu({ onItemClick }: { onItemClick?: () => void }) {
       {/* "Sair" continua no menu de propósito: existe também dentro de
           /conta, mas tirar o caminho curto obrigaria a duas telas de
           distância para uma ação que o paciente às vezes precisa fazer no
-          aparelho de outra pessoa. Fica discreto — não compete com nada. */}
-      <button
-        onClick={signOut}
-        className="w-full flex items-center gap-3 min-h-[48px] px-3 py-2 rounded-xl text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-      >
-        <LogOut className="h-5 w-5 shrink-0" strokeWidth={1.75} aria-hidden="true" /> Sair
-      </button>
+          aparelho de outra pessoa. Fica discreto — não compete com nada.
+          Divide a linha com "Preferências": os dois são manutenção do app,
+          não saúde, e juntos ocupam a altura que um deles ocupava. */}
+      {/* `1fr auto` e não `grid-cols-2`: em duas colunas iguais sobravam 68px
+          para "Preferências", que virava "Prefer…" — e rótulo truncado num
+          menu é um rótulo que não cumpre a função de rótulo. "Sair" tem
+          quatro letras e não precisa de metade da linha. */}
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-1.5">
+        {NAV_FOOTER.map((item) => (
+          <NavLink
+            key={item.id}
+            to={item.path}
+            end
+            onClick={onItemClick}
+            aria-current={location.pathname === item.path ? "page" : undefined}
+            className={cn(
+              "flex items-center gap-2 min-h-[44px] px-2.5 rounded-xl text-sm font-medium",
+              "text-muted-foreground transition-colors hover:bg-cardio-50 hover:text-cardio-dark",
+              location.pathname === item.path && "bg-cardio-50 text-cardio-dark font-semibold"
+            )}
+          >
+            {/* Sem ícone nesta linha, de propósito: com ícone sobravam ~95px
+                para "Preferências" e a palavra virava "Preferênci…". Entre o
+                desenho e a palavra inteira, num menu, ganha a palavra. */}
+            <span>{item.label}</span>
+          </NavLink>
+        ))}
+        <button
+          onClick={signOut}
+          className="flex items-center gap-2 min-h-[44px] px-2.5 rounded-xl text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+        >
+          <LogOut className="h-5 w-5 shrink-0" strokeWidth={1.75} aria-hidden="true" /> Sair
+        </button>
+      </div>
     </div>
   );
 }
@@ -362,68 +438,179 @@ function MenuLateral({
   const location = useLocation();
   const naoLidas = useMensagensNaoLidas();
 
-  // Nasce aberto só o grupo da rota atual. Depois disso, quem manda é o
-  // paciente: o que ele abriu continua aberto enquanto ele navega.
-  const [abertos, setAbertos] = useState<NavGroupKey[]>(() => {
-    const atual = grupoDaRota(location.pathname);
-    return atual ? [atual] : [];
-  });
+  /**
+   * UM grupo aberto por vez (acordeão exclusivo).
+   *
+   * Antes o estado era uma LISTA de abertos e nada nunca fechava sozinho:
+   * duas seções abertas somavam 15 linhas e estouravam qualquer altura de
+   * notebook. Com um só, o pior caso é o grupo de 11 itens — e o paciente
+   * ganha a regra mais simples que existe: abriu um, fechou o outro.
+   */
+  const [aberto, setAberto] = useState<NavGroupKey | null>(() => grupoDaRota(location.pathname));
 
   useEffect(() => {
     const atual = grupoDaRota(location.pathname);
-    if (!atual) return;
-    setAbertos((prev) => (prev.includes(atual) ? prev : [...prev, atual]));
+    if (atual) setAberto(atual);
   }, [location.pathname]);
 
-  const alternar = (key: NavGroupKey) =>
-    setAbertos((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
+  const areaRef = useRef<HTMLElement | null>(null);
+  const cabecalhoAbertoRef = useRef<HTMLButtonElement | null>(null);
+  const [temMaisAbaixo, setTemMaisAbaixo] = useState(false);
+  const [rolou, setRolou] = useState(false);
+
+  /**
+   * Mede se sobra conteúdo fora da vista. É isso que liga o degradê e o botão
+   * "mais opções" — sem a medida, o sinal ou mentiria (aparecendo com a lista
+   * inteira visível) ou sumiria justamente quando é necessário.
+   */
+  const medirRolagem = useCallback(() => {
+    const el = areaRef.current;
+    if (!el) return;
+    const fim = el.scrollHeight - el.clientHeight - el.scrollTop;
+    setTemMaisAbaixo(fim > 8);
+    setRolou(el.scrollTop > 8);
+  }, []);
+
+  useEffect(() => {
+    const el = areaRef.current;
+    if (!el) return;
+    medirRolagem();
+    // ResizeObserver e não só o `scroll`: abrir ou fechar um grupo muda a
+    // altura do conteúdo sem rolar nada, e sem observar o tamanho o degradê
+    // ficaria preso no estado anterior.
+    const ro = new ResizeObserver(medirRolagem);
+    ro.observe(el);
+    Array.from(el.children).forEach((c) => ro.observe(c));
+    return () => ro.disconnect();
+  }, [medirRolagem]);
+
+  // Abrir um grupo que está no fim da lista não mostrava nada do que foi
+  // aberto: o conteúdo nascia abaixo da dobra da lateral.
+  useEffect(() => {
+    if (!aberto) return;
+    cabecalhoAbertoRef.current?.scrollIntoView({ block: "nearest" });
+    medirRolagem();
+  }, [aberto, medirRolagem]);
+
+  const alternar = (key: NavGroupKey) => setAberto((prev) => (prev === key ? null : key));
 
   return (
     <>
       <Logo />
 
-      {/* min-h-0 é o que faz o overflow funcionar dentro de um flex column:
-          sem ele o filho cresce para além da coluna e os últimos itens do
-          menu ficam inalcançáveis embaixo do rodapé. */}
-      <nav aria-label="Menu principal" className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-2">
-        <ItemNav
-          item={ITEM_HOJE}
-          ativo={location.pathname === ITEM_HOJE.path}
-          onClick={onItemClick}
-        />
+      {/* `relative` para ancorar o degradê e o botão de "mais opções", que são
+          irmãos da área que rola — dentro dela eles rolariam junto e sumiriam
+          exatamente quando são necessários. */}
+      <div className="relative flex-1 min-h-0">
+        {/* min-h-0 é o que faz o overflow funcionar dentro de um flex column:
+            sem ele o filho cresce para além da coluna e os últimos itens do
+            menu ficam inalcançáveis embaixo do rodapé.
 
-        <BotaoRegistrarMenu
-          onClick={() => {
-            onItemClick?.();
-            onRegistrar();
-          }}
-        />
+            `scrollbar-gutter: stable` reserva a calha da barra de rolagem: sem
+            ela, abrir um grupo grande estreitava a lista inteira em 15px e
+            todos os rótulos davam um pulinho para a esquerda. */}
+        <nav
+          ref={areaRef}
+          onScroll={medirRolagem}
+          aria-label="Menu principal"
+          className="h-full overflow-y-auto overscroll-contain px-3 py-3 space-y-2 [scrollbar-gutter:stable]"
+        >
+          <ItemNav
+            item={ITEM_HOJE}
+            ativo={location.pathname === ITEM_HOJE.path}
+            onClick={onItemClick}
+          />
 
-        <div className="pt-1 space-y-0.5">
-          {GRUPOS_RECOLHIVEIS.map((grupo) => {
-            const aberto = abertos.includes(grupo.key);
-            return (
-              <GrupoRecolhivel
-                key={grupo.key}
-                id={`grupo-nav-${grupo.key}`}
-                titulo={grupo.label}
-                aberto={aberto}
-                onAlternar={() => alternar(grupo.key)}
-              >
-                {grupo.items.map((item) => (
-                  <ItemNav
-                    key={item.id}
-                    item={item}
-                    ativo={location.pathname === item.path}
-                    onClick={onItemClick}
-                    badge={item.badge === "medico" ? naoLidas : undefined}
-                  />
-                ))}
-              </GrupoRecolhivel>
-            );
-          })}
-        </div>
-      </nav>
+          <BotaoRegistrarMenu
+            onClick={() => {
+              onItemClick?.();
+              onRegistrar();
+            }}
+          />
+
+          <div className="pt-1 space-y-0.5">
+            {GRUPOS_RECOLHIVEIS.map((grupo) => {
+              const estaAberto = aberto === grupo.key;
+              return (
+                <GrupoRecolhivel
+                  key={grupo.key}
+                  id={`grupo-nav-${grupo.key}`}
+                  titulo={grupo.label}
+                  aberto={estaAberto}
+                  onAlternar={() => alternar(grupo.key)}
+                  refCabecalho={estaAberto ? (el) => { cabecalhoAbertoRef.current = el; } : undefined}
+                >
+                  {grupo.items.map((item) => (
+                    <ItemNav
+                      key={item.id}
+                      item={item}
+                      ativo={location.pathname === item.path}
+                      onClick={onItemClick}
+                      badge={item.badge === "medico" ? naoLidas : undefined}
+                    />
+                  ))}
+                </GrupoRecolhivel>
+              );
+            })}
+          </div>
+
+          {/* Folga no fim da lista: sem ela o último item encostava no degradê
+              e continuava parecendo cortado — que era o defeito original.
+              Incondicional de propósito: se ela aparecesse só quando há mais
+              abaixo, chegar ao fim removeria a folga, o conteúdo encolheria e
+              a medida de rolagem oscilaria entre dois estados. */}
+          <div className="h-7" aria-hidden />
+        </nav>
+
+        {/* Degradê de topo: diz "você rolou, há coisa acima". Pequeno de
+            propósito — em cima o sinal é confirmação, embaixo é convite. */}
+        {rolou ? (
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-5 bg-gradient-to-b from-card to-transparent" aria-hidden />
+        ) : null}
+
+        {/* Degradê: faz o item esmaecer na borda da lista em vez de aparecer
+            fatiado atrás do bloco vermelho, que era o defeito medido.
+            `pointer-events-none` — ele é pintura, não obstáculo. */}
+        {temMaisAbaixo ? (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-card via-card/85 to-transparent" aria-hidden />
+        ) : null}
+      </div>
+
+      {/*
+        A faixa "mais opções" — o sinal explícito de que a lista continua.
+
+        Ela mora NO FLUXO, abaixo da área que rola, e não flutuando por cima
+        dela. A primeira versão era uma pílula absoluta e reintroduzia em
+        miniatura o problema que o degradê acabara de resolver: no ponto
+        central do último item visível, `elementFromPoint` devolvia a pílula,
+        não o link. Sobreposta a um alvo de toque, qualquer affordance é um
+        ladrão de clique.
+
+        A ALTURA É FIXA e existe mesmo quando não há nada a anunciar. Se a
+        faixa aparecesse e sumisse, a área que rola mudaria de tamanho, o
+        cálculo de "há mais abaixo" mudaria junto, e os dois ficariam se
+        ligando e desligando um ao outro.
+
+        `aria-hidden`: para quem usa leitor de tela isto não é destino nenhum
+        — a lista inteira já é percorrida por Tab, rolando sozinha.
+      */}
+      <div className="h-8 shrink-0 px-3" aria-hidden>
+        {temMaisAbaixo ? (
+          <button
+            type="button"
+            tabIndex={-1}
+            onClick={() => areaRef.current?.scrollBy({ top: 220, behavior: "smooth" })}
+            className={cn(
+              "flex w-full items-center justify-center gap-1.5 rounded-lg py-1",
+              "text-xs font-semibold uppercase tracking-wide text-muted-foreground",
+              "transition-colors hover:bg-cardio-50 hover:text-cardio-dark"
+            )}
+          >
+            mais opções
+            <ChevronDown className="h-4 w-4" aria-hidden />
+          </button>
+        ) : null}
+      </div>
 
       <BlocoNaoEstouBem onItemClick={onItemClick} />
       <RodapeMenu onItemClick={onItemClick} />
@@ -532,7 +719,7 @@ function BotaoEmergencia() {
   const location = useLocation();
   // Não repete onde a própria tela já é sobre isso — inclusive em /hoje, que
   // deixou de ter o botão duplicado no fim da página.
-  if (location.pathname === "/hoje" || location.pathname === "/emergencia" || location.pathname === "/como-estou") return null;
+  if (location.pathname === "/emergencia" || location.pathname === "/como-estou") return null;
 
   return (
     <NavLink
@@ -584,7 +771,7 @@ function BarraInferior({
   return (
     <nav
       aria-label="Navegação principal"
-      className="patient-bottom-nav lg:hidden fixed bottom-0 inset-x-0 z-40 bg-card border-t border-border pb-[env(safe-area-inset-bottom)]"
+      className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-card border-t border-border pb-[env(safe-area-inset-bottom)]"
     >
       {/* grid-cols-5 com min-w-0 em cada célula: em 360px os rótulos mais
           longos ("Minha equipe") quebram em duas linhas em vez de estourar
@@ -665,7 +852,7 @@ function BotaoRegistrar({ item, onClick }: { item: BottomNavItem; onClick: () =>
       onClick={onClick}
       aria-label={item.descricao ?? item.label}
       aria-haspopup="dialog"
-      className={cn(CELULA_BARRA, "mobile-register-nav justify-end pb-1.5 text-primary")}
+      className={cn(CELULA_BARRA, "justify-end pb-1.5 text-primary")}
     >
       <span
         className={cn(
@@ -681,12 +868,32 @@ function BotaoRegistrar({ item, onClick }: { item: BottomNavItem; onClick: () =>
   );
 }
 
-/** Marca do aplicativo no mobile; a identificação da clínica permanece no menu e na equipe. */
+/**
+ * Topo do app no celular: a marca da clínica do paciente quando ela existe, a
+ * marca da plataforma quando não. Quem cuida dele assina a tela — é isso que
+ * faz o paciente sentir que o app é do consultório dele, e não de um
+ * fornecedor.
+ */
 function MarcaNoTopo() {
-  return <NavLink to="/hoje" className="mobile-brand" aria-label="Encorpei Saúde Cardio — início">
-      <HeartPulse aria-hidden="true" strokeWidth={1.5} />
-      <span><strong>Encorpei</strong><span>Saúde Cardio</span></span>
-    </NavLink>;
+  const { marca, temMarca } = useMarcaClinica();
+
+  if (!temMarca) {
+    return <img src="/logo-symbol.png" alt={APP_NAME} width={30} height={30} className="object-contain" style={{ width: 30, height: 30 }} />;
+  }
+
+  return (
+    <div className="flex items-center gap-2 min-w-0">
+      {marca.logoUrl ? (
+        <img src={marca.logoUrl} alt={marca.clinica ?? marca.medico} className="h-8 w-8 rounded-md object-contain" />
+      ) : null}
+      <div className="min-w-0 leading-tight">
+        <p className="text-sm font-semibold truncate">{marca.clinica ?? marca.medico}</p>
+        {marca.subtitulo ? (
+          <p className="text-xs text-muted-foreground truncate">{marca.subtitulo}</p>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -700,7 +907,6 @@ export function AppShell() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [registroAberto, setRegistroAberto] = useState(false);
   const location = useLocation();
-  const naoLidas = useMensagensNaoLidas();
 
   // Toda troca de tela volta ao topo — sem isso, quem vem de uma lista longa
   // abre a próxima página no meio dela.
@@ -714,7 +920,7 @@ export function AppShell() {
     // tamanho dentro do app do paciente — sem mexer nas telas do médico, que
     // são densas de propósito (docs/CONTRATO-DE-CODIGO.md, "Tom de escrita").
     // `--barra-inferior` é a altura reservada embaixo: barra + área segura.
-    <div className={cn("patient-shell leitura-paciente flex min-h-screen w-full bg-background", location.pathname === "/hoje" && "patient-home-shell")} style={ESTILO_SHELL}>
+    <div className="leitura-paciente flex min-h-screen w-full bg-background" style={ESTILO_SHELL}>
       {/* Menu lateral — desktop. Branco sobre o fundo cinza-azulado da página,
           com uma borda fina de 1px em vez de sombra: a lateral é chão, não
           cartão, e sombra aqui faria ela competir com o conteúdo. */}
@@ -729,12 +935,8 @@ export function AppShell() {
             de baixo, ao alcance do polegar, e repetir um menu aqui em cima
             criaria dois caminhos para a mesma coisa em telas onde o topo é
             justamente a parte mais difícil de alcançar. */}
-        <header className="patient-mobile-header lg:hidden sticky top-0 z-30 flex items-center justify-between px-4 py-2.5">
+        <header className="lg:hidden sticky top-0 z-30 flex items-center bg-card/95 backdrop-blur border-b border-border px-4 py-2.5">
           <MarcaNoTopo />
-          <NavLink to="/medico" className="mobile-message-bell" aria-label={naoLidas > 0 ? `Abrir mensagens da equipe — ${naoLidas} não lidas` : "Abrir mensagens da equipe"}>
-            <Bell aria-hidden="true" strokeWidth={1.75} />
-            {naoLidas > 0 && <span className="mobile-unread-dot" aria-hidden="true" />}
-          </NavLink>
         </header>
 
         <CabecalhoConteudo />
@@ -761,7 +963,7 @@ export function AppShell() {
         */}
         <main
           className={cn(
-            "patient-main flex-1 w-full px-4 py-5 lg:px-8 lg:py-8",
+            "flex-1 w-full px-4 py-5 lg:px-8 lg:py-8",
             "pb-[calc(9.5rem_+_env(safe-area-inset-bottom,0px))] lg:pb-28"
           )}
         >

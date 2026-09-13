@@ -21,6 +21,11 @@
  *
  *  · O gráfico de 10 dias ganhou unidade no eixo e legenda escrita para a
  *    linha de referência, que antes era um tracejado sem nome.
+ *
+ *  · A barra do dia parou de mentir por saturação (auditoria de setembro/2026):
+ *    2720 mg com referência de 2000 mg aparecia como "100% de 2000 mg", ao
+ *    lado da frase que dizia "acima da referência". Ver o bloco de comentário
+ *    em `percentualReal`.
  */
 import { useMemo } from "react";
 import { UtensilsCrossed, Info } from "lucide-react";
@@ -36,6 +41,7 @@ import {
   gradeGrafico, eixoX, eixoY, dicaGrafico, COR_SERIE, COR_REFERENCIA,
 } from "@/components/shell";
 import { cn } from "@/lib/utils";
+import { numero, porcentagem, diaCurto } from "@/lib/formato";
 import { useSodio } from "@/hooks/useEngajamento";
 import {
   REFEICOES, OPCOES_REFEICAO, totalDoDia, type ChaveRefeicao,
@@ -50,9 +56,9 @@ const ONDE_SE_ESCONDE = [
   "Congelados e enlatados",
 ];
 
+/** O dia vem como "2026-09-13"; o T00:00:00 evita o fuso comer um dia. */
 function fmtDiaCurto(diaIso: string): string {
-  const d = new Date(diaIso + "T00:00:00");
-  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  return diaCurto(diaIso + "T00:00:00") ?? "";
 }
 
 export default function AlimentacaoPage() {
@@ -83,8 +89,20 @@ export default function AlimentacaoPage() {
     );
   }
 
-  const percentualBarra = Math.min(100, leitura.percentual);
+  /**
+   * A barra satura em 100% (é o comprimento máximo que existe); o TEXTO, não.
+   *
+   * Antes os dois usavam o valor saturado, e a tela dizia duas coisas opostas
+   * ao mesmo tempo: a frase "cerca de 2720 mg hoje, acima da referência de
+   * 2000 mg" com o rótulo "100% de 2000 mg" logo abaixo. Para quem lê rápido,
+   * "100%" é o alvo cumprido — o número que gritava alarme e o número que
+   * mostrava tranquilidade eram o mesmo dia. Agora a barra cheia significa
+   * "chegou ou passou", e o quanto passou está escrito.
+   */
+  const percentualReal = Math.round(leitura.percentual);
+  const percentualBarra = Math.min(100, percentualReal);
   const emAtencao = leitura.tom === "atencao";
+  const passouDaReferencia = percentualReal > 100;
 
   return (
     <TelaPaciente>
@@ -97,11 +115,16 @@ export default function AlimentacaoPage() {
         </p>
         <p className="text-base text-foreground leading-relaxed mb-3">{leitura.frase}</p>
         <BarraProporcao
-          rotulo="Do valor de referência do dia"
-          valor={`${percentualBarra}% de ${alvo} mg`}
+          rotulo={passouDaReferencia ? "Acima da referência do dia" : "Do valor de referência do dia"}
+          valor={`${porcentagem(percentualReal)} de ${numero(alvo)} mg`}
           percentual={percentualBarra}
           cor={emAtencao ? "hsl(var(--warning))" : "hsl(var(--brand-cardio))"}
         />
+        {passouDaReferencia && (
+          <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
+            A barra chega ao fim em {numero(alvo)} mg; hoje o total passou disso.
+          </p>
+        )}
       </SurfaceCard>
 
       {/* ── Uma pergunta por refeição ─────────────────────────────── */}
@@ -134,7 +157,7 @@ export default function AlimentacaoPage() {
       <SurfaceCard>
         <p className="text-sm font-medium text-muted-foreground mb-1">Média dos últimos 7 dias</p>
         <p className="text-3xl font-bold text-foreground tabular-nums">
-          {mediaSemana != null ? `${mediaSemana} mg` : "Sem registro"}
+          {mediaSemana != null ? `${numero(mediaSemana)} mg` : "Sem registro"}
         </p>
       </SurfaceCard>
 
@@ -149,7 +172,7 @@ export default function AlimentacaoPage() {
                 {eixoX("dia")}
                 {eixoY({ unidade: "mg", largura: 56 })}
                 <ReferenceLine y={alvo} stroke={COR_REFERENCIA} strokeDasharray="4 4" />
-                {dicaGrafico((v: never) => [`${v} mg`, "Sódio"])}
+                {dicaGrafico((v: never) => [`${numero(Number(v))} mg`, "Sódio"])}
                 <Bar
                   dataKey="mg" name="Sódio" fill={COR_SERIE} radius={[6, 6, 0, 0]}
                   isAnimationActive={!reduzirMovimento}
@@ -160,7 +183,7 @@ export default function AlimentacaoPage() {
           <LegendaGrafico
             itens={[
               { cor: COR_SERIE, rotulo: "Sódio estimado no dia" },
-              { cor: COR_REFERENCIA, rotulo: `Referência diária (${alvo} mg)` },
+              { cor: COR_REFERENCIA, rotulo: `Referência diária (${numero(alvo)} mg)` },
             ]}
           />
         </SurfaceCard>

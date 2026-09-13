@@ -19,13 +19,17 @@ const variantStyles: Record<StatusVariant, string> = {
   informativo: "bg-info-bg text-info",
 };
 
+/**
+ * O pontinho vai na cor SÓLIDA do estado, nunca no token `-bg`: o fundo do
+ * selo já é o `-bg`, e um ponto da mesma cor do fundo é um ponto invisível.
+ */
 const dotColors: Record<StatusVariant, string> = {
   normal: "bg-muted-foreground",
-  pendente: "bg-warning-bg",
-  concluido: "bg-success-bg",
-  atencao: "bg-warning-bg",
-  urgencia: "bg-error-bg",
-  informativo: "bg-info-bg",
+  pendente: "bg-warning",
+  concluido: "bg-success",
+  atencao: "bg-warning",
+  urgencia: "bg-error",
+  informativo: "bg-info",
 };
 
 export function StatusBadge({ variant = "normal", children, className, dot = true }: StatusBadgeProps) {

@@ -54,6 +54,21 @@ export function CartaoDestaque({
  * Progresso em teal, nunca em verde: verde lido num app de saúde é entendido
  * como "seu resultado está bom", e isto aqui mede apenas quanto do combinado
  * do dia foi registrado. O rótulo textual é obrigatório justamente por isso.
+ *
+ * ── O 100% que mentia (auditoria de desktop, setembro/2026) ───────────
+ * A conta era `Math.min(100, ...)`. Enquanto a barra fala de tarefa do dia
+ * ("3 de 5 feitos") o teto é inofensivo — mas a mesma peça serve medida
+ * contra referência, e ali ele apagava o excesso: 2720 mg de sódio sobre uma
+ * referência de 2000 mg (136%) desenhavam uma barra cheia dizendo "100%",
+ * bem embaixo de um texto dizendo "acima da referência". O número dito e o
+ * número mostrado brigavam, e o cheio parecia "no alvo".
+ *
+ * Agora o excesso é DESENHADO: a barra enche até a referência e o que passa
+ * vira um segmento hachurado depois de um traço, com a proporção real
+ * preservada (a régua total cresce junto). O primitivo continua sem opinião
+ * clínica: ele não sabe se passar da referência é bom (passos) ou ruim
+ * (sódio), e por isso o excesso não tem cor de alarme — quem chama é que
+ * escreve o que aquilo significa.
  */
 export function BarraProgresso({
   feitos,
@@ -67,20 +82,48 @@ export function BarraProgresso({
   /** "claro" = sobre fundo azul; "escuro" = sobre fundo branco. */
   tom?: "claro" | "escuro";
 }) {
-  const pct = total > 0 ? Math.min(100, Math.round((feitos / total) * 100)) : 0;
+  const pct = total > 0 ? Math.round((feitos / total) * 100) : 0;
+  // Régua: 100 quando está dentro; o próprio percentual quando passa. Assim
+  // a parte "até a referência" encolhe proporcionalmente em vez de o excesso
+  // ser jogado para fora da caixa.
+  const regua = Math.max(100, pct);
+  const larguraBase = (Math.min(pct, 100) / regua) * 100;
+  const larguraExcesso = pct > 100 ? ((pct - 100) / regua) * 100 : 0;
+
   return (
     <div
-      className={cn("h-2.5 w-full rounded-full overflow-hidden", tom === "claro" ? "bg-white/25" : "bg-muted", className)}
+      className={cn("flex h-2.5 w-full items-stretch rounded-full overflow-hidden", tom === "claro" ? "bg-white/25" : "bg-muted", className)}
       role="progressbar"
       aria-valuenow={feitos}
       aria-valuemin={0}
-      aria-valuemax={total}
-      aria-label={`${feitos} de ${total} concluídos`}
+      // O máximo do ARIA acompanha o que foi de fato atingido: um
+      // `aria-valuenow` maior que `aria-valuemax` é estado inválido, e o
+      // leitor de tela passa a anunciar qualquer coisa.
+      aria-valuemax={Math.max(total, feitos)}
+      aria-label={
+        pct > 100
+          ? `${feitos} de ${total} — ${pct}%, acima da referência`
+          : `${feitos} de ${total} concluídos`
+      }
     >
       <div
-        className="h-full rounded-full bg-progresso transition-[width] duration-500 motion-reduce:transition-none"
-        style={{ width: `${pct}%` }}
+        className="h-full bg-progresso transition-[width] duration-500 motion-reduce:transition-none"
+        style={{ width: `${larguraBase}%` }}
       />
+      {larguraExcesso > 0 ? (
+        // Traço claro separando o que é referência do que passou dela, e
+        // hachura no excesso: dois sinais de forma, nenhum de cor — cor
+        // sozinha não informa quem não enxerga cor, e aqui ela ainda por
+        // cima daria juízo clínico que o primitivo não tem.
+        <div
+          className="h-full border-l-2 border-card/80 bg-progresso/25 transition-[width] duration-500 motion-reduce:transition-none"
+          style={{
+            width: `${larguraExcesso}%`,
+            backgroundImage:
+              "repeating-linear-gradient(135deg, hsl(var(--progresso)) 0 3px, transparent 3px 7px)",
+          }}
+        />
+      ) : null}
     </div>
   );
 }

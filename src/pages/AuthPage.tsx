@@ -432,6 +432,14 @@ export default function AuthPage() {
             É médico cardiologista?{" "}
             <Link to="/pro/auth" className="text-primary font-medium hover:underline">Entre pelo portal do médico</Link>
           </p>
+
+          {/* Quem chega com um código de cuidador na mão chega AQUI, na tela de
+              entrada — e até agora não havia nada nela dizendo onde usar o
+              código. A rota existia; o caminho até ela, não. */}
+          <p className="text-center text-sm text-muted-foreground mt-2">
+            Fui convidado para cuidar de alguém.{" "}
+            <Link to="/cuidador" className="text-primary font-medium hover:underline">Entrar com o código do convite</Link>
+          </p>
         </div>
       </div>
     </PageTransition>

@@ -22,16 +22,25 @@
  *  · O botão de remover pergunta subiu de 32px para 44px de alvo e ganhou
  *    rótulo acessível com o texto da pergunta, para não haver oito botões
  *    "Remover" idênticos para quem usa leitor de tela.
+ *
+ * ── O que a auditoria de DESKTOP (setembro/2026) mudou ────────────────
+ * Em 1440px a metade direita da tela estava completamente vazia. Agora, a
+ * partir de `xl`, o que se FAZ (ver a próxima consulta, anotar dúvidas) fica
+ * à esquerda e o que se CONSULTA (histórico) à direita — e a tela deixou de
+ * acabar no nada: "Antes da consulta" leva ao resumo do mês (/meu-mes) e ao
+ * canal do médico (/medico), que são as duas coisas que o paciente faz entre
+ * uma consulta e outra e que não tinham porta aqui.
  */
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { CalendarClock, MapPin, ListChecks, Trash2, Plus } from "lucide-react";
+import { CalendarClock, FileText, MapPin, ListChecks, MessageCircle, Trash2, Plus } from "lucide-react";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { SurfaceCard } from "@/components/shell/SurfaceCard";
 import { StatusBadge } from "@/components/shell/StatusBadge";
 import { EmptyState } from "@/components/shell/EmptyState";
 import { TabPageSkeleton } from "@/components/shell/Skeletons";
-import { TelaPaciente, TituloSecao, Formulario, Campo } from "@/components/shell";
+import { TelaPaciente, TituloSecao, Formulario, Campo, LayoutPainel } from "@/components/shell";
+import { Ponte } from "@/components/shell";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useAppointments } from "@/hooks/useProfessional";
@@ -94,7 +103,7 @@ export default function AgendaPage() {
     salvarPerguntas(lista);
   };
 
-  const historico = appointments.filter((a) => a.id !== proxima?.id);
+  const historicoLista = appointments.filter((a) => a.id !== proxima?.id);
 
   if (isLoading) {
     return (
@@ -105,102 +114,140 @@ export default function AgendaPage() {
     );
   }
 
-  return (
-    <TelaPaciente>
-      <PageHeader title="Agenda" subtitle="Suas consultas" />
-
-      {/* ── Próxima consulta ─────────────────────────────────────── */}
-      <section>
-        <TituloSecao titulo="Próxima consulta" />
-        {proxima ? (
-          <SurfaceCard className="bg-cardio-50 border-0">
-            <div className="flex items-start gap-3">
-              <div className="h-12 w-12 rounded-xl bg-card grid place-items-center shrink-0">
-                <CalendarClock className="h-6 w-6 text-primary" aria-hidden />
-              </div>
-              <div className="min-w-0">
-                <p className="text-lg font-bold text-foreground leading-snug break-words">{fmtDataHora(proxima.scheduled_at)}</p>
-                {proxima.location && (
-                  <p className="text-base text-muted-foreground flex items-start gap-1.5 mt-1">
-                    <MapPin className="h-5 w-5 shrink-0 mt-0.5" aria-hidden /> {proxima.location}
-                  </p>
-                )}
-              </div>
+  /* ── Próxima consulta ─────────────────────────────────────── */
+  const proximaConsulta = (
+    <section>
+      <TituloSecao titulo="Próxima consulta" />
+      {proxima ? (
+        <SurfaceCard className="bg-cardio-50 border-0">
+          <div className="flex items-start gap-3">
+            <div className="h-12 w-12 rounded-xl bg-card grid place-items-center shrink-0">
+              <CalendarClock className="h-6 w-6 text-primary" aria-hidden />
             </div>
-          </SurfaceCard>
-        ) : (
-          <EmptyState icon={CalendarClock} title="Sem consulta marcada" description="Quando seu médico agendar, ela aparece aqui." variant="card" />
-        )}
-      </section>
-
-      {/* ── O que quero perguntar ────────────────────────────────── */}
-      <section>
-        <TituloSecao titulo="O que quero perguntar na consulta" icone={ListChecks} />
-        <SurfaceCard>
-          <Formulario>
-            <Campo
-              rotulo="Sua dúvida"
-              para="nova-pergunta"
-              ajuda="Essa lista fica guardada só neste aparelho — não é enviada ao médico automaticamente."
-            >
-              <Textarea
-                id="nova-pergunta"
-                placeholder="Escreva aqui uma dúvida para não esquecer na consulta..."
-                value={novaPergunta}
-                onChange={(e) => setNovaPergunta(e.target.value)}
-                className="min-h-[96px]"
-              />
-            </Campo>
-            {/* Secundário de propósito: o azul desta tela é a consulta. */}
-            <Button variant="outline" size="lg" className="w-full gap-2 mt-3" onClick={adicionar} disabled={!novaPergunta.trim()}>
-              <Plus className="h-5 w-5" aria-hidden /> Adicionar
-            </Button>
-          </Formulario>
+            <div className="min-w-0">
+              <p className="text-lg font-bold text-foreground leading-snug break-words">{fmtDataHora(proxima.scheduled_at)}</p>
+              {proxima.location && (
+                <p className="text-base text-muted-foreground flex items-start gap-1.5 mt-1">
+                  <MapPin className="h-5 w-5 shrink-0 mt-0.5" aria-hidden /> {proxima.location}
+                </p>
+              )}
+            </div>
+          </div>
         </SurfaceCard>
+      ) : (
+        <EmptyState icon={CalendarClock} title="Sem consulta marcada" description="Quando seu médico agendar, ela aparece aqui." variant="card" />
+      )}
+    </section>
+  );
 
-        {perguntas.length > 0 && (
-          <div className="space-y-2 mt-3">
-            {perguntas.map((p) => (
-              <SurfaceCard key={p.id} className="flex items-center justify-between gap-3">
-                <p className="text-base text-foreground min-w-0 break-words">{p.texto}</p>
-                <button
-                  type="button"
-                  onClick={() => remover(p.id)}
-                  aria-label={`Remover a pergunta: ${p.texto}`}
-                  className="h-11 w-11 shrink-0 rounded-xl grid place-items-center text-muted-foreground hover:bg-secondary"
-                >
-                  <Trash2 className="h-5 w-5" aria-hidden />
-                </button>
-              </SurfaceCard>
-            ))}
-          </div>
-        )}
-      </section>
+  /* ── O que quero perguntar ────────────────────────────────── */
+  const blocoPerguntas = (
+    <section>
+      <TituloSecao titulo="O que quero perguntar na consulta" icone={ListChecks} />
+      <SurfaceCard>
+        <Formulario>
+          <Campo
+            rotulo="Sua dúvida"
+            para="nova-pergunta"
+            ajuda="Essa lista fica guardada só neste aparelho — não é enviada ao médico automaticamente."
+          >
+            <Textarea
+              id="nova-pergunta"
+              placeholder="Escreva aqui uma dúvida para não esquecer na consulta..."
+              value={novaPergunta}
+              onChange={(e) => setNovaPergunta(e.target.value)}
+              className="min-h-[96px]"
+            />
+          </Campo>
+          {/* Secundário de propósito: o azul desta tela é a consulta. */}
+          <Button variant="outline" size="lg" className="w-full gap-2 mt-3" onClick={adicionar} disabled={!novaPergunta.trim()}>
+            <Plus className="h-5 w-5" aria-hidden /> Adicionar
+          </Button>
+        </Formulario>
+      </SurfaceCard>
 
-      {/* ── Histórico ────────────────────────────────────────────── */}
-      <section>
-        <TituloSecao titulo="Consultas anteriores" />
-        {historico.length === 0 ? (
-          <EmptyState icon={CalendarClock} title="Sem histórico" description="Suas consultas passadas aparecem aqui." variant="card" />
-        ) : (
-          <div className="space-y-2.5">
-            {historico.map((a) => (
-              <SurfaceCard key={a.id}>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-base font-semibold text-foreground break-words">{fmtDataHora(a.scheduled_at)}</p>
-                    {a.location && <p className="text-sm text-muted-foreground mt-0.5">{a.location}</p>}
-                    {a.notes && <p className="text-base text-foreground mt-1.5 leading-relaxed">{a.notes}</p>}
-                  </div>
-                  <StatusBadge variant={STATUS_VARIANT[a.status] ?? "normal"} className="shrink-0">
-                    {STATUS_LABEL[a.status] ?? a.status}
-                  </StatusBadge>
+      {perguntas.length > 0 && (
+        <div className="space-y-2 mt-3">
+          {perguntas.map((p) => (
+            <SurfaceCard key={p.id} className="flex items-center justify-between gap-3">
+              <p className="text-base text-foreground min-w-0 break-words">{p.texto}</p>
+              <button
+                type="button"
+                onClick={() => remover(p.id)}
+                aria-label={`Remover a pergunta: ${p.texto}`}
+                className="h-11 w-11 shrink-0 rounded-xl grid place-items-center text-muted-foreground hover:bg-secondary"
+              >
+                <Trash2 className="h-5 w-5" aria-hidden />
+              </button>
+            </SurfaceCard>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+
+  /* ── Histórico ────────────────────────────────────────────── */
+  const historico = (
+    <section>
+      <TituloSecao titulo="Consultas anteriores" />
+      {historicoLista.length === 0 ? (
+        <EmptyState icon={CalendarClock} title="Sem histórico" description="Suas consultas passadas aparecem aqui." variant="card" />
+      ) : (
+        <div className="space-y-2.5">
+          {historicoLista.map((a) => (
+            <SurfaceCard key={a.id}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-base font-semibold text-foreground break-words">{fmtDataHora(a.scheduled_at)}</p>
+                  {a.location && <p className="text-sm text-muted-foreground mt-0.5">{a.location}</p>}
+                  {a.notes && <p className="text-base text-foreground mt-1.5 leading-relaxed">{a.notes}</p>}
                 </div>
-              </SurfaceCard>
-            ))}
-          </div>
-        )}
-      </section>
+                <StatusBadge variant={STATUS_VARIANT[a.status] ?? "normal"} className="shrink-0">
+                  {STATUS_LABEL[a.status] ?? a.status}
+                </StatusBadge>
+              </div>
+            </SurfaceCard>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+
+  /**
+   * Pontes. A tela listava consultas e acabava. As duas coisas que o paciente
+   * faz ENTRE uma consulta e outra — preparar o que vai mostrar e perguntar o
+   * que não dá para esperar — moram em outras telas e não tinham porta aqui.
+   */
+  const pontes = (
+    <section>
+      <TituloSecao titulo="Antes da consulta" />
+      <div className="space-y-2">
+        <Ponte
+          para="/meu-mes"
+          icone={FileText}
+          titulo="Preparar a consulta"
+          detalhe="O resumo do mês que você leva para o seu médico"
+        />
+        <Ponte
+          para="/medico"
+          icone={MessageCircle}
+          titulo="Perguntar ao meu médico"
+          detalhe="Para o que não dá para esperar até a consulta"
+        />
+      </div>
+    </section>
+  );
+
+  return (
+    <TelaPaciente largura="painel">
+      <PageHeader title="Agenda" subtitle="Suas consultas" />
+      {/* O que se FAZ à esquerda (ver a próxima consulta, anotar dúvidas);
+          o que se CONSULTA à direita (histórico e pontes). Em 1440px a metade
+          direita da tela estava completamente vazia. */}
+      <LayoutPainel
+        principal={<>{proximaConsulta}{blocoPerguntas}</>}
+        apoio={<>{historico}{pontes}</>}
+      />
     </TelaPaciente>
   );
 }

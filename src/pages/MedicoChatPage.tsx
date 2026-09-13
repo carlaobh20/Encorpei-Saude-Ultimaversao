@@ -33,7 +33,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePatientMessages } from "@/hooks/useProfessional";
-import { useMyProfessionals } from "@/hooks/useMyProfessionals";
+import { useMedicoVinculado } from "@/hooks/useMarcaClinica";
 import { MessageCircle } from "lucide-react";
 
 function fmtHora(iso: string): string {
@@ -49,8 +49,10 @@ function diaChave(iso: string): string {
 export default function MedicoChatPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { professionals } = useMyProfessionals();
-  const medico = professionals[0] ?? null;
+  // Uma pergunta, uma resposta: quem é o médico deste paciente vem do mesmo
+  // lugar que a marca da clínica — inclusive em demonstração, onde a lista
+  // crua de vínculos chegava vazia e o cabeçalho caía em "Meu médico".
+  const { medico } = useMedicoVinculado();
   const { messages, isLoading, enviar, marcarLidas } = usePatientMessages(user?.id, "patient", user?.id);
   const [texto, setTexto] = useState("");
   const fimRef = useRef<HTMLDivElement>(null);
@@ -87,7 +89,7 @@ export default function MedicoChatPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col h-[calc(100dvh-10rem)]">
-      <PageHeader title={medico?.display_name ?? "Meu médico"} subtitle={medico?.clinic_name ?? undefined} />
+      <PageHeader title={medico?.nome ?? "Meu médico"} subtitle={medico?.clinica ?? undefined} />
 
       <button
         type="button"

@@ -53,6 +53,26 @@ export const MARCA_PADRAO: MarcaClinica = {
   crm: null,
 };
 
+/**
+ * O médico da DEMONSTRAÇÃO — e há um só.
+ *
+ * ── Por que isto virou fonte única (auditoria de setembro/2026) ────────
+ * Na mesma sessão de demonstração o app afirmava as duas coisas: a barra
+ * lateral estampava "Marcelo Puzzi · Cardiologista Intervencionista",
+ * /caminhada dizia "faixa definida pelo seu médico" e /pulseira "seu médico
+ * consegue ver — enquanto /conta e /hoje ofereciam "conecte-se ao seu
+ * médico". O paciente ficava sem responder a pergunta mais básica do
+ * produto: **alguém está olhando isto?**
+ *
+ * A causa era o demo ter médico em alguns lugares e não em outros: os dados
+ * clínicos vinham de `demoData.ts`, a marca daqui, e o VÍNCULO
+ * (`useMyProfessionals`) não existia no modo demonstração — ele consulta o
+ * banco, e o demo não consulta banco. Quem perguntava "tenho médico?" pelo
+ * vínculo ouvia "não".
+ *
+ * Agora o nome mora aqui, uma vez, e `useMedicoVinculado` é a única resposta
+ * para "tenho médico?" — em demonstração e fora dela.
+ */
 const MARCA_DEMO: MarcaClinica = {
   professionalId: "demo-pro-001",
   medico: "Dr. Marcelo Puzzi",
@@ -117,4 +137,57 @@ export function useMarcaClinica(): { marca: MarcaClinica; temMarca: boolean; isL
   }, [marca.corMarca]);
 
   return { marca, temMarca, isLoading: isLoading && !demo };
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// "Alguém está olhando isto?" — uma pergunta, uma resposta
+// ══════════════════════════════════════════════════════════════════════
+
+/** O mínimo que uma tela precisa saber sobre o médico para falar dele. */
+export interface MedicoVinculado {
+  professionalId: string;
+  nome: string;
+  clinica: string | null;
+  verificado: boolean;
+}
+
+/**
+ * O médico que acompanha este paciente — ou `null` quando não há nenhum.
+ *
+ * Toda tela que escrever "seu médico" deve perguntar AQUI antes. A frase
+ * "seu médico consegue ver" é uma afirmação sobre o mundo: se não há vínculo,
+ * ela é falsa, e o paciente age com base nela (deixa de ligar, espera um
+ * retorno que não vem). Dizer "nenhum médico vinculado" quando há médico é o
+ * erro simétrico e igualmente caro.
+ *
+ * Em demonstração devolve o MESMO médico da marca — nunca um segundo nome.
+ */
+export function useMedicoVinculado(): { medico: MedicoVinculado | null; isLoading: boolean } {
+  const demo = !!getDevBypass();
+  const { professionals, isLoading } = useMyProfessionals();
+
+  if (demo) {
+    return {
+      medico: {
+        professionalId: MARCA_DEMO.professionalId,
+        nome: MARCA_DEMO.medico,
+        clinica: MARCA_DEMO.subtitulo ?? MARCA_DEMO.clinica,
+        verificado: true,
+      },
+      isLoading: false,
+    };
+  }
+
+  const ativo = (professionals as any[]).find((p) => p?.status === "active") ?? null;
+  return {
+    medico: ativo
+      ? {
+          professionalId: ativo.professional_id,
+          nome: ativo.display_name || "Seu médico",
+          clinica: ativo.clinic_name ?? null,
+          verificado: !!ativo.is_verified,
+        }
+      : null,
+    isLoading,
+  };
 }

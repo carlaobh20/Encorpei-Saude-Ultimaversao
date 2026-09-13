@@ -36,15 +36,23 @@ import {
   AreaGrafico, LegendaGrafico, usePrefereMenosMovimento,
   gradeGrafico, eixoX, eixoY, dicaGrafico, COR_SERIE, COR_SERIE_APOIO, COR_REFERENCIA,
 } from "@/components/shell";
+import { numero, diaCurto, duracaoEmMinutos } from "@/lib/formato";
 import { useSleep } from "@/hooks/useCardioReadings";
 import { useTargets } from "@/hooks/useCardioPatient";
 import { ALERT_RULES } from "@/lib/clinical/cardioAlertRules";
 
 function fmtDia(iso: string): string {
-  return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  return diaCurto(iso) ?? "—";
 }
+/**
+ * "6 h 17 min".
+ *
+ * Era "6h17" aqui e "7.5 h" na tela de metas — a mesma grandeza escrita de
+ * dois jeitos, um deles com ponto decimal que o campo de digitar recusa.
+ * A escrita agora vem de `lib/formato`, que é a mesma para o app inteiro.
+ */
 function horas(min: number): string {
-  return `${Math.floor(min / 60)}h${String(min % 60).padStart(2, "0")}`;
+  return duracaoEmMinutos(min) ?? "—";
 }
 
 /**
@@ -126,7 +134,7 @@ export default function SonoPage() {
             <TituloSecao titulo="Sua última noite" />
             <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
               <MedidaDaNoite rotulo="Tempo dormindo" valor={ultima ? horas(ultima.total_minutes) : null} icone={Moon} />
-              <MedidaDaNoite rotulo="Eficiência" valor={ultima?.efficiency_pct != null ? `${ultima.efficiency_pct}%` : null} icone={Moon} />
+              <MedidaDaNoite rotulo="Eficiência" valor={ultima?.efficiency_pct != null ? `${numero(ultima.efficiency_pct)}%` : null} icone={Moon} />
               <MedidaDaNoite rotulo="Despertares" valor={ultima?.awakenings != null ? String(ultima.awakenings) : null} icone={Moon} />
               <MedidaDaNoite rotulo="Batimentos mínimos" valor={ultima?.min_heart_rate ? `${ultima.min_heart_rate} bpm` : null} icone={HeartPulse} />
               <MedidaDaNoite rotulo="Oxigenação mínima" valor={ultima?.min_spo2 != null ? `${ultima.min_spo2}%` : null} icone={Wind} />
@@ -135,7 +143,7 @@ export default function SonoPage() {
 
           {/* ── Gráfico 14 dias contra a meta ─────────────────────── */}
           <section>
-            <TituloSecao titulo="Duração — 14 noites" subtitulo={`meta ${targets.sleep_hours}h`} />
+            <TituloSecao titulo="Duração — 14 noites" subtitulo={`meta ${numero(targets.sleep_hours)} h`} />
             <SurfaceCard>
               <AreaGrafico altura={220}>
                 <ResponsiveContainer width="100%" height="100%">
@@ -144,7 +152,7 @@ export default function SonoPage() {
                     {eixoX("dia")}
                     {eixoY({ unidade: "horas" })}
                     <ReferenceLine y={targets.sleep_hours} stroke={COR_REFERENCIA} strokeDasharray="4 4" />
-                    {dicaGrafico((v: never) => [`${v} h`, "Sono"])}
+                    {dicaGrafico((v: never) => [`${numero(Number(v), 1)} h`, "Sono"])}
                     <Bar
                       dataKey="horas" name="Sono" fill={COR_SERIE} radius={[6, 6, 0, 0]}
                       isAnimationActive={!reduzirMovimento}
@@ -155,7 +163,7 @@ export default function SonoPage() {
               <LegendaGrafico
                 itens={[
                   { cor: COR_SERIE, rotulo: "Horas dormidas por noite" },
-                  { cor: COR_REFERENCIA, rotulo: `Meta combinada (${targets.sleep_hours}h)` },
+                  { cor: COR_REFERENCIA, rotulo: `Meta combinada (${numero(targets.sleep_hours)} h)` },
                 ]}
               />
             </SurfaceCard>
@@ -170,7 +178,11 @@ export default function SonoPage() {
                   {[
                     { label: "Sono profundo", min: ultima.deep_minutes, cor: COR_SERIE },
                     { label: "Sono leve", min: ultima.light_minutes, cor: COR_SERIE_APOIO },
-                    { label: "REM", min: ultima.rem_minutes, cor: "hsl(var(--brand-cardio-light))" },
+                    // "REM" ficava sozinho em inglês e em sigla, ao lado de
+                    // "Sono profundo" e "Sono leve" traduzidos. É o nome que o
+                    // paciente vai OUVIR do médico, então a sigla fica — com a
+                    // tradução colada, uma vez, onde ela aparece.
+                    { label: "Sono REM (fase dos sonhos)", min: ultima.rem_minutes, cor: "hsl(var(--brand-cardio-light))" },
                   ].filter((x) => x.min != null).map((x) => {
                     const pct = Math.round(((x.min ?? 0) / Math.max(1, ultima.total_minutes)) * 100);
                     return (

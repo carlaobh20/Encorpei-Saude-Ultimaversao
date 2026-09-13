@@ -287,6 +287,45 @@
   .touch-target { min-height: 44px; min-width: 44px; }
 
   /* ============================================================
+     MAIS CONTRASTE  ·  a chave de /configuracoes
+
+     A tela ligava a classe `contrast-more`, que no Tailwind é um PREFIXO DE
+     VARIANTE (`contrast-more:text-black`) e não um utilitário: não existia
+     regra nenhuma com esse nome, em lugar nenhum do CSS. O paciente ligava a
+     chave, o app dizia "Preferência salva" e não mudava um pixel — e quem
+     liga essa chave liga justamente porque não está conseguindo ler.
+
+     Aqui ela é uma classe de verdade, aplicada no <html>. Reescreve os TOKENS
+     em vez de caçar componente por componente: tudo que usa
+     `text-muted-foreground` ou `border-border` (ou seja, o app inteiro) herda
+     de uma vez. O que muda é só contraste — nenhuma cor de estado (atenção,
+     alarme, sucesso) troca de significado.
+     ============================================================ */
+  .contraste-alto {
+    /* Texto auxiliar: de ~4,7:1 para ~10:1 sobre o fundo claro. É o texto de
+       referência de exame, data de medida e legenda de gráfico. */
+    --muted-foreground: 220 14% 22%;
+    /* Bordas: a linha que separa um cartão do outro deixa de ser um cinza
+       quase branco. */
+    --border:        214 20% 60%;
+    --border-strong: 214 22% 42%;
+    --border-soft:   214 20% 70%;
+  }
+
+  .dark .contraste-alto,
+  .contraste-alto.dark {
+    --muted-foreground: 220 16% 86%;
+    --border:        214 14% 46%;
+    --border-strong: 214 14% 62%;
+    --border-soft:   214 14% 38%;
+  }
+
+  /* Sublinhado sempre visível no link dentro de texto corrido: cor sozinha
+     não é sinal de link para quem tem baixa visão ou daltonismo. */
+  .contraste-alto a:not([class*="button"]):hover,
+  .contraste-alto a:focus-visible { text-decoration: underline; }
+
+  /* ============================================================
      LEITURA DO PACIENTE  ·  auditoria de legibilidade, set/2026
      ============================================================
      Aplicada na casca do app do PACIENTE (AppShell) e nas folhas que ele

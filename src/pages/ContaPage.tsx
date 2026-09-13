@@ -4,7 +4,8 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { useCardioPatient, useSalvarCardioPatient } from "@/hooks/useCardioPatient";
-import { useMyProfessionals } from "@/hooks/useMyProfessionals";
+import { useMedicoVinculado } from "@/hooks/useMarcaClinica";
+import { getDevBypass } from "@/contexts/DevBypass";
 import { PageHeader, SurfaceCard } from "@/components/shell";
 import { TelaPaciente, TituloSecao, Formulario, Campo } from "@/components/shell";
 import { DataPrivacySection } from "@/components/DataPrivacySection";
@@ -52,7 +53,18 @@ export default function ContaPage() {
   const { profile } = useProfile();
   const { data: patient } = useCardioPatient();
   const salvar = useSalvarCardioPatient();
-  const { professionals, isLoading: carregandoMedicos } = useMyProfessionals();
+  const { medico: medicoAtivo, isLoading: carregandoMedicos } = useMedicoVinculado();
+
+  /**
+   * O e-mail que a tela MOSTRA.
+   *
+   * Em demonstração, o `User` falso do AuthContext carrega
+   * `dev+demo-user-paciente-001@encorpei.test` — endereço de infraestrutura,
+   * estampado justamente na tela que o cardiologista abre quando alguém lhe
+   * mostra o produto. O endereço de fachada vem do próprio mock (DEV_MOCK);
+   * fora do demo, `getDevBypass()` é `null` e nada muda.
+   */
+  const emailVisivel = getDevBypass()?.email ?? user?.email ?? "—";
 
   const [editando, setEditando] = useState(false);
   const [nome, setNome] = useState("");
@@ -85,8 +97,6 @@ export default function ContaPage() {
       // erro já mostrado pelo toastError dentro do hook
     }
   };
-
-  const medicoAtivo = professionals.find((p) => p.status === "active");
 
   return (
     <TelaPaciente>
@@ -134,7 +144,7 @@ export default function ContaPage() {
               { label: "Sexo biológico", value: patient?.sex ? SEXO_LABEL[patient.sex] : "—" },
               { label: "Altura", value: altura ? `${altura} cm` : "—" },
               { label: "Telefone", value: telefone || "—" },
-              { label: "E-mail", value: user?.email ?? "—" },
+              { label: "E-mail", value: emailVisivel },
             ].map((row) => (
               <div key={row.label} className="flex min-h-[48px] items-center justify-between gap-3 py-3 text-base">
                 <dt className="text-muted-foreground shrink-0">{row.label}</dt>
@@ -145,9 +155,10 @@ export default function ContaPage() {
         )}
       </SurfaceCard>
 
-      {/* Meu cardiologista */}
+      {/* Um destino, um nome: o menu, a barra inferior e a tela da conversa
+          dizem "Meu médico" — esta seção dizia "Meu cardiologista". */}
       <section>
-        <TituloSecao titulo="Meu cardiologista" />
+        <TituloSecao titulo="Meu médico" />
         {carregandoMedicos ? (
           <SurfaceCard><p className="text-base text-muted-foreground">Carregando...</p></SurfaceCard>
         ) : medicoAtivo ? (
@@ -158,10 +169,10 @@ export default function ContaPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-base font-semibold text-foreground truncate flex items-center gap-1.5">
-                  {medicoAtivo.display_name}
-                  {medicoAtivo.is_verified && <BadgeCheck className="h-5 w-5 text-primary shrink-0" aria-label="Perfil verificado" />}
+                  {medicoAtivo.nome}
+                  {medicoAtivo.verificado && <BadgeCheck className="h-5 w-5 text-primary shrink-0" aria-label="Perfil verificado" />}
                 </p>
-                <p className="text-sm text-muted-foreground mt-0.5">{medicoAtivo.clinic_name || "Cardiologista"}</p>
+                <p className="text-sm text-muted-foreground mt-0.5">{medicoAtivo.clinica || "Cardiologista"}</p>
               </div>
             </div>
           </SurfaceCard>

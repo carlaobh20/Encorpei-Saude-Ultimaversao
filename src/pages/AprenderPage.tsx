@@ -40,6 +40,59 @@ const CATEGORIA_LABEL: Record<Licao["categoria"], string> = {
 
 const ORDEM_CATEGORIA: Licao["categoria"][] = ["exame", "remedio", "condicao", "habito"];
 
+/**
+ * ══════════════════════════════════════════════════════════════════════
+ * Siglas de classe de remédio — traduzidas na primeira aparição
+ * ══════════════════════════════════════════════════════════════════════
+ *
+ * Achado da auditoria de setembro/2026: a lição do remédio saía como
+ * "Losartana é BRA e relaxa os vasos sanguíneos" — enquanto as outras, na
+ * mesma lista, vinham em português ("Anlodipino é Bloqueador de cálcio…",
+ * "Atorvastatina é Estatina…"). O paciente não conclui "BRA é uma sigla que
+ * eu não conheço"; ele conclui que aquele remédio dele é de outra natureza,
+ * de um tipo que o app não quis explicar.
+ *
+ * A causa está no dicionário de classes (`MED_CLASS_LABEL`, em
+ * useCardioMedications.ts), que mistura nome traduzido e sigla crua. Quatro
+ * entradas são sigla: IECA, BRA, ARNI e iSGLT2.
+ *
+ * A regra do produto: **ou traduz, ou explica ao lado na primeira aparição**.
+ * Estas quatro ficam como sigla de propósito — são o que o paciente vai ouvir
+ * na consulta, e apagá-las do app o deixaria sem a palavra que o médico usa.
+ * Então recebem a tradução colada, uma vez por lição.
+ *
+ * "Uma vez por lição" e não "uma vez por tela": cada lição é lida sozinha,
+ * meses depois, e algumas ficam recolhidas em "já lidas". Repetir a expansão
+ * dentro do mesmo parágrafo seria ruído; omiti-la na segunda lição seria
+ * contar com uma leitura que talvez não tenha acontecido.
+ */
+const SIGLAS_DE_CLASSE: Record<string, string> = {
+  IECA: "inibidor da enzima conversora de angiotensina",
+  BRA: "bloqueador do receptor de angiotensina",
+  ARNI: "inibidor da neprilisina com bloqueador de angiotensina",
+  iSGLT2: "inibidor do cotransportador de sódio e glicose",
+};
+
+/** Ordem importa: a sigla mais longa primeiro, para não casar pedaço de outra. */
+const SIGLAS_ORDENADAS = Object.keys(SIGLAS_DE_CLASSE).sort((a, b) => b.length - a.length);
+
+/**
+ * Expande cada sigla na PRIMEIRA vez que ela aparece no texto.
+ *
+ * `\b` nos dois lados para não acertar sigla dentro de palavra; `i` desligado
+ * de propósito — "bra" em minúsculas é pedaço de palavra portuguesa, e
+ * "iSGLT2" tem maiúscula no meio.
+ */
+function explicarSiglas(texto: string): string {
+  let saida = texto;
+  for (const sigla of SIGLAS_ORDENADAS) {
+    const re = new RegExp(`\\b${sigla}\\b`);
+    if (!re.test(saida)) continue;
+    saida = saida.replace(re, `${sigla} (${SIGLAS_DE_CLASSE[sigla]})`);
+  }
+  return saida;
+}
+
 function agrupar(licoes: Licao[]): Map<Licao["categoria"], Licao[]> {
   const grupos = new Map<Licao["categoria"], Licao[]>();
   for (const cat of ORDEM_CATEGORIA) grupos.set(cat, []);
@@ -59,8 +112,8 @@ function LicaoCard({
   return (
     <SurfaceCard>
       <p className="text-sm font-medium uppercase tracking-wide text-primary mb-1.5">{licao.origem}</p>
-      <h3 className="font-display text-xl font-semibold leading-snug text-foreground mb-2">{licao.titulo}</h3>
-      <p className="text-[17px] leading-[1.7] text-foreground/90">{licao.corpo}</p>
+      <h3 className="font-display text-xl font-semibold leading-snug text-foreground mb-2">{explicarSiglas(licao.titulo)}</h3>
+      <p className="text-[17px] leading-[1.7] text-foreground/90">{explicarSiglas(licao.corpo)}</p>
       {/* Dois botões secundários, nenhum azul cheio: ler uma lição não é a
           ação que a tela está pedindo — é o que o paciente já está fazendo.
           `flex-wrap` porque em 360px os dois rótulos não cabem lado a lado. */}

@@ -39,6 +39,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { cronometro, duracaoCurta, diaCurto, numero } from "@/lib/formato";
 import { useCaminhadas, useCapacidade } from "@/hooks/useEngajamento";
 import { useCardioPatient } from "@/hooks/useCardioPatient";
 import { useWeight } from "@/hooks/useCardioReadings";
@@ -61,14 +62,20 @@ const ZONA_COR: Record<EstadoZona, string> = {
   sem_alvo: "text-muted-foreground",
 };
 
+/**
+ * Cronômetro CORRENDO — "24:34" é certo aqui e só aqui: o número está mudando
+ * na tela e o paciente lê como tempo decorrido.
+ *
+ * No histórico ele estava errado: "24:34 · 12/09" não é "24 minutos e 34
+ * segundos, no dia 12" para quem lê — é uma hora do dia que não existe. Lá se
+ * usa `duracaoCurta` ("24 min 34 s"), que não tem leitura alternativa.
+ */
 function fmtMMSS(totalSegundos: number): string {
-  const m = Math.floor(totalSegundos / 60);
-  const s = totalSegundos % 60;
-  return `${m}:${s.toString().padStart(2, "0")}`;
+  return cronometro(totalSegundos);
 }
 
 function fmtDia(iso: string): string {
-  return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  return diaCurto(iso) ?? "—";
 }
 
 // ── Pulseira ao vivo (compartilhado pelas duas abas) ─────────────────
@@ -214,7 +221,7 @@ function AbaCaminhadaGuiada() {
             {pulseira.erro && <p className="text-base text-warning mt-2 text-center leading-relaxed">{pulseira.erro}</p>}
             {zona.definidaPeloMedico && (
               <p className="text-sm text-muted-foreground text-center mt-3">
-                {Math.floor(segundosNaZona / 60)}m{(segundosNaZona % 60).toString().padStart(2, "0")}s dentro da faixa nesta sessão
+                {duracaoCurta(segundosNaZona)} dentro da faixa nesta sessão
               </p>
             )}
           </SurfaceCard>
@@ -238,7 +245,7 @@ function AbaCaminhadaGuiada() {
 
       {fase === "fim" && (
         <SurfaceCard className="mb-5">
-          <p className="text-base font-semibold text-foreground mb-1">Caminhada de {fmtMMSS(segundos)}</p>
+          <p className="text-base font-semibold text-foreground mb-1">Caminhada de {duracaoCurta(segundos)}</p>
           <TituloSecao titulo="Como foi o esforço?" subtitulo="0 = nenhum · 10 = máximo" />
           <div className="grid grid-cols-6 gap-2 mb-5">
             {Array.from({ length: 11 }, (_, n) => n).map((n) => (
@@ -274,7 +281,15 @@ function AbaCaminhadaGuiada() {
         </SurfaceCard>
       </div>
 
-      <TituloSecao titulo="Histórico de caminhadas" icone={HistoryIcon} />
+      {/* O selo "Esforço 4/10" aparecia sem dizer o que é 0 e o que é 10 — um
+          número numa escala invisível. A escala é a mesma que a tela usa para
+          PERGUNTAR ("0 = nenhum · 10 = máximo"); só faltava repeti-la onde a
+          resposta é lida de volta, semanas depois. */}
+      <TituloSecao
+        titulo="Histórico de caminhadas"
+        icone={HistoryIcon}
+        subtitulo="o esforço é como você avaliou a caminhada: 0 é nenhum esforço, 10 é o máximo"
+      />
       {sessoes.length === 0 ? (
         <EmptyState icon={Footprints} title="Nenhuma caminhada ainda" description="Suas sessões aparecem aqui." variant="card" />
       ) : (
@@ -282,16 +297,16 @@ function AbaCaminhadaGuiada() {
           {sessoes.slice(0, 8).map((s: WalkSession) => (
             <SurfaceCard key={s.id} className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-base font-semibold text-foreground">{fmtMMSS(s.duracao_segundos)} · {fmtDia(s.iniciada_em)}</p>
+                <p className="text-base font-semibold text-foreground">{duracaoCurta(s.duracao_segundos)} · {fmtDia(s.iniciada_em)}</p>
                 {s.zona_min != null && s.zona_max != null && (
                   <p className="text-sm text-muted-foreground">
-                    {s.segundos_na_zona != null ? `${Math.round(s.segundos_na_zona / 60)} min na faixa` : `Faixa ${s.zona_min}–${s.zona_max} bpm`}
+                    {s.segundos_na_zona != null ? `${duracaoCurta(s.segundos_na_zona)} na faixa` : `Faixa ${s.zona_min}–${s.zona_max} bpm`}
                   </p>
                 )}
               </div>
               {s.borg != null && (
                 <span className="text-xs font-bold uppercase tracking-wide rounded-full px-2.5 py-1 bg-cardio-50 text-primary shrink-0">
-                  Esforço {s.borg}/10
+                  Esforço {s.borg} de 10
                 </span>
               )}
             </SurfaceCard>
@@ -633,7 +648,7 @@ function AbaTestes() {
                   <p className="text-base font-semibold text-foreground break-words">{info?.titulo}</p>
                   <p className="text-sm text-muted-foreground">{fmtDia(t.realizado_em)}</p>
                 </div>
-                <span className="text-lg font-bold text-foreground tabular-nums shrink-0">{t.valor} {unidade}</span>
+                <span className="text-lg font-bold text-foreground tabular-nums shrink-0">{numero(t.valor)} {unidade}</span>
               </SurfaceCard>
             );
           })}

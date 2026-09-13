@@ -36,6 +36,8 @@ import {
 } from "@/components/shell";
 import { Button } from "@/components/ui/button";
 import { useCardioMedications, MED_CLASS_LABEL } from "@/hooks/useCardioMedications";
+import { HistoricoTitulacao } from "@/components/paciente/HistoricoTitulacao";
+import { InstrucaoDoMedico } from "@/components/paciente/InstrucaoDoMedico";
 import { ALERT_RULES } from "@/lib/clinical/cardioAlertRules";
 import type { MedClass } from "@/types/cardio";
 
@@ -65,7 +67,7 @@ function pct(n: number | null | undefined): string {
 }
 
 export default function RemediosPage() {
-  const { ativas, dosesDeHoje, adesao, isLoading, marcarDose } = useCardioMedications();
+  const { ativas, dosesDeHoje, adesao, isLoading, marcarDose, titulacoes } = useCardioMedications();
 
   const porHorario = useMemo(() => {
     const grupos = new Map<string, typeof dosesDeHoje>();
@@ -97,6 +99,11 @@ export default function RemediosPage() {
           {ALERT_RULES.adesao_baixa.patientMessage}
         </AvisoDaTela>
       )}
+
+      {/* A instrução que o médico escreveu para "Remédios" no plano de
+          monitoramento. Antes ela só aparecia se este fosse, por acaso, o
+          item prioritário do dia na tela inicial. */}
+      <InstrucaoDoMedico metric="medication" />
 
       {/* ── Doses de hoje ────────────────────────────────────────── */}
       <section>
@@ -184,6 +191,12 @@ export default function RemediosPage() {
           </SurfaceCard>
         </section>
       )}
+
+      {/* ── O que o médico mudou ─────────────────────────────────── */}
+      {/* Vem antes da lista dos remédios ativos de propósito: a pergunta
+          "por que a dose está diferente da caixa que eu tenho em casa" é
+          respondida aqui, não embaixo. */}
+      <HistoricoTitulacao titulacoes={titulacoes} />
 
       {/* ── Remédios ativos ──────────────────────────────────────── */}
       <section>

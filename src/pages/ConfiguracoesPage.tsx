@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { PageHeader, SurfaceCard, TelaPaciente, TituloSecao } from "@/components/shell";
-import { Bell, Pill, Type, Shield, ChevronRight } from "lucide-react";
+import { Bell, Pill, Type, Shield, ChevronRight, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const PREFS_KEY = "encorpei_cardio_preferencias";
@@ -115,7 +115,9 @@ export default function ConfiguracoesPage() {
 
   useEffect(() => {
     document.documentElement.classList.toggle("text-lg", prefs.fonteGrande);
-    document.documentElement.classList.toggle("contrast-more", prefs.altoContraste);
+    // `contrast-more` era um prefixo de variante do Tailwind, não uma classe:
+    // ligar a chave não mudava um pixel. `contraste-alto` existe em index.css.
+    document.documentElement.classList.toggle("contraste-alto", prefs.altoContraste);
   }, [prefs.fonteGrande, prefs.altoContraste]);
 
   const atualizar = (chave: keyof Prefs) => (valor: boolean) => {
@@ -129,26 +131,40 @@ export default function ConfiguracoesPage() {
 
   return (
     <TelaPaciente>
-      <PageHeader title="Preferências" subtitle="Notificações, aparência e acessibilidade" />
+      <PageHeader title="Preferências" subtitle="Aparência, leitura e avisos do app" />
 
       <section>
-        <TituloSecao titulo="Notificações e lembretes" />
+        <TituloSecao titulo="Avisos e lembretes" />
+        {/* ── O que estas duas chaves fazem HOJE ────────────────────────
+            Nada sai do aplicativo: não existe serviço de envio por trás
+            delas, nem push, nem SMS, nem e-mail. Elas gravam a sua escolha
+            no navegador, e só.
+
+            O subtítulo da tela prometia "Notificações" e os rótulos diziam
+            "avisa nos horários dos seus medicamentos". Num app de saúde essa
+            promessa tem consequência: o paciente desliga o alarme do celular
+            porque acha que o app assumiu o horário do remédio, e perde a
+            dose. Enquanto o envio não existir, o texto diz o que é. */}
         <SurfaceCard className="divide-y divide-border p-0 px-4">
           <ToggleRow
             icon={Pill}
             label="Lembrete de remédio"
-            hint="Avisa nos horários dos seus medicamentos"
+            hint="Sua escolha fica guardada. Por enquanto o app não toca nem vibra no horário — continue usando o alarme do seu celular."
             checked={prefs.lembretesRemedio}
             onChange={atualizar("lembretesRemedio")}
           />
           <ToggleRow
             icon={Bell}
-            label="Notificações"
-            hint="Avisos do app e mensagens do seu médico"
+            label="Avisos do aplicativo"
+            hint="Sua escolha fica guardada. Hoje os avisos e as mensagens do seu médico aparecem quando você abre o app."
             checked={prefs.notificacoes}
             onChange={atualizar("notificacoes")}
           />
         </SurfaceCard>
+        <p className="text-sm text-muted-foreground leading-relaxed mt-2">
+          O aplicativo ainda não envia aviso para o celular com ele fechado. Estas duas chaves
+          guardam a sua preferência para quando isso passar a funcionar.
+        </p>
       </section>
 
       <section>
@@ -188,6 +204,26 @@ export default function ConfiguracoesPage() {
           </div>
         </SurfaceCard>
       </section>
+
+      {/* ── Diagnóstico do aplicativo ───────────────────────────────────
+          A tela /status existia e era ÓRFÃ: nenhum link em lugar nenhum, só
+          se chegava digitando a URL. É a tela que responde "o app está
+          conectado?" quando alguém liga para o suporte — exatamente a
+          pergunta que ninguém consegue responder por telefone às cegas.
+
+          Entra aqui, no rodapé das Preferências, e não no menu: o paciente de
+          68 anos não tem o que fazer com ela no dia a dia, e um destino a
+          mais na lista custa atenção de todo mundo para servir a poucos. Por
+          isso é uma linha discreta, escrita em português de paciente
+          ("Diagnóstico do aplicativo"), e não um cartão. */}
+      <button
+        type="button"
+        onClick={() => navigate("/status")}
+        className="w-full min-h-[48px] flex items-center justify-center gap-1.5 text-sm text-muted-foreground underline underline-offset-4"
+      >
+        <Activity className="h-4 w-4" aria-hidden />
+        Diagnóstico do aplicativo
+      </button>
     </TelaPaciente>
   );
 }

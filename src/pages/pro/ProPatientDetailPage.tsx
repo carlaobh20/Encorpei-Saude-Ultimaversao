@@ -13,7 +13,6 @@ import {
   TrendingUp, Gauge, Footprints, Salad, Smile, HelpCircle, UserCheck, Siren, Target,
   HeartHandshake,
 } from "lucide-react";
-import { toast } from "sonner";
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip as RTooltip, ReferenceLine, Legend, Scatter, ComposedChart,
@@ -22,6 +21,8 @@ import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { SectionHeader } from "@/components/shell/SectionHeader";
 import { PlanoMonitoramentoEditor } from "@/components/pro/PlanoMonitoramentoEditor";
+import { HistoricoTitulacaoPro } from "@/components/pro/HistoricoTitulacaoPro";
+import { AnotacoesDoMedico } from "@/components/pro/AnotacoesDoMedico";
 import { SurfaceCard } from "@/components/shell/SurfaceCard";
 import { StatusBadge } from "@/components/shell/StatusBadge";
 import { EmptyState } from "@/components/shell/EmptyState";
@@ -149,8 +150,6 @@ export default function ProPatientDetailPage() {
   const [tab, setTab] = useState<"resumo" | "engajamento" | "medicacoes" | "exames" | "escores" | "notas">("resumo");
   const [targetsOpen, setTargetsOpen] = useState(false);
   const [titrationMed, setTitrationMed] = useState<CardioMedication | null>(null);
-  const [notes, setNotes] = useState<{ id: string; text: string; at: string }[]>([]);
-  const [draftNote, setDraftNote] = useState("");
 
   const idade = idadeEmAnos(patient?.birth_date ?? null);
   const mrpa = useMemo(() => mediaMrpa(bp.readings, new Date(), 7), [bp.readings]);
@@ -343,7 +342,10 @@ export default function ProPatientDetailPage() {
           </SurfaceCard>
 
           {/* Plano de monitoramento — o que o paciente vai ser cobrado a registrar */}
-          <PlanoMonitoramentoEditor patientUserId={patientId} professionalId={null} />
+          {/* `professionalId` vinha fixo em `null`: todo item de plano era
+              gravado sem autoria, apesar de a coluna existir e ter índice.
+              O perfil já está carregado nesta tela — passá-lo custa nada. */}
+          <PlanoMonitoramentoEditor patientUserId={patientId} professionalId={doctor?.id ?? null} />
 
           {/* Alvos vs. atual */}
           <div>
@@ -397,7 +399,12 @@ export default function ProPatientDetailPage() {
       )}
 
       {tab === "medicacoes" && (
-        <MedicationsSection meds={meds} onTitrate={setTitrationMed} />
+        <div className="space-y-6">
+          <MedicationsSection meds={meds} onTitrate={setTitrationMed} />
+          {/* Logo abaixo das medicações, porque é a mesma pergunta: "em que
+              dose está, e como chegou nela". */}
+          <HistoricoTitulacaoPro titulacoes={meds.titulacoes} isLoading={meds.isLoadingTitulacoes} />
+        </div>
       )}
 
       {tab === "exames" && (
@@ -413,39 +420,15 @@ export default function ProPatientDetailPage() {
         />
       )}
 
+      {/* A aba inteira era `useState`: a evolução clínica era digitada e
+          perdida na primeira troca de paciente. Agora vai para
+          `professional_notes`, que já existia no banco com RLS e índices. */}
       {tab === "notas" && (
-        <SurfaceCard>
-          <SectionHeader title="Anotações do médico" icon={StickyNote} subtitle="privadas — visíveis só para você" />
-          <div className="flex gap-2 mb-4">
-            <Textarea
-              value={draftNote}
-              onChange={(e) => setDraftNote(e.target.value)}
-              placeholder="Anotação sobre a evolução, conduta, pendências…"
-              className="min-h-[70px]"
-            />
-          </div>
-          <Button
-            size="sm"
-            disabled={!draftNote.trim()}
-            onClick={() => {
-              setNotes((prev) => [{ id: crypto.randomUUID(), text: draftNote.trim(), at: new Date().toISOString() }, ...prev]);
-              setDraftNote("");
-              toast.info("Nota salva só nesta sessão — o app ainda não guarda anotações do médico no servidor.");
-            }}
-          >
-            Salvar anotação
-          </Button>
-          <div className="mt-5 space-y-2.5">
-            {notes.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Nenhuma anotação nesta sessão.</p>
-            ) : notes.map((n) => (
-              <div key={n.id} className="rounded-xl border border-border bg-background p-3">
-                <p className="text-sm text-foreground whitespace-pre-wrap">{n.text}</p>
-                <p className="text-[10px] text-muted-foreground mt-1.5">{fmtDateTime(n.at)} · {doctor?.display_name ?? "você"}</p>
-              </div>
-            ))}
-          </div>
-        </SurfaceCard>
+        <AnotacoesDoMedico
+          patientUserId={patientId!}
+          professionalId={doctor?.id ?? null}
+          autor={doctor?.display_name ?? null}
+        />
       )}
 
       <TargetsDialog
@@ -465,7 +448,17 @@ export default function ProPatientDetailPage() {
         onConfirm={(newDose, reason, blockedBy) => {
           if (!titrationMed || !patientId) return;
           meds.titular.mutate(
-            { medicationId: titrationMed.id, patientUserId: patientId, previousDose: titrationMed.dose, newDose, reason, blockedBy },
+            {
+              medicationId: titrationMed.id,
+              patientUserId: patientId,
+              previousDose: titrationMed.dose,
+              newDose,
+              reason,
+              blockedBy,
+              // Sem isto o histórico grava `professional_id` NULL e perde
+              // "quem mudou" — que é metade do valor de um histórico.
+              professionalId: doctor?.id ?? null,
+            },
             { onSuccess: () => setTitrationMed(null) },
           );
         }}
@@ -783,7 +776,10 @@ function TitrationDialog({ med, onClose, onConfirm, saving }: {
         <DialogHeader>
           <DialogTitle>Titular {med?.name}</DialogTitle>
           <DialogDescription>
-            Isso registra a mudança de dose e avisa o paciente. Nenhum texto do app prescreve — a decisão é sua.
+            {/* Não há push nem e-mail neste app: o que existe é o registro
+                visível. A frase descreve isso, e não um aviso que ninguém
+                envia. */}
+            Registra a mudança no histórico de titulação — o paciente passa a ver dose anterior, nova dose, data e motivo em Remédios. Nenhum texto do app prescreve: a decisão é sua.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">

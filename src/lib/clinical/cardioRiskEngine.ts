@@ -14,7 +14,10 @@
 
 import {
   ALERT_RULES,
+  GATILHO,
   SEVERITY_WEIGHT,
+  gatilhoDaDor,
+  nyhaDoRelato,
   podeDispararAlerta,
 } from "./cardioAlertRules";
 import type {
@@ -192,20 +195,66 @@ export function avaliarRisco(input: RiskInput): RiskResult {
   }
 
   // ── Sintomas ───────────────────────────────────────────────────────
-  for (const s of input.symptoms) {
-    if (!dentroDe(s.occurred_at, now, 7)) continue;
-    if (
-      s.symptom_type === "chest_pain" &&
-      s.qualifiers?.trigger === "rest" &&
-      (s.duration_minutes ?? 0) > 10
-    ) {
-      alerts.push(mk("dor_toracica_repouso", `${s.duration_minutes} min em repouso`, s.occurred_at));
+  //
+  // AUDITORIA: estas três regras liam `qualifiers.trigger` e
+  // `qualifiers.nyha_change`; a tela sempre gravou `gatilho` e `nyha`. Com
+  // chave errada, `dor_toracica_repouso` e `dispneia_piora` — as duas regras
+  // mais graves do motor — nunca dispararam com dado de paciente de verdade.
+  // A nomenclatura canônica agora é uma só e mora em cardioAlertRules
+  // (`QUALIFICADOR`), com leitores tolerantes ao formato antigo para não
+  // perder o histórico já gravado.
+  //
+  // A varredura é do MAIS ANTIGO para o mais novo porque a regra de dispneia
+  // precisa da classe NYHA anterior do próprio paciente: o app grava a classe
+  // ABSOLUTA do momento (1–4), não a variação. Quem define "piora" é a
+  // comparação, e ela só existe aqui.
+  const sintomasEmOrdem = [...input.symptoms].sort(
+    (a, b) => +new Date(a.occurred_at) - +new Date(b.occurred_at)
+  );
+  let nyhaAnterior: number | null = null;
+
+  for (const s of sintomasEmOrdem) {
+    const recente = dentroDe(s.occurred_at, now, 7);
+
+    if (s.symptom_type === "chest_pain" && recente) {
+      // Duração DESCONHECIDA conta como longa — a mesma leitura de
+      // SintomasPage, e pelo mesmo motivo: quem não consegue dizer há quanto
+      // tempo dói é justamente o caso que não pode escapar.
+      const emRepouso = gatilhoDaDor(s.qualifiers) === GATILHO.REPOUSO;
+      const longa = s.duration_minutes == null || s.duration_minutes > 10;
+      if (emRepouso && longa) {
+        alerts.push(
+          mk(
+            "dor_toracica_repouso",
+            s.duration_minutes != null ? `${s.duration_minutes} min em repouso` : "duração não informada, em repouso",
+            s.occurred_at
+          )
+        );
+      }
     }
-    if (s.symptom_type === "syncope") {
+
+    if (s.symptom_type === "syncope" && recente) {
       alerts.push(mk("sincope", "episódio relatado", s.occurred_at));
     }
-    if (s.symptom_type === "dyspnea" && typeof s.qualifiers?.nyha_change === "number" && s.qualifiers.nyha_change > 0) {
-      alerts.push(mk("dispneia_piora", `subiu ${s.qualifiers.nyha_change} classe(s) NYHA`, s.occurred_at));
+
+    if (s.symptom_type === "dyspnea") {
+      const nyhaAgora = nyhaDoRelato(s.qualifiers);
+      if (nyhaAgora != null) {
+        if (recente && nyhaAnterior != null && nyhaAgora > nyhaAnterior) {
+          alerts.push(
+            mk(
+              "dispneia_piora",
+              `NYHA ${nyhaAnterior} → ${nyhaAgora}`,
+              s.occurred_at,
+              "subida de 1 classe NYHA em relação ao próprio relato anterior"
+            )
+          );
+        }
+        // A referência acompanha TODO o histórico, inclusive o que está fora
+        // da janela de 7 dias — senão o primeiro relato da semana nunca teria
+        // com o que ser comparado.
+        nyhaAnterior = nyhaAgora;
+      }
     }
   }
 

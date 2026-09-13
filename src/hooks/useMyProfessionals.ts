@@ -27,9 +27,19 @@ export function useMyProfessionals() {
   const { user } = useAuth();
   const qc = useQueryClient();
 
-  const { data: professionals = [], isLoading } = useQuery({
+  // Lista vazia e "não perguntei" são coisas diferentes, e confundi-las já
+  // produziu a pior contradição do app: em modo demonstração a consulta nem
+  // roda (não há banco), devolve `[]`, e cada tela que leu isso escreveu
+  // "Nenhum médico vinculado" — na mesma sessão em que a barra lateral
+  // estampava o nome do cardiologista e o chat com ele estava aberto.
+  //
+  // `consultado` é a diferença. Quem for AFIRMAR ausência de médico tem que
+  // olhar aqui antes; quem só precisa da lista continua ignorando.
+  const habilitado = !!user && !getDevBypass();
+
+  const { data: professionals = [], isLoading, isFetched } = useQuery({
     queryKey: ["myProfessionals", user?.id],
-    enabled: !!user && !getDevBypass(),
+    enabled: habilitado,
     queryFn: async () => {
       const { data: links, error } = await supabase
         .from("professional_patient_links")
@@ -99,5 +109,5 @@ export function useMyProfessionals() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["myProfessionals"] }),
   });
 
-  return { professionals, isLoading, acceptInvite };
+  return { professionals, isLoading, acceptInvite, habilitado, consultado: habilitado && isFetched };
 }

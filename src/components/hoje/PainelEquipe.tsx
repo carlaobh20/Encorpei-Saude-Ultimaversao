@@ -15,11 +15,12 @@
  */
 
 import { Link } from "react-router-dom";
-import { CalendarClock, MessageCircle, Stethoscope, Users } from "lucide-react";
+import { CalendarClock, HelpCircle, MessageCircle, Stethoscope, Users } from "lucide-react";
 import { Painel } from "@/components/shell";
 import { useMyProfessionals } from "@/hooks/useMyProfessionals";
+import { useMedicoVinculado } from "@/hooks/useMarcaClinica";
 import { useAppointments } from "@/hooks/useProfessional";
-import { dataHoraPorExtenso, iniciais } from "./formato";
+import { dataHoraPorExtenso, iniciais } from "@/lib/formato";
 
 /** Modalidade da consulta. Chave desconhecida cai no texto cru — não some. */
 const ROTULO_TIPO: Record<string, string> = {
@@ -31,9 +32,26 @@ const ROTULO_TIPO: Record<string, string> = {
 };
 
 export function PainelEquipe() {
-  const { professionals } = useMyProfessionals();
   const { proxima } = useAppointments();
-  const medico = professionals[0] ?? null;
+
+  /**
+   * ── "Nenhum médico vinculado" que não era verdade ──────────────────
+   *
+   * A auditoria pegou a mesma sessão dizendo três coisas incompatíveis:
+   * este painel afirmando que não há médico, uma conversa ativa com a
+   * cardiologista em /medico, e uma faixa de treino "definida pelo seu
+   * médico". A causa: o painel lia a lista crua de `useMyProfessionals`,
+   * que no modo demonstração nunca chega a perguntar nada ao banco e
+   * devolve lista vazia.
+   *
+   * Quem responde "tenho médico?" agora é `useMedicoVinculado` — a mesma
+   * resposta em demonstração e fora dela. E lista vazia porque não há
+   * vínculo continua sendo diferente de lista vazia porque ninguém
+   * perguntou: `consultado` é o que separa os dois, e só quando ele é
+   * verdadeiro o painel tem o direito de NEGAR o vínculo.
+   */
+  const { medico } = useMedicoVinculado();
+  const { consultado } = useMyProfessionals();
 
   return (
     <Painel titulo="Minha equipe">
@@ -44,19 +62,18 @@ export function PainelEquipe() {
                        bg-cardio-50 text-primary text-base font-semibold"
             aria-hidden
           >
-            {iniciais(medico.display_name)}
+            {iniciais(medico.nome)}
           </span>
           <div className="min-w-0">
             <p className="text-base font-semibold text-foreground truncate">
-              {medico.display_name || "Seu cardiologista"}
+              {medico.nome || "Seu cardiologista"}
             </p>
             <p className="text-sm text-muted-foreground truncate">
-              {medico.specialty || "Cardiologia"}
-              {medico.clinic_name ? ` · ${medico.clinic_name}` : ""}
+              {medico.clinica || "Cardiologia"}
             </p>
           </div>
         </div>
-      ) : (
+      ) : consultado ? (
         <div className="flex items-start gap-3">
           <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
             <Stethoscope className="h-6 w-6" strokeWidth={1.75} aria-hidden />
@@ -71,6 +88,33 @@ export function PainelEquipe() {
             <Link to="/conta" className="inline-block text-base font-medium text-primary mt-1 rounded-lg">
               Vincular meu médico
             </Link>
+          </div>
+        </div>
+      ) : (
+        /* Não sabemos — e dizer "não sabemos" é a única coisa honesta a
+           dizer. Os dois caminhos ficam à mão: o canal (que confirma na
+           prática se existe alguém do outro lado) e o vínculo por código,
+           para quem de fato ainda não tem médico. */
+        <div className="flex items-start gap-3">
+          <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <HelpCircle className="h-6 w-6" strokeWidth={1.75} aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <p className="text-base font-medium text-foreground leading-snug">
+              Não consegui confirmar quem é o seu médico agora
+            </p>
+            <p className="text-sm text-muted-foreground mt-0.5 leading-relaxed">
+              Isso não quer dizer que você não tenha um. Abra as mensagens para ver com quem você
+              já conversa, ou use o código do consultório se ainda não fez o vínculo.
+            </p>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
+              <Link to="/medico" className="inline-block text-base font-medium text-primary rounded-lg">
+                Ver minhas mensagens
+              </Link>
+              <Link to="/conta" className="inline-block text-base font-medium text-primary rounded-lg">
+                Vincular meu médico
+              </Link>
+            </div>
           </div>
         </div>
       )}

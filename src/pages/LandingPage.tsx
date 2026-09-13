@@ -101,6 +101,16 @@ export default function LandingPage() {
   const goMedico = () => navigate("/pro/auth");
   const goPaciente = () => navigate("/auth");
   /**
+   * A porta de entrada de quem foi CONVIDADO para cuidar de alguém.
+   *
+   * A rota `/cuidador` existia, com tela e permissões, e não tinha um único
+   * link apontando para ela em todo o produto: o convite mandava "tocar em
+   * Sou cuidador", botão que nunca existiu. Quem recebia o código abria o
+   * app, não achava onde usar e desistia — e o paciente concluía que o
+   * recurso não funcionava.
+   */
+  const goCuidador = () => navigate("/cuidador");
+  /**
    * "Falar com comercial" mandava para /pro/auth — o mesmo cadastro do botão
    * de contratar. Fingir um funil comercial que não existe é pior do que não
    * ter funil: vira mailto para uma pessoa de verdade (mesmo endereço já
@@ -564,9 +574,14 @@ export default function LandingPage() {
               <Stethoscope className="h-4 w-4" /> Criar minha conta
             </Button>
           </div>
-          <button onClick={goPaciente} className="mt-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-            <Smartphone className="h-3.5 w-3.5" /> Sou paciente e recebi um convite
-          </button>
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-x-6 gap-y-2">
+            <button onClick={goPaciente} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <Smartphone className="h-3.5 w-3.5" /> Sou paciente e recebi um convite
+            </button>
+            <button onClick={goCuidador} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <Users className="h-3.5 w-3.5" /> Fui convidado para cuidar de alguém
+            </button>
+          </div>
         </div>
       </section>
 

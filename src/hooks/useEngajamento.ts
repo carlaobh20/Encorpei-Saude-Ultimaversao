@@ -250,13 +250,17 @@ export function useCaminhadas(patientUserId?: string, opcoes?: OpcoesSerie) {
   const salvar = useMutation({
     mutationFn: async (input: Partial<WalkSession>) => {
       if (demo) { toast.info("Modo demo: a sessão não é salva."); return; }
-      const { error } = await (supabase as any).from("walk_sessions").insert({
+      const { data, error } = await (supabase as any).from("walk_sessions").insert({
         patient_user_id: user!.id,
         zona_min: zona.min,
         zona_max: zona.max,
         ...input,
-      });
+      }).select("id");
       if (error) throw error;
+      // Mesma regra do resto do arquivo: zero linha sem erro é negativa de
+      // RLS, e uma caminhada "registrada" que não existe é uma pendência que
+      // volta amanhã sem explicação.
+      if (!data || data.length === 0) throw new Error("A caminhada não foi gravada. Tente de novo.");
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["walks"] });
@@ -353,10 +357,12 @@ export function useSodio(patientUserId?: string, opcoes?: OpcoesSerie) {
   const registrar = useMutation({
     mutationFn: async (input: { dia: string; refeicao: string; opcao: string; sodio_mg: number }) => {
       if (demo) { toast.info("Modo demo: nada é salvo."); return; }
-      const { error } = await (supabase as any)
+      const { data, error } = await (supabase as any)
         .from("sodium_entries")
-        .upsert({ patient_user_id: user!.id, ...input }, { onConflict: "patient_user_id,dia,refeicao" });
+        .upsert({ patient_user_id: user!.id, ...input }, { onConflict: "patient_user_id,dia,refeicao" })
+        .select("id");
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error("O registro de sal não foi gravado. Tente de novo.");
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["sodio"] }),
     onError: (e: unknown) => toastError(e, "Não consegui salvar."),
@@ -417,16 +423,25 @@ export function useQualidadeDeVida(patientUserId?: string, opcoes?: OpcoesSerie)
   const responder = useMutation({
     mutationFn: async (respostas: Record<string, number>) => {
       if (demo) { toast.info("Modo demo: nada é salvo."); return; }
-      const { error } = await (supabase as any).from("qol_responses").insert({
+      const { data, error } = await (supabase as any).from("qol_responses").insert({
         patient_user_id: user!.id,
         score: calcularScoreQol(respostas),
         respostas,
-      });
+      }).select("id");
       if (error) throw error;
+      // Zero linha com `error: null` é o desfecho normal de uma negativa de
+      // RLS. Sem o `.select()`, o app agradecia pelas respostas que o banco
+      // tinha recusado — e o paciente só descobriria no mês seguinte, quando
+      // fosse perguntado de novo.
+      if (!data || data.length === 0) {
+        throw new Error("As respostas não foram gravadas. Tente de novo daqui a pouco.");
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["qol"] });
-      toast.success("Obrigado. Seu médico vai ver essas respostas.");
+      // A frase deixou de terminar no médico: o resultado volta para quem
+      // respondeu, em "Meu mês".
+      toast.success("Obrigado. Seu resultado aparece em Meu mês, e seu médico também vê.");
     },
     onError: (e: unknown) => toastError(e, "Não consegui salvar as respostas."),
   });

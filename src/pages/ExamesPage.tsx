@@ -23,7 +23,7 @@
 import { useMemo, useRef } from "react";
 import { toast } from "sonner";
 import {
-  FlaskConical, HeartPulse, Paperclip,
+  FlaskConical, HeartPulse, Paperclip, FileText,
 } from "lucide-react";
 import {
   ResponsiveContainer, LineChart, Line, ReferenceLine,
@@ -41,7 +41,8 @@ import { cn } from "@/lib/utils";
 import { getDevBypass } from "@/contexts/DevBypass";
 import { useLabResults, useCardioExams } from "@/hooks/useCardioClinical";
 import { useTargets } from "@/hooks/useCardioPatient";
-import type { LabMarkerKey, CardioExamType } from "@/types/cardio";
+import { numero } from "@/lib/formato";
+import type { LabMarkerKey } from "@/types/cardio";
 
 const BLOCOS: { titulo: string; marcadores: LabMarkerKey[] }[] = [
   { titulo: "Colesterol e gordura no sangue", marcadores: ["total_cholesterol", "ldl", "hdl", "triglycerides", "non_hdl", "apob", "lpa"] },
@@ -58,7 +59,17 @@ const STATUS_TONE: Record<string, string> = {
 };
 const STATUS_LABEL: Record<string, string> = { normal: "Normal", attention: "Atenção", critical: "Alterado" };
 
-const EXAM_TYPE_LABEL: Record<CardioExamType, string> = {
+/** Limite do bucket `exams` — 25 MiB, definido na migração 20260911000000 §7. */
+const TAMANHO_MAXIMO = 25 * 1024 * 1024;
+
+/**
+ * `anexo_paciente` não é um tipo de exame: é a verdade sobre a linha. O
+ * paciente não sabe (nem deve adivinhar) se o PDF que ele fotografou é um
+ * Holter ou um ecocardiograma — quem classifica é o médico, ao ler. Até lá, a
+ * lista mostra o que realmente aconteceu: um arquivo enviado, ainda não lido.
+ */
+const EXAM_TYPE_LABEL: Record<string, string> = {
+  anexo_paciente: "Resultado que você enviou",
   ecg: "Eletrocardiograma (ECG)",
   echocardiogram: "Ecocardiograma",
   stress_test: "Teste ergométrico",
@@ -86,6 +97,8 @@ const CAMPO_LABEL: Record<string, string> = {
   qrs: "Complexo QRS",
   qtc: "Intervalo QTc",
   alteracoes: "Alterações",
+  alteracoes_st: "Alterações do segmento ST",
+  septo: "Espessura do septo (a parede entre os dois ventrículos)",
   fc_media: "Frequência média",
   fc_min: "Frequência mínima",
   fc_max: "Frequência máxima",
@@ -93,9 +106,10 @@ const CAMPO_LABEL: Record<string, string> = {
   esv: "Extrassístoles ventriculares",
   essv: "Extrassístoles supraventriculares",
   tvns: "Episódios de taquicardia não sustentada",
-  fa_percentual: "% do tempo em fibrilação atrial",
+  fa_percentual: "Tempo em fibrilação atrial",
   protocolo: "Protocolo",
   mets: "Capacidade de esforço (METs)",
+  pct_fc_prevista: "Frequência atingida, comparada à prevista para a sua idade",
   pa_pico: "Pressão no pico do esforço",
   duracao: "Duração do exame",
   motivo_interrupcao: "Motivo de parar",
@@ -113,10 +127,81 @@ const CAMPO_LABEL: Record<string, string> = {
   emi: "Espessura da parede da artéria",
   placas: "Placas de gordura",
   estenose_pct: "Estreitamento da artéria",
+  arquivo: "Arquivo",
+};
+
+/**
+ * Unidade de quem é NÚMERO no banco.
+ *
+ * A fração de ejeção é o caso que obrigou este mapa a existir: `findings.fevi`
+ * precisa continuar numérico porque `lib/clinical/educacao.ts` compara o valor
+ * para montar a lição ("entre 50% e 70% é a faixa normal"). Guardar "61%" como
+ * texto quebraria a lição; imprimir "61" sozinho na tela faz o paciente
+ * perguntar "61 do quê?". Então a unidade é escrita no RENDER, aqui.
+ *
+ * Só se aplica quando o valor gravado é `number`: laudo importado costuma vir
+ * com a unidade já dentro do texto ("55 mm"), e repeti-la daria "55 mm mm".
+ */
+const CAMPO_UNIDADE: Record<string, string> = {
+  fevi: "%",
+  pct_fc_prevista: "%",
+  estenose_pct: "%",
+  fa_percentual: "%",
+  fc: "bpm",
+  fc_media: "bpm",
+  fc_min: "bpm",
+  fc_max: "bpm",
+  pr: "ms",
+  qrs: "ms",
+  qtc: "ms",
+  septo: "mm",
+  atrio_esquerdo: "mm",
+  emi: "mm",
+  psap: "mmHg",
+  mets: "METs",
+};
+
+/**
+ * A linha de baixo, em português de paciente.
+ *
+ * "Extrassístole", "METs" e "segmento ST" são palavras do laudo, não do
+ * paciente — e o laudo é justamente o que ele chega em casa sem entender. O
+ * nome técnico continua na tela (é a palavra que o médico vai usar na
+ * consulta) e ganha ao lado a frase que diz o que ele significa. Nenhuma
+ * destas frases diz se o achado é bom, ruim, ou o que fazer: quem interpreta
+ * o exame é o médico.
+ */
+const CAMPO_EXPLICACAO: Record<string, string> = {
+  esv: "Batidas fora do ritmo que nascem na parte de baixo do coração.",
+  essv: "Batidas fora do ritmo que nascem na parte de cima do coração.",
+  mets: "Mede quanto esforço físico você conseguiu sustentar durante o exame.",
+  alteracoes_st: "Trecho do traçado do eletrocardiograma que o médico usa para avaliar o esforço do músculo do coração.",
+  tvns: "Sequências rápidas de batidas que começam e param sozinhas.",
 };
 
 function campoLabel(chave: string): string {
   return CAMPO_LABEL[chave] ?? chave.replace(/_/g, " ");
+}
+
+/** Como o valor de um campo estruturado aparece escrito para o paciente. */
+function campoValor(chave: string, valor: unknown): string {
+  if (typeof valor !== "number") return String(valor);
+  // Decimais do próprio dado (até 3): 5.9 é "5,9" e 1.18 continua "1,18".
+  const casas = Math.min(3, (String(valor).split(".")[1] ?? "").length);
+  const texto = numero(valor, casas) ?? String(valor);
+  const unidade = CAMPO_UNIDADE[chave];
+  if (!unidade) return texto;
+  // "%" cola no número ("91%"); toda outra unidade vai separada ("12 mm").
+  return unidade === "%" ? `${texto}%` : `${texto} ${unidade}`;
+}
+
+/**
+ * Valor de laboratório em pt-BR, com as casas que o próprio resultado tem.
+ * Arredondar aqui mudaria o exame: 1,18 mg/dL não é 1,2 mg/dL.
+ */
+function valorLab(valor: number): string {
+  const casas = Math.min(3, (String(valor).split(".")[1] ?? "").length);
+  return numero(valor, casas) ?? String(valor);
 }
 
 function fmtDia(iso?: string | null): string {
@@ -130,7 +215,7 @@ function fmtDiaCurto(iso?: string | null): string {
 
 export default function ExamesPage() {
   const { labs, ultimoPorMarcador, isLoading: loadingLabs } = useLabResults();
-  const { exams, isLoading: loadingExams } = useCardioExams();
+  const { exams, isLoading: loadingExams, anexar, urlDoArquivo } = useCardioExams();
   const { targets, isLoading: loadingTargets } = useTargets();
   const reduzirMovimento = usePrefereMenosMovimento();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -147,13 +232,39 @@ export default function ExamesPage() {
     [exams]
   );
 
-  const anexar = () => {
-    if (getDevBypass()) { toast.info("Modo demo: nada é salvo."); return; }
+  /**
+   * ══════════════════════════════════════════════════════════════════
+   * "ANEXAR RESULTADO" AGORA ANEXA DE VERDADE.
+   * ══════════════════════════════════════════════════════════════════
+   *
+   * AUDITORIA: `onFile` recebia o arquivo e disparava "Recebido. Seu médico
+   * vai revisar..." sem upload nenhum — o `File` era descartado na saída da
+   * função. É a pior classe de erro deste produto: mensagem falsa sobre um
+   * exame. O paciente acreditava ter entregado o laudo e parava de cobrar; o
+   * médico nunca soube que existia.
+   *
+   * O que existe agora: upload para o bucket privado `exams`, linha em
+   * `cardio_exams` apontando para o arquivo, e o anexo aparecendo na lista
+   * abaixo com nome, data e link assinado. Falhou, a tela DIZ que falhou.
+   */
+  const abrirSeletor = () => {
+    if (getDevBypass()) {
+      toast.info("Modo demonstração: o arquivo não é enviado a lugar nenhum.");
+      return;
+    }
     fileRef.current?.click();
   };
+
   const onFile = (f?: File | null) => {
     if (!f) return;
-    toast.info("Recebido. Seu médico vai revisar e lançar o resultado no seu histórico.");
+    // O limite do bucket é 25 MB (migração 20260911000000 §7). Recusar aqui,
+    // com o número na frente, é melhor do que deixar o servidor recusar com
+    // uma mensagem que o paciente não entende.
+    if (f.size > TAMANHO_MAXIMO) {
+      toast.error("Esse arquivo tem mais de 25 MB. Tente uma foto menor ou o PDF do laboratório.");
+      return;
+    }
+    anexar.mutate(f);
   };
 
   if (loadingLabs || loadingExams || loadingTargets) {
@@ -171,8 +282,9 @@ export default function ExamesPage() {
         title="Exames"
         subtitle="Resultados de laboratório e do coração"
         action={
-          <Button size="lg" onClick={anexar} className="gap-2">
-            <Paperclip className="h-5 w-5" aria-hidden /> Anexar resultado
+          <Button size="lg" onClick={abrirSeletor} className="gap-2" disabled={anexar.isPending}>
+            <Paperclip className="h-5 w-5" aria-hidden />
+            {anexar.isPending ? "Enviando..." : "Anexar resultado"}
           </Button>
         }
       />
@@ -243,7 +355,7 @@ export default function ExamesPage() {
                         </div>
                         <div className="text-right shrink-0">
                           <p className="text-lg font-bold text-foreground tabular-nums">
-                            {l.value_num ?? l.value_text ?? "—"} <span className="text-sm font-normal text-muted-foreground">{l.unit}</span>
+                            {l.value_num != null ? valorLab(Number(l.value_num)) : l.value_text ?? "—"} <span className="text-sm font-normal text-muted-foreground">{l.unit}</span>
                           </p>
                           {l.status && (
                             <span className={cn("inline-block mt-0.5 text-xs font-bold uppercase tracking-wide rounded-full px-2 py-0.5", STATUS_TONE[l.status])}>
@@ -279,13 +391,42 @@ export default function ExamesPage() {
                 {e.conclusion && (
                   <p className="text-base text-foreground leading-relaxed mb-2">{e.conclusion}</p>
                 )}
+
+                {/* O bucket `exams` é privado: o link só existe assinado, e a
+                    assinatura vem do hook, em lote. Enquanto ela não chega, a
+                    linha diz que está preparando — nunca um link morto. */}
+                {e.file_url && (
+                  <div className="mb-2">
+                    {(() => {
+                      const href = urlDoArquivo(e.file_url);
+                      return href ? (
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-base font-semibold text-primary underline underline-offset-2 touch-target"
+                      >
+                        <FileText className="h-5 w-5" aria-hidden />
+                        Abrir arquivo
+                      </a>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">Preparando o link do arquivo...</span>
+                      );
+                    })()}
+                  </div>
+                )}
                 {Object.keys(e.findings ?? {}).length > 0 && (
                   <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-x-4 gap-y-2 pt-3 border-t border-border">
                     {Object.entries(e.findings).map(([chave, valor]) => (
                       valor == null || valor === "" ? null : (
                         <div key={chave} className="min-w-0">
                           <p className="text-sm text-muted-foreground break-words">{campoLabel(chave)}</p>
-                          <p className="text-base font-semibold text-foreground break-words">{String(valor)}</p>
+                          <p className="text-base font-semibold text-foreground break-words">{campoValor(chave, valor)}</p>
+                          {CAMPO_EXPLICACAO[chave] && (
+                            <p className="text-sm text-muted-foreground leading-relaxed break-words mt-0.5">
+                              {CAMPO_EXPLICACAO[chave]}
+                            </p>
+                          )}
                         </div>
                       )
                     ))}

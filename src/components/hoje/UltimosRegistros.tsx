@@ -20,11 +20,11 @@
  */
 
 import { Link } from "react-router-dom";
-import { Gauge, HeartPulse, Scale, Stethoscope, Heart, FileText, Watch, ChevronRight } from "lucide-react";
+import { Gauge, HeartPulse, Scale } from "lucide-react";
 import { CartaoMedida, type MedidaExibida } from "@/components/shell";
 import { useBloodPressure, useHeartRate, useWeight } from "@/hooks/useCardioReadings";
 import { rotuloProveniencia } from "@/lib/wearable/normalize";
-import { quandoLegivel } from "./formato";
+import { numero, quandoLegivel } from "@/lib/formato";
 
 /** Campos de proveniência comuns a toda leitura clínica. */
 interface ComProveniencia {
@@ -75,18 +75,33 @@ export function UltimosRegistros() {
     medida("Batimentos", HeartPulse, "/pressao", hr.ultima,
       hr.ultima ? String(hr.ultima.bpm) : null, "bpm"),
     medida("Peso", Scale, "/peso", weight.ultimo,
-      weight.ultimo ? String(weight.ultimo.value) : null, "kg"),
+      // `String(valor)` escrevia "85.2" com ponto, na mesma tela em que o
+      // campo de digitar peso tem "78,5" como marcador.
+      weight.ultimo ? numero(Number(weight.ultimo.value), 1) : null, "kg"),
   ];
 
   return (
-    <section className="latest-readings">
-      <div className="latest-readings-heading flex items-baseline justify-between gap-3 mb-3">
+    <section>
+      {/*
+        "Ver todos" apontava para /meu-coracao — que é "Minha evolução"
+        (percentual na meta, capacidade, idade do coração) e não tem lista de
+        registro nenhuma. O paciente clicava esperando o histórico e caía num
+        painel de indicadores. Link que promete o que não entrega custa mais
+        que link que não existe: da segunda vez, ele não clica em nenhum.
+
+        O destino honesto é o resumo do mês, que é onde os registros das
+        várias medidas aparecem juntos — e o rótulo agora diz isso. O
+        histórico linha a linha de cada medida mora na tela da medida, e é
+        para lá que cada cartão da grade já leva; a frase abaixo explicita
+        isso, porque cartão clicável sem pista de que é clicável não é acesso.
+      */}
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 mb-3">
         <h2 className="font-display text-xl font-semibold leading-tight">Seus últimos registros</h2>
         <Link
-          to="/meu-coracao"
+          to="/meu-mes"
           className="text-base font-medium text-primary shrink-0 rounded-lg px-1"
         >
-          Ver todos <ChevronRight className="inline h-4 w-4 lg:hidden" aria-hidden="true" />
+          Ver o resumo do mês
         </Link>
       </div>
 
@@ -95,26 +110,15 @@ export function UltimosRegistros() {
         quebrar no meio), 2 no celular comum, 3 no desktop. `min-w-0` vive
         dentro do primitivo, então nada estoura a grade.
       */}
-      <div className="mobile-readings-grid lg:hidden">
-        {medidas.slice(0, 2).map((m, i) => {
-          const Icon = i === 0 ? Stethoscope : Heart;
-          const SourceIcon = m.origem?.toLowerCase().includes("manual") ? FileText : Watch;
-          return (
-            <Link to={m.para ?? "/meu-coracao"} key={m.rotulo} className="mobile-reading-card">
-              <div className="mobile-reading-label"><Icon aria-hidden="true" /><span>{m.rotulo}</span></div>
-              <p className={m.valor == null ? "mobile-reading-empty" : "mobile-reading-value"}>{m.valor ?? "Sem registro"}{i === 1 && m.valor != null && <span> bpm</span>}</p>
-              {m.quando && <p className="mobile-reading-time">{i === 0 ? "mmHg · " : ""}{m.quando}</p>}
-              {m.origem && <p className="mobile-reading-source"><SourceIcon aria-hidden="true" />{m.origem === "Registro manual" ? "Manual" : m.origem}</p>}
-              {m.estimativa && <p className="mobile-reading-estimate">Estimativa do aparelho</p>}
-            </Link>
-          );
-        })}
-      </div>
-      <div className="hidden lg:grid grid-cols-2 xl:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 min-[380px]:grid-cols-2 xl:grid-cols-3 gap-3">
         {medidas.map((m) => (
           <CartaoMedida key={m.rotulo} m={m} />
         ))}
       </div>
+
+      <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+        Toque em uma medida para ver o histórico completo dela, com o período que você escolher.
+      </p>
     </section>
   );
 }

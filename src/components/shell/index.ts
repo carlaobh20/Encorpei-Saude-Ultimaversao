@@ -19,6 +19,8 @@ export {
 export {
   TelaPaciente, TituloSecao, Formulario, Campo, OpcaoBotao, GradeOpcoes,
   Lista, ItemLista, BarraProporcao, AvisoDaTela, CartaoErro,
+  SeletorPeriodo, CoberturaDoPeriodo, Ponte, ObrigatorioMarca,
+  PERIODOS_DIAS, type PeriodoDias,
 } from "./Paciente";
 export {
   usePrefereMenosMovimento, AreaGrafico, LegendaGrafico, NotaGrafico,

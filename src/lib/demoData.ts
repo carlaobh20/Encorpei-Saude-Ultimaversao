@@ -299,37 +299,100 @@ export const DEMO_LABS: LabResult[] = [
   { id: "l2", patient_user_id: PACIENTE, marker_key: "hdl", marker_label: "HDL colesterol", value_num: 41, value_text: null, unit: "mg/dL", reference_text: "> 40", status: "normal", collected_at: dataDia(25), file_url: null, created_at: diasAtras(25) },
   { id: "l3", patient_user_id: PACIENTE, marker_key: "triglycerides", marker_label: "Triglicérides", value_num: 186, value_text: null, unit: "mg/dL", reference_text: "< 150", status: "attention", collected_at: dataDia(25), file_url: null, created_at: diasAtras(25) },
   { id: "l4", patient_user_id: PACIENTE, marker_key: "creatinine", marker_label: "Creatinina", value_num: 1.18, value_text: null, unit: "mg/dL", reference_text: "0,7–1,3", status: "normal", collected_at: dataDia(25), file_url: null, created_at: diasAtras(25) },
-  { id: "l5", patient_user_id: PACIENTE, marker_key: "egfr", marker_label: "TFG estimada (CKD-EPI)", value_num: 68, value_text: null, unit: "mL/min/1,73m²", reference_text: "> 60", status: "normal", collected_at: dataDia(25), file_url: null, created_at: diasAtras(25) },
+  // "TFG estimada (CKD-EPI)" dizia ao paciente exatamente nada: TFG é sigla e
+  // CKD-EPI é o nome da fórmula usada no laboratório — informação de quem
+  // calcula, não de quem lê. O nome do que o exame mede vem primeiro.
+  { id: "l5", patient_user_id: PACIENTE, marker_key: "egfr", marker_label: "Função dos rins (filtração)", value_num: 68, value_text: null, unit: "mL/min/1,73m²", reference_text: "> 60", status: "normal", collected_at: dataDia(25), file_url: null, created_at: diasAtras(25) },
   { id: "l6", patient_user_id: PACIENTE, marker_key: "potassium", marker_label: "Potássio", value_num: 4.6, value_text: null, unit: "mEq/L", reference_text: "3,5–5,5", status: "normal", collected_at: dataDia(25), file_url: null, created_at: diasAtras(25) },
   { id: "l7", patient_user_id: PACIENTE, marker_key: "hba1c", marker_label: "Hemoglobina glicada", value_num: 5.9, value_text: null, unit: "%", reference_text: "< 5,7", status: "attention", collected_at: dataDia(25), file_url: null, created_at: diasAtras(25) },
   { id: "l9", patient_user_id: PACIENTE, marker_key: "lpa", marker_label: "Lipoproteína(a)", value_num: 88, value_text: null, unit: "nmol/L", reference_text: "< 75", status: "attention", collected_at: dataDia(200), file_url: null, created_at: diasAtras(200) },
 ];
 
+/**
+ * ── Como os achados de exame são escritos aqui (auditoria de setembro/2026) ──
+ *
+ * `findings` é `Record<string, …>` e a tela /exames imprime a CHAVE quando não
+ * conhece o campo (`chave.replace(/_/g, " ")`). Resultado no demo: o paciente
+ * lia "alteracoes st / ausentes" e "pct fc prevista / 91" — nome de coluna de
+ * banco, sem acento, em minúsculas, na tela que ele já abre com medo.
+ *
+ * Duas regras passaram a valer para os dados de demonstração:
+ *
+ *  1. **A chave é sempre a técnica — quem traduz é a tela.** O demo escrevia
+ *     o rótulo em português dentro da própria chave (`"Espessura da parede
+ *     do coração (septo)"`) para escapar do nome de coluna. Isso resolvia a
+ *     demonstração e deixava o exame REAL quebrado, que é o que o paciente
+ *     abre depois. Agora `septo`, `alteracoes_st`, `pct_fc_prevista`, `esv`,
+ *     `essv` e `tvns` estão no `CAMPO_LABEL` de /exames, e o demo volta a
+ *     usar a chave técnica — assim ele exercita o mesmo caminho do dado real.
+ *
+ *  2. **Número de exame sem unidade não é número, é enigma.** "Átrio esquerdo
+ *     40" pode ser milímetro, mililitro ou porcentagem. Onde a tela conhece a
+ *     unidade do campo (`CAMPO_UNIDADE`), o dado fica NUMÉRICO e a unidade é
+ *     escrita no render; onde não conhece, o valor carrega a unidade no texto.
+ *     A sigla que o paciente vai OUVIR do médico (METs, extrassístole, ST)
+ *     ganha a frase que a explica ao lado, escrita na tela e não no dado.
+ *
+ * `fevi` continua NUMÉRICO e sem unidade no dado: `educacao.ts` lê este campo
+ * para montar a lição "o que é fração de ejeção" e escreve o "%" na frase.
+ * Trocar por texto aqui apagaria a lição.
+ */
 export const DEMO_EXAMS: CardioExam[] = [
   {
     id: "e1", patient_user_id: PACIENTE, exam_type: "echocardiogram",
     performed_at: dataDia(60), performed_by: "Clínica do Coração",
-    findings: { fevi: 61, metodo: "Simpson", atrio_esquerdo: 40, septo: 12, psap: 28, disfuncao_diastolica: "grau I" },
+    findings: {
+      fevi: 61,
+      metodo: "Simpson",
+      atrio_esquerdo: "40 mm",
+      septo: 12,
+      psap: "28 mmHg",
+      disfuncao_diastolica: "grau I (leve)",
+    },
     conclusion: "Função sistólica preservada. Hipertrofia ventricular esquerda leve e disfunção diastólica grau I.",
     file_url: null, created_at: diasAtras(60),
   },
   {
     id: "e2", patient_user_id: PACIENTE, exam_type: "ecg",
     performed_at: dataDia(38), performed_by: "Consultório",
-    findings: { ritmo: "sinusal", fc: 66, pr: 168, qrs: 96, qtc: 424, alteracoes: "sobrecarga ventricular esquerda" },
+    findings: {
+      ritmo: "sinusal (o ritmo normal do coração)",
+      fc: "66 bpm",
+      pr: "168 ms",
+      qrs: "96 ms",
+      qtc: "424 ms",
+      alteracoes: "sobrecarga ventricular esquerda — a parede do coração está mais grossa do que o esperado",
+    },
     conclusion: "Ritmo sinusal, sem sinais de isquemia aguda.", file_url: null, created_at: diasAtras(38),
   },
   {
     id: "e3", patient_user_id: PACIENTE, exam_type: "stress_test",
     performed_at: dataDia(75), performed_by: "Laboratório Cardio",
-    findings: { protocolo: "Bruce", mets: 7.2, fc_max: 138, pct_fc_prevista: 91, pa_pico: "186/94", duracao: "6min40s", alteracoes_st: "ausentes" },
+    findings: {
+      protocolo: "Bruce",
+      mets: 7.2,
+      fc_max: "138 bpm",
+      pct_fc_prevista: 91,
+      pa_pico: "186/94 mmHg",
+      duracao: "6 min 40 s",
+      alteracoes_st: "nenhuma",
+    },
     conclusion: "Teste sem isquemia induzida. Resposta pressórica exagerada ao esforço.",
     file_url: null, created_at: diasAtras(75),
   },
   {
     id: "e4", patient_user_id: PACIENTE, exam_type: "holter",
     performed_at: dataDia(90), performed_by: "Laboratório Cardio",
-    findings: { fc_media: 71, fc_min: 48, fc_max: 128, pausas: 0, esv: 320, essv: 1100, tvns: 0, fa_percentual: 0 },
+    findings: {
+      fc_media: "71 bpm",
+      fc_min: "48 bpm",
+      fc_max: "128 bpm",
+      pausas: "nenhuma",
+      esv: 320,
+      essv: 1100,
+      tvns: "nenhum",
+      fa_percentual: "0% do tempo",
+    },
     conclusion: "Extrassistolia ventricular de baixa densidade, sem arritmias sustentadas.",
     file_url: null, created_at: diasAtras(90),
   },
@@ -424,13 +487,16 @@ export const DEMO_PRO_PATIENTS: DemoPatientRow[] = [
 ];
 
 export const DEMO_APPOINTMENTS = [
-  { id: "ap1", patient_user_id: PACIENTE, professional_id: "demo-pro-001", scheduled_at: diasAtras(-12, 14), kind: "consulta", status: "scheduled" as const, location: "Clínica do Coração — sala 3", notes: null, created_at: diasAtras(20) },
-  { id: "ap2", patient_user_id: PACIENTE, professional_id: "demo-pro-001", scheduled_at: diasAtras(38, 14), kind: "consulta", status: "completed" as const, location: "Clínica do Coração — sala 3", notes: "Ajustada losartana para 50 mg 2×/dia.", created_at: diasAtras(60) },
+  { id: "ap1", patient_user_id: PACIENTE, professional_id: "demo-pro-001", scheduled_at: diasAtras(-12, 14), kind: "consulta", status: "scheduled" as const, location: "Clínica Marcelo Puzzi — sala 3", notes: null, created_at: diasAtras(20) },
+  { id: "ap2", patient_user_id: PACIENTE, professional_id: "demo-pro-001", scheduled_at: diasAtras(38, 14), kind: "consulta", status: "completed" as const, location: "Clínica Marcelo Puzzi — sala 3", notes: "Ajustada losartana para 50 mg 2×/dia.", created_at: diasAtras(60) },
 ];
 
 export const DEMO_MESSAGES = [
   { id: "m1", patient_user_id: PACIENTE, sender_user_id: "demo-user-medico-001", sender: "doctor" as const, body: "Antônio, vi o peso subindo. Está com as pernas mais inchadas?", attachment_url: null, read_at: diasAtras(1, 10), created_at: diasAtras(1, 9) },
-  { id: "m2", patient_user_id: PACIENTE, sender_user_id: PACIENTE, sender: "patient" as const, body: "Sim doutora, no fim do dia fica marcado o elástico da meia.", attachment_url: null, read_at: null, created_at: diasAtras(1, 11) },
+  // "doutora" era o terceiro nome do mesmo médico na demonstração: a marca
+  // dizia Marcelo Puzzi, o perfil dizia Helena Prado e a conversa tratava por
+  // ela. Um médico só, no masculino, igual ao DEV_PRO_PROFILE e à MARCA_DEMO.
+  { id: "m2", patient_user_id: PACIENTE, sender_user_id: PACIENTE, sender: "patient" as const, body: "Sim doutor, no fim do dia fica marcado o elástico da meia.", attachment_url: null, read_at: null, created_at: diasAtras(1, 11) },
 ];
 
 export const DEMO_DEVICES = [

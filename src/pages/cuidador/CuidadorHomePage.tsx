@@ -32,7 +32,7 @@
  *    e só subiu de 13px para o corpo legível.
  */
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   HeartPulse, Pill, Footprints, Moon, AlertTriangle, LogOut, ArrowRight,
   Users, ShieldCheck, PhoneCall, Clock, Stethoscope, FlaskConical,
@@ -359,9 +359,45 @@ function ResumoPaciente({ vinculo }: { vinculo: CaregiverLink }) {
   );
 }
 
+/**
+ * ── O código chega pelo link, não pela memória ────────────────────────
+ *
+ * O convite manda `<origem>/cuidador?codigo=XXXXXX`. Quem abre esse link tem,
+ * em média, 65 anos: guardar seis caracteres embaralhados na cabeça enquanto
+ * troca de aplicativo, cria uma conta e só então digitá-los é barreira de
+ * verdade — e é onde o convite morria.
+ *
+ * O código da URL é guardado na sessão do navegador porque o caminho passa
+ * por FORA desta tela: quem ainda não tem conta vai para /auth, e o login
+ * recarrega a página inteira (`window.location.href = "/hoje"`). Sem guardar,
+ * o código se perde exatamente no meio do percurso que o convite pede.
+ * Sessão, não armazenamento permanente: é um código de uso único.
+ */
+const CHAVE_CODIGO = "encorpei_cardio_convite_cuidador";
+
+function useCodigoDoConvite(): string {
+  const [buscaUrl] = useSearchParams();
+  const daUrl = (buscaUrl.get("codigo") ?? "").trim().toUpperCase();
+
+  useEffect(() => {
+    if (!daUrl) return;
+    try { sessionStorage.setItem(CHAVE_CODIGO, daUrl); } catch { /* modo privado */ }
+  }, [daUrl]);
+
+  if (daUrl) return daUrl;
+  try { return sessionStorage.getItem(CHAVE_CODIGO) ?? ""; } catch { return ""; }
+}
+
 function EntrarComCodigo() {
   const { aceitarConvite } = useDeQuemCuido();
+  const codigoDaUrl = useCodigoDoConvite();
   const [codigo, setCodigo] = useState("");
+
+  // O campo continua editável: link cortado pelo mensageiro tem que ser
+  // corrigível na mão.
+  useEffect(() => {
+    if (codigoDaUrl) setCodigo(codigoDaUrl);
+  }, [codigoDaUrl]);
 
   return (
     <div className="pt-6">
@@ -371,7 +407,9 @@ function EntrarComCodigo() {
         </div>
         <h1 className="text-2xl font-display font-semibold text-foreground">Digite o código do convite</h1>
         <p className="text-base text-muted-foreground mt-2 leading-relaxed max-w-sm mx-auto">
-          A pessoa que você acompanha te passou um código de 6 letras. Digite abaixo para começar.
+          {codigoDaUrl
+            ? "O código do convite já veio no link — é só conferir abaixo e começar."
+            : "A pessoa que você acompanha te passou um código de 6 letras. Digite abaixo para começar."}
         </p>
       </div>
       <div className="max-w-xs mx-auto space-y-3">
@@ -379,7 +417,7 @@ function EntrarComCodigo() {
           value={codigo}
           onChange={(e) => setCodigo(e.target.value.toUpperCase())}
           placeholder="CÓDIGO"
-          maxLength={6}
+          maxLength={8}
           aria-label="Código do convite"
           className="h-14 rounded-xl text-center text-2xl font-bold tracking-[0.3em] font-mono"
         />
@@ -399,6 +437,7 @@ function EntrarComCodigo() {
 export default function CuidadorHomePage() {
   const { user, loading } = useAuth();
   const { vinculos, isLoading } = useDeQuemCuido();
+  const codigoConvite = useCodigoDoConvite();
   // Uma consulta para todos os chips, em vez de uma por chip.
   const nomesDePacientes = useNomesDePacientes(vinculos.map((v) => v.patient_user_id));
   const [selecionado, setSelecionado] = useState<string | null>(null);
@@ -431,6 +470,21 @@ export default function CuidadorHomePage() {
           <p className="text-base text-muted-foreground mt-3 max-w-sm leading-relaxed">
             Entre ou crie sua conta para usar o código que a pessoa que você cuida te enviou.
           </p>
+          {codigoConvite && (
+            /* O código veio no link e o caminho até aqui passa pelo login.
+               Ele fica guardado na sessão E escrito na tela: se algo se
+               perder no meio, a pessoa ainda tem o código diante dos olhos. */
+            <div className="mt-5 rounded-2xl border border-border bg-card px-5 py-4">
+              <p className="text-sm text-muted-foreground">Código do seu convite</p>
+              <p className="font-display text-2xl font-bold tracking-[0.2em] text-primary break-all mt-1">
+                {codigoConvite}
+              </p>
+              <p className="text-sm text-muted-foreground mt-2 leading-relaxed max-w-xs">
+                Guardamos ele para você. Depois de entrar, volte a esta tela e ele já estará
+                preenchido.
+              </p>
+            </div>
+          )}
           <Button asChild size="xl" className="mt-6">
             <Link to="/auth">
               Entrar ou criar conta <ArrowRight className="h-5 w-5" aria-hidden />
