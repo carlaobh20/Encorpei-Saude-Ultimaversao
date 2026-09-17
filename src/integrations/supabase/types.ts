@@ -66,6 +66,7 @@ export interface CardioPatientRow extends Timestamps {
   comorbidities: Json;
   history: Json;
   allergies: string | null;
+  intake: Json;
   risk_category: "low" | "moderate" | "high" | "very_high" | null;
   updated_at: string;
 }
@@ -366,7 +367,7 @@ export type Database = {
       profiles: Table<ProfileRow, "onboarding_completed" | "updated_at">;
       user_roles: Table<UserRoleRow>;
       professional_profiles: Table<ProfessionalProfileRow, "plan_type" | "max_patients" | "approval_status" | "is_verified" | "updated_at" | "specialty">;
-      cardio_patients: Table<CardioPatientRow, "comorbidities" | "history" | "updated_at">;
+      cardio_patients: Table<CardioPatientRow, "comorbidities" | "history" | "intake" | "updated_at">;
       professional_patient_links: Table<LinkRow, "status">;
       cardio_targets: Table<TargetsRow, "updated_at">;
       registered_devices: Table<DeviceRow, "status" | "vital_types" | "category" | "protocol">;

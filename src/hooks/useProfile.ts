@@ -33,6 +33,10 @@ export function useProfile() {
 
   const updateProfile = useMutation({
     mutationFn: async (updates: Partial<Profile>) => {
+      if (getDevBypass()) {
+        toast.info("Modo demo: nada é salvo.");
+        return;
+      }
       // upsert e não update: se por qualquer motivo a linha não existir
       // (conta criada antes do trigger, importação, replicação atrasada), o
       // UPDATE afetaria 0 linhas SEM erro — e o onboarding entrava em loop.

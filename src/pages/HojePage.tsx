@@ -42,10 +42,9 @@ import {
 import {
   usePendenciasDeHoje, type MetricaPlano, type Pendencia,
 } from "@/hooks/usePlanoMonitoramento";
-import { PageHeader } from "@/components/shell/PageHeader";
+import { PageHeader, SurfaceCard, Atalho, LayoutPainel, Painel } from "@/components/shell";
 import { TabPageSkeleton } from "@/components/shell/Skeletons";
 import { AppModal } from "@/components/shell/AppModal";
-import { Atalho, LayoutPainel, Painel } from "@/components/shell";
 import { Button } from "@/components/ui/button";
 import { RegistroRapido } from "@/components/registro/RegistroRapido";
 import { CuidadoDeHoje } from "@/components/hoje/CuidadoDeHoje";
@@ -404,6 +403,26 @@ export default function HojePage() {
                   </div>
                 </div>
               </section>
+            )}
+
+            {/* Cadastro incompleto: empurrão suave, sem trancar o app. */}
+            {profile && !profile.onboarding_completed && (
+              <SurfaceCard variant="highlight">
+                <Link to="/onboarding" className="flex items-start gap-3 -m-1 p-1 rounded-xl">
+                  <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <ClipboardList className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-base font-semibold text-foreground leading-snug">
+                      Falta pouco no seu cadastro
+                    </span>
+                    <span className="block text-sm text-muted-foreground mt-0.5 leading-relaxed">
+                      Algumas perguntas rápidas deixam o acompanhamento mais preciso.
+                    </span>
+                  </span>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" aria-hidden />
+                </Link>
+              </SurfaceCard>
             )}
 
             {/* ── 3. O único bloco azul da página ──────────────────── */}

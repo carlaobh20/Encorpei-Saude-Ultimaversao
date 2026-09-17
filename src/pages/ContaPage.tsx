@@ -1,100 +1,91 @@
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
-import { useCardioPatient, useSalvarCardioPatient } from "@/hooks/useCardioPatient";
+import { useCardioPatient } from "@/hooks/useCardioPatient";
+import { useCardioMedications } from "@/hooks/useCardioMedications";
+import { useBloodPressure, useWeight } from "@/hooks/useCardioReadings";
 import { useMedicoVinculado } from "@/hooks/useMarcaClinica";
 import { getDevBypass } from "@/contexts/DevBypass";
-import { PageHeader, SurfaceCard } from "@/components/shell";
-import { TelaPaciente, TituloSecao, Formulario, Campo } from "@/components/shell";
+import { supabase } from "@/integrations/supabase/client";
+import { PageHeader, SurfaceCard, StatCard, StatusBadge } from "@/components/shell";
+import { TelaPaciente, TituloSecao } from "@/components/shell";
 import { DataPrivacySection } from "@/components/DataPrivacySection";
 import { LinkDoctorCard } from "@/components/LinkDoctorCard";
-import { Input } from "@/components/ui/input";
+import { ConsentimentosSection } from "@/components/paciente/ConsentimentosSection";
 import { Button } from "@/components/ui/button";
-import { Stethoscope, Watch, LogOut, Loader2, Pencil, Check, X, BadgeCheck, SlidersHorizontal, ChevronRight } from "lucide-react";
-import { idadeEmAnos } from "@/lib/clinical/scores";
+import {
+  Stethoscope, Watch, LogOut, BadgeCheck, SlidersHorizontal, ChevronRight,
+  Camera, Users, Pencil,
+} from "lucide-react";
+import { calcularIMC, idadeEmAnos } from "@/lib/clinical/scores";
+import {
+  SEXO_LABEL, iniciais, rotulosComorbidades, rotulosHistoria, alergiasEmLista,
+} from "@/lib/cadastroPaciente";
 
-const SEXO_LABEL: Record<string, string> = { male: "Masculino", female: "Feminino" };
+const TAMANHO_MAX_FOTO = 2 * 1024 * 1024;
 
 /**
- * MINHA CONTA — quem o paciente é e o que é dele.
+ * MINHA CONTA — perfil do paciente (espírito do PatientHub, shell deste app).
  *
- * ── Divisão de responsabilidade (auditoria de setembro/2026) ───────────
- * Esta tela e /configuracoes se sobrepunham: dois nomes genéricos
- * ("Minha Conta" e "Configurações") para um paciente de 68 anos decidir
- * onde procurar. Passaram a responder perguntas diferentes:
- *   /conta         → cadastro, médico vinculado, dispositivos, privacidade
- *   /configuracoes → "Preferências": notificações, aparência, acessibilidade
+ * ── Divisão de responsabilidade ───────────────────────────────────────
+ *   /conta         → quem eu sou, ficha clínica, equipe, privacidade
+ *   /configuracoes → notificações, aparência, acessibilidade
  *
- * Nada foi removido: o que mudou é que cada função aparece em UM lugar, com
- * UM nome. O cartão no fim desta tela é só a ponte para as Preferências.
- *
- * ── O que a passada visual mudou ──────────────────────────────────────
- * Nenhuma divisão de responsabilidade, nenhum texto, nenhuma regra de LGPD.
- * Mudou:
- *
- *  · A tela tinha padding próprio (`py-6 px-4`) EM CIMA do padding do
- *    `<main>` do AppShell — o conteúdo ficava afundado em relação a todas as
- *    outras telas, e em 360px sobravam 8px de gutter em vez de 16. Agora ela
- *    usa a mesma coluna das demais.
- *
- *  · A ficha de dados pessoais saiu de 14px (`text-sm`) para o corpo
- *    legível. É a tela onde o paciente confere a própria idade e o próprio
- *    telefone; ler isso em letra pequena é o contrário do que ela serve.
- *
- *  · Os títulos das seções passaram ao mesmo `TituloSecao` do resto do app —
- *    eram três `h2` escritos à mão, cada um com uma combinação diferente de
- *    tamanho e peso.
+ * Editar cadastro reabre o wizard em /onboarding?editar=1 — não um formulário
+ * só de nome/telefone/altura.
  */
 export default function ContaPage() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const { profile } = useProfile();
+  const { profile, updateProfile } = useProfile();
   const { data: patient } = useCardioPatient();
-  const salvar = useSalvarCardioPatient();
+  const { ativas } = useCardioMedications();
+  const { ultimo: ultimoPeso } = useWeight();
+  const { ultima: ultimaPa } = useBloodPressure();
   const { medico: medicoAtivo, isLoading: carregandoMedicos } = useMedicoVinculado();
+  const inputFoto = useRef<HTMLInputElement>(null);
+  const [enviandoFoto, setEnviandoFoto] = useState(false);
 
-  /**
-   * O e-mail que a tela MOSTRA.
-   *
-   * Em demonstração, o `User` falso do AuthContext carrega
-   * `dev+demo-user-paciente-001@encorpei.test` — endereço de infraestrutura,
-   * estampado justamente na tela que o cardiologista abre quando alguém lhe
-   * mostra o produto. O endereço de fachada vem do próprio mock (DEV_MOCK);
-   * fora do demo, `getDevBypass()` é `null` e nada muda.
-   */
   const emailVisivel = getDevBypass()?.email ?? user?.email ?? "—";
-
-  const [editando, setEditando] = useState(false);
-  const [nome, setNome] = useState("");
-  const [telefone, setTelefone] = useState("");
-  const [altura, setAltura] = useState("");
-
-  useEffect(() => {
-    if (!editando) {
-      setNome(patient?.full_name ?? profile?.full_name ?? "");
-      setTelefone(patient?.phone ?? profile?.phone ?? "");
-      setAltura(patient?.height_cm != null ? String(patient.height_cm) : "");
-    }
-  }, [editando, patient, profile]);
-
+  const nome = patient?.full_name ?? profile?.full_name ?? "";
   const idade = idadeEmAnos(patient?.birth_date ?? profile?.birth_date ?? null);
+  const sexo = patient?.sex ?? profile?.sex ?? null;
+  const altura = patient?.height_cm ?? profile?.height_cm ?? null;
+  const pesoKg = ultimoPeso?.value ?? null;
+  const imc = pesoKg && altura ? calcularIMC(pesoKg, altura) : null;
+  const cadastroAberto = !profile?.onboarding_completed;
+  const foto = profile?.avatar_url;
+  const alergias = alergiasEmLista(patient?.allergies);
+  const condicoes = [...rotulosComorbidades(patient?.comorbidities), ...rotulosHistoria(patient?.history)];
+  const remedios = ativas.map((m) => (m.dose ? `${m.name} ${m.dose}` : m.name));
 
-  const handleSalvar = async () => {
-    if (!nome.trim()) {
-      toast.error("O nome não pode ficar em branco.");
+  const handleFoto = async (file: File | undefined) => {
+    if (!file || !user) return;
+    if (getDevBypass()) {
+      toast.info("Modo demo: nada é salvo.");
       return;
     }
+    if (file.size > TAMANHO_MAX_FOTO) {
+      toast.error("A foto precisa ter no máximo 2 MB.");
+      return;
+    }
+    setEnviandoFoto(true);
     try {
-      await salvar.mutateAsync({
-        full_name: nome.trim(),
-        phone: telefone.trim() || null,
-        height_cm: altura ? Number(altura) : null,
-      });
-      setEditando(false);
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+      const path = `${user.id}/avatar.${ext}`;
+      const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true, contentType: file.type });
+      if (error) {
+        toast.info("Não foi possível enviar a foto agora. Continuamos com as iniciais.");
+        return;
+      }
+      const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+      await updateProfile.mutateAsync({ avatar_url: `${data.publicUrl}?t=${Date.now()}` });
     } catch {
-      // erro já mostrado pelo toastError dentro do hook
+      toast.info("Não foi possível enviar a foto agora. Continuamos com as iniciais.");
+    } finally {
+      setEnviandoFoto(false);
     }
   };
 
@@ -102,61 +93,102 @@ export default function ContaPage() {
     <TelaPaciente>
       <PageHeader title="Minha conta" subtitle="Seus dados, sua equipe de cuidado e sua privacidade" />
 
-      {/* Dados pessoais */}
       <SurfaceCard>
-        <TituloSecao
-          titulo="Dados pessoais"
-          acao={
-            !editando ? (
-              <Button variant="outline" onClick={() => setEditando(true)}>
-                <Pencil className="h-4 w-4" aria-hidden /> Editar
-              </Button>
+        <div className="flex items-start gap-4">
+          <button
+            type="button"
+            onClick={() => inputFoto.current?.click()}
+            disabled={enviandoFoto}
+            className="relative h-16 w-16 rounded-2xl bg-primary text-primary-foreground grid place-items-center text-xl font-semibold shrink-0 overflow-hidden"
+            aria-label="Alterar foto"
+          >
+            {foto ? (
+              <img src={foto} alt="" className="h-full w-full object-cover" />
             ) : (
-              <div className="flex gap-2">
-                <Button variant="ghost" onClick={() => setEditando(false)} disabled={salvar.isPending}>
-                  <X className="h-4 w-4" aria-hidden /> Cancelar
-                </Button>
-                <Button onClick={handleSalvar} disabled={salvar.isPending}>
-                  {salvar.isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Check className="h-4 w-4" aria-hidden />} Salvar
-                </Button>
-              </div>
-            )
-          }
-        />
-
-        {editando ? (
-          <Formulario className="space-y-4">
-            <Campo rotulo="Nome completo" para="conta-nome">
-              <Input id="conta-nome" value={nome} onChange={(e) => setNome(e.target.value)} />
-            </Campo>
-            <Campo rotulo="Telefone" para="conta-telefone">
-              <Input id="conta-telefone" value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="(00) 00000-0000" />
-            </Campo>
-            <Campo rotulo="Altura (cm)" para="conta-altura">
-              <Input id="conta-altura" value={altura} onChange={(e) => setAltura(e.target.value)} type="number" inputMode="numeric" />
-            </Campo>
-          </Formulario>
-        ) : (
-          <dl className="divide-y divide-border">
-            {[
-              { label: "Nome", value: nome || "—" },
-              { label: "Idade", value: idade != null ? `${idade} anos` : "—" },
-              { label: "Sexo biológico", value: patient?.sex ? SEXO_LABEL[patient.sex] : "—" },
-              { label: "Altura", value: altura ? `${altura} cm` : "—" },
-              { label: "Telefone", value: telefone || "—" },
-              { label: "E-mail", value: emailVisivel },
-            ].map((row) => (
-              <div key={row.label} className="flex min-h-[48px] items-center justify-between gap-3 py-3 text-base">
-                <dt className="text-muted-foreground shrink-0">{row.label}</dt>
-                <dd className="font-medium text-foreground min-w-0 text-right break-words">{row.value}</dd>
-              </div>
-            ))}
-          </dl>
-        )}
+              iniciais(nome)
+            )}
+            <span className="absolute bottom-0 right-0 h-6 w-6 rounded-tl-xl bg-card text-primary grid place-items-center">
+              <Camera className="h-3.5 w-3.5" aria-hidden />
+            </span>
+          </button>
+          <input
+            ref={inputFoto}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="sr-only"
+            onChange={(e) => { void handleFoto(e.target.files?.[0]); e.target.value = ""; }}
+          />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="font-display text-2xl font-medium tracking-tight text-foreground">{nome || "Paciente"}</h2>
+              <StatusBadge variant={cadastroAberto ? "pendente" : "concluido"}>
+                {cadastroAberto ? "Cadastro em aberto" : "Acompanhamento ativo"}
+              </StatusBadge>
+            </div>
+            <p className="text-base text-muted-foreground mt-1">
+              {[idade != null ? `${idade} anos` : null, sexo ? SEXO_LABEL[sexo] : null]
+                .filter(Boolean)
+                .join(" · ") || "Complete seu cadastro"}
+            </p>
+            <p className="text-sm text-muted-foreground mt-0.5 break-words">{emailVisivel}</p>
+            <Button variant="outline" className="mt-3" onClick={() => navigate("/onboarding?editar=1")}>
+              <Pencil className="h-4 w-4" aria-hidden /> Editar cadastro
+            </Button>
+          </div>
+        </div>
       </SurfaceCard>
 
-      {/* Um destino, um nome: o menu, a barra inferior e a tela da conversa
-          dizem "Meu médico" — esta seção dizia "Meu cardiologista". */}
+      <div className="grid grid-cols-2 gap-3">
+        <StatCard label="Peso" value={pesoKg != null ? `${pesoKg} kg` : "—"} />
+        <StatCard label="Altura" value={altura != null ? `${altura} cm` : "—"} />
+        <StatCard label="IMC" value={imc != null ? String(imc) : "—"} />
+        <StatCard
+          label="Última pressão"
+          value={ultimaPa ? `${ultimaPa.systolic}/${ultimaPa.diastolic}` : "—"}
+        />
+      </div>
+
+      {(alergias.length > 0 || condicoes.length > 0 || remedios.length > 0) && (
+        <div className="space-y-3">
+          {alergias.length > 0 && (
+            <SurfaceCard>
+              <p className="text-xs font-semibold uppercase tracking-wider text-error mb-2">Alergias</p>
+              <div className="flex flex-wrap gap-1.5">
+                {alergias.map((a) => (
+                  <span key={a} className="inline-flex min-h-[36px] items-center rounded-full bg-error-bg px-3 text-sm font-medium text-error">
+                    {a}
+                  </span>
+                ))}
+              </div>
+            </SurfaceCard>
+          )}
+          {condicoes.length > 0 && (
+            <SurfaceCard>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Condições</p>
+              <div className="flex flex-wrap gap-1.5">
+                {condicoes.map((c) => (
+                  <span key={c} className="inline-flex min-h-[36px] items-center rounded-full bg-secondary px-3 text-sm font-medium text-foreground">
+                    {c}
+                  </span>
+                ))}
+              </div>
+            </SurfaceCard>
+          )}
+          {remedios.length > 0 && (
+            <SurfaceCard>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Remédios</p>
+              <div className="flex flex-wrap gap-1.5">
+                {remedios.map((r) => (
+                  <span key={r} className="inline-flex min-h-[36px] items-center rounded-full bg-cardio-50 px-3 text-sm font-medium text-cardio-dark">
+                    {r}
+                  </span>
+                ))}
+              </div>
+            </SurfaceCard>
+          )}
+        </div>
+      )}
+
       <section>
         <TituloSecao titulo="Meu médico" />
         {carregandoMedicos ? (
@@ -181,7 +213,19 @@ export default function ContaPage() {
         )}
       </section>
 
-      {/* Dispositivos */}
+      <SurfaceCard variant="interactive" onClick={() => navigate("/cuidadores")} ariaLabel="Quem cuida de mim">
+        <div className="flex items-center gap-3.5">
+          <div className="h-11 w-11 rounded-2xl bg-secondary grid place-items-center text-primary shrink-0">
+            <Users className="h-5 w-5" strokeWidth={1.75} />
+          </div>
+          <div className="flex-1 min-w-0 text-left">
+            <p className="text-base font-semibold text-foreground">Quem cuida de mim</p>
+            <p className="text-sm text-muted-foreground mt-0.5">Familiares e cuidadores com acesso</p>
+          </div>
+          <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" aria-hidden />
+        </div>
+      </SurfaceCard>
+
       <SurfaceCard variant="interactive" onClick={() => navigate("/pulseira")} ariaLabel="Meus dispositivos">
         <div className="flex items-center gap-3.5">
           <div className="h-11 w-11 rounded-2xl bg-secondary grid place-items-center text-primary shrink-0">
@@ -195,15 +239,12 @@ export default function ContaPage() {
         </div>
       </SurfaceCard>
 
-      {/* Privacidade e LGPD — casa única da exportação/exclusão de dados.
-          O id ancora o link "/conta#privacidade" vindo das Preferências;
-          scroll-mt compensa o cabeçalho fixo do AppShell. */}
+      <ConsentimentosSection />
+
       <div id="privacidade" className="scroll-mt-24">
         <DataPrivacySection />
       </div>
 
-      {/* Ponte para as Preferências — atalho, não duplicata: nenhum ajuste de
-          notificação ou de letra grande é executado nesta tela. */}
       <SurfaceCard variant="interactive" onClick={() => navigate("/configuracoes")} ariaLabel="Preferências do app">
         <div className="flex items-center gap-3.5">
           <div className="h-11 w-11 rounded-2xl bg-secondary grid place-items-center text-primary shrink-0">

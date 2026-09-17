@@ -17,10 +17,9 @@ export function ProtectedRoute() {
   // Auditoria 26/08/2026 — defesa em profundidade: o bloqueio principal fica
   // na tela de login (AuthPage.tsx), mas uma sessão de médico já autenticada
   // ANTES dessa correção pode ainda estar salva no navegador de alguém. Sem
-  // isso, "sem cadastro de paciente" cairia direto no onboarding do paciente
-  // (linha `if (patient === null)` abaixo) e deixaria a conta de médico
-  // terminar o onboarding errado. Só dispara quando realmente vamos precisar
-  // da resposta — não pesa a navegação normal de quem já é paciente.
+  // isso, "sem cadastro de paciente" cairia no app do paciente e deixaria a
+  // conta de médico terminar o cadastro errado. Só dispara quando realmente
+  // vamos precisar da resposta — não pesa a navegação de quem já é paciente.
   const shouldCheckCrossPortal = !!user && !isDevMode && patient === null;
   const { data: proProfileFound, isLoading: crossCheckLoading } = useHasProfessionalProfile(user?.id, shouldCheckCrossPortal);
 
@@ -31,14 +30,18 @@ export function ProtectedRoute() {
     return <Outlet />;
   }
 
-  // null em cache (login recém-feito) NÃO é "sem paciente": pode ser refetch
-  // em andamento. Sem esperar isFetching, o onboarding grava e o guard
-  // devolve o paciente para /onboarding com o cache velho.
+  // null em cache (login recém-feito) NÃO é "sem perfil": pode ser refetch
+  // em andamento. Sem esperar isFetching, o guard mandava o recém-chegado
+  // de volta ao onboarding com o cache velho.
+  //
+  // Cadastro incompleto NÃO bloqueia o app: o Hoje mostra um cartão suave.
+  // Só esperamos o fetch acabar para não tratar "ainda carregando" como
+  // "não tem perfil".
   const waitingGate =
     !!user &&
     (profileLoading ||
       patientLoading ||
-      ((profile == null || !profile.onboarding_completed || patient == null) &&
+      ((profile == null || patient == null) &&
         (profileFetching || patientFetching)) ||
       (shouldCheckCrossPortal && crossCheckLoading));
 
@@ -68,8 +71,6 @@ export function ProtectedRoute() {
   }
 
   if (!profile) return <Navigate to="/onboarding" replace />;
-  if (!profile.onboarding_completed) return <Navigate to="/onboarding" replace />;
-  if (patient === null) return <Navigate to="/onboarding" replace />;
 
   return <Outlet />;
 }

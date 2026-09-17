@@ -74,6 +74,7 @@ export const DEV_PATIENT = {
   comorbidities: { hypertension: true, dyslipidemia: true, diabetes: false, sleep_apnea: true, egfr: 68 },
   history: { heart_failure: false, previous_mi: false, pci: false, atrial_fibrillation: false, family_early_cad: true },
   allergies: "IECA — tosse",
+  intake: { goals: ["saude", "cardiovascular"], sleep_hours_usual: 7, physically_active: true, activity_note: "Caminhada" },
   risk_category: "high" as const,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),

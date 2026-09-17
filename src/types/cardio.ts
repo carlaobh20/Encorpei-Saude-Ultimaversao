@@ -204,6 +204,18 @@ export interface CardioHistory {
   family_early_cad?: boolean;
 }
 
+/**
+ * Campos leves do cadastro progressivo que não entram no motor de risco.
+ * Mora em `cardio_patients.intake` (JSONB) para não virar uma coluna por chip.
+ */
+export interface CardioIntake {
+  goals?: string[];
+  target_kg?: number | null;
+  sleep_hours_usual?: number | null;
+  physically_active?: boolean | null;
+  activity_note?: string | null;
+}
+
 export interface CardioPatient {
   id: string;
   user_id: string;
@@ -220,6 +232,8 @@ export interface CardioPatient {
   comorbidities?: CardioComorbidities | null;
   history?: CardioHistory | null;
   allergies?: string | null;
+  /** Objetivo, sono habitual e movimento — ver CadastroProgressivo. */
+  intake?: CardioIntake | null;
   /** Categoria de risco definida pelo cardiologista. */
   risk_category?: "low" | "moderate" | "high" | "very_high" | null;
   created_at: string;

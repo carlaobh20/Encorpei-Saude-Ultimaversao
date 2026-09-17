@@ -203,10 +203,10 @@ export default function AuthPage() {
         <div className="w-full max-w-[480px]">
 
           <a href="/landing" onClick={handleLogoClick} className="flex items-center gap-2.5 mb-8 justify-center w-fit mx-auto">
-            <img src="/logo-symbol.png" alt="Encorpei Cardio" width={40} height={40} className="object-contain shrink-0" style={{ width: 40, height: 40 }} />
+            <img src="/logo-symbol.png" alt="Encorpei Saúde" width={40} height={40} className="object-contain shrink-0" style={{ width: 40, height: 40 }} />
             <div className="leading-tight text-left">
               <div className="font-display text-lg font-medium tracking-tight">Encorpei</div>
-              <div className="text-base text-primary font-semibold -mt-0.5">Cardio</div>
+              <div className="text-base text-primary font-semibold -mt-0.5">Saúde</div>
             </div>
           </a>
 
@@ -232,7 +232,7 @@ export default function AuthPage() {
               </h1>
               <p className="text-sm text-muted-foreground mt-1.5">
                 {mode === "login" && "Entre para ver seus números de hoje."}
-                {mode === "register" && "Leva menos de 2 minutos."}
+                {mode === "register" && "Leva menos de 2 minutos. Você não precisa ter recebido convite para começar."}
                 {mode === "forgot" && "Digite seu e-mail e enviamos um link para trocar a senha."}
               </p>
             </div>
@@ -412,6 +412,7 @@ export default function AuthPage() {
                   <button type="button" onClick={() => { setMode("register"); setMsg(null); }} className="text-primary font-semibold hover:underline">
                     Criar conta
                   </button>
+                  <span className="block mt-2 text-muted-foreground">Você não precisa ter recebido convite para começar.</span>
                 </>
               ) : (
                 <>Já tem conta?{" "}
