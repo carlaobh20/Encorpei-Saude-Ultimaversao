@@ -17,7 +17,7 @@
  */
 
 import {
-  COLMI,
+  COLMI_SERVICOS,
   GATT,
   H59_DEVICE_NAME_PREFIXES,
   PROPRIETARY_SERVICE_UUIDS,
@@ -162,8 +162,7 @@ const SERVICOS_OPCIONAIS = [
   GATT.heartRateService,
   GATT.batteryService,
   GATT.deviceInfoService,
-  COLMI.service,
-  COLMI.serviceAlternativo,
+  ...COLMI_SERVICOS,
   ...PROPRIETARY_SERVICE_UUIDS,
 ];
 
@@ -232,18 +231,50 @@ function copiarPacote(value: DataView): Uint8Array {
   return new Uint8Array(value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength));
 }
 
+function prefixoUuid(uuid: string): string {
+  return String(uuid).toLowerCase().replace(/-/g, "").slice(0, 8);
+}
+
+/** Códigos curtos para a tela, quando a conexão não achar o canal de batimento. */
+export function rotuloCanais(prefixos: string[]): string {
+  return [...new Set(prefixos.map((p) => (p.startsWith("0000") ? p.slice(4) : p)))].join(", ");
+}
+
+async function listarServicos(server: BleServer): Promise<any[]> {
+  const porId = new Map<string, any>();
+  const guardar = (lista: any[]) => {
+    for (const svc of lista) porId.set(prefixoUuid(svc.uuid), svc);
+  };
+  try {
+    const lista = await server.getPrimaryServices();
+    if (Array.isArray(lista)) guardar(lista);
+  } catch { /* alguns navegadores só entregam o serviço pedido pelo UUID */ }
+  for (const uuid of SERVICOS_OPCIONAIS) {
+    try { guardar([await server.getPrimaryService(uuid)]); } catch { /* ausente */ }
+  }
+  return [...porId.values()].sort((a, b) => {
+    const ordem = (id: string) => (id === "6e40fff0" ? 0 : id === "6e400001" ? 1 : 2);
+    return ordem(prefixoUuid(a.uuid)) - ordem(prefixoUuid(b.uuid));
+  });
+}
+
 /**
  * Abre o canal Colmi. O H59 anuncia 6e40fff0; alguns lotes usam o UART
- * padrão 6e400001. Os dois falam os mesmos comandos.
+ * 6e400001 (9e ou 9f). Se as características estiverem dentro de outro
+ * serviço que o Chrome deixou ver, usa o par de escrita e notificação.
  */
 async function abrirCanalColmi(server: BleServer): Promise<{ rx: any; tx: any } | null> {
-  for (const uuid of [COLMI.service, COLMI.serviceAlternativo]) {
-    try {
-      const svc = await server.getPrimaryService(uuid);
-      const rx = await svc.getCharacteristic(COLMI.rx);
-      const tx = await svc.getCharacteristic(COLMI.tx);
-      return { rx, tx };
-    } catch { /* este UUID não está neste aparelho */ }
+  for (const svc of await listarServicos(server)) {
+    let chars: any[] = [];
+    try { chars = await svc.getCharacteristics(); } catch { continue; }
+    const rx = chars.find((c) => String(c.uuid).toLowerCase().startsWith("6e400002"));
+    const tx = chars.find((c) => String(c.uuid).toLowerCase().startsWith("6e400003"));
+    if (rx && tx) return { rx, tx };
+    const id = prefixoUuid(svc.uuid);
+    if (id !== "6e40fff0" && id !== "6e400001") continue;
+    const notify = chars.find((c) => c.properties?.notify || c.properties?.indicate);
+    const write = chars.find((c) => c.properties?.write || c.properties?.writeWithoutResponse);
+    if (notify && write) return { rx: write, tx: notify };
   }
   return null;
 }
@@ -367,8 +398,13 @@ export async function conectarPulseira(opts: ConectarOpts): Promise<BleConnectio
   const pararPadrao = await ligarFrequenciaPadrao(server, opts);
   const parar = pararPadrao ?? await ligarFrequenciaColmi(server, opts, device.name ?? "Pulseira");
   if (!parar) {
+    const vistos = rotuloCanais((await listarServicos(server)).map((s) => prefixoUuid(s.uuid)));
     if (device.gatt?.connected) device.gatt.disconnect();
-    throw new Error("Este aparelho conectou, mas não envia batimentos por aqui. Use o arquivo exportado do aplicativo dele, logo abaixo.");
+    throw new Error(
+      vistos
+        ? `A pulseira conectou, mas nenhum canal entregou batimentos. Canais vistos: ${vistos}.`
+        : "A pulseira conectou, mas o navegador não mostrou os canais dela. Toque em conectar e escolha a pulseira outra vez na lista.",
+    );
   }
 
   device.addEventListener("gattserverdisconnected", () => opts.onDisconnect?.());
@@ -431,6 +467,7 @@ const NOMES_CONHECIDOS: Record<string, { nome: string; suportado: boolean }> = {
   "0000fee7": { nome: "Serviço proprietário do fabricante", suportado: false },
   "0000fff0": { nome: "Serviço proprietário do fabricante", suportado: false },
   "0000ffe0": { nome: "Serviço proprietário do fabricante", suportado: false },
+  "0000ff00": { nome: "Serviço proprietário do fabricante", suportado: false },
   "0000fe59": { nome: "Atualização de firmware", suportado: false },
 };
 
@@ -460,7 +497,7 @@ export async function diagnosticarPulseira(): Promise<DiagnosticoPulseira> {
     encontrados = await server.getPrimaryServices();
   } catch {
     // Alguns navegadores só entregam os serviços declarados em optionalServices.
-    for (const uuid of [GATT.heartRateService, GATT.batteryService, GATT.deviceInfoService, COLMI.service, COLMI.serviceAlternativo]) {
+    for (const uuid of [GATT.heartRateService, GATT.batteryService, GATT.deviceInfoService, ...COLMI_SERVICOS]) {
       try { encontrados.push(await server.getPrimaryService(uuid)); } catch { /* ausente */ }
     }
   }
@@ -470,12 +507,17 @@ export async function diagnosticarPulseira(): Promise<DiagnosticoPulseira> {
     const curto = uuid.slice(0, 8);
     const conhecido = NOMES_CONHECIDOS[curto];
     let caracteristicas = 0;
-    try { caracteristicas = (await svc.getCharacteristics()).length; } catch { /* sem permissão */ }
+    let temCanal = false;
+    try {
+      const chars = await svc.getCharacteristics();
+      caracteristicas = chars.length;
+      temCanal = chars.some((c: any) => String(c.uuid).toLowerCase().startsWith("6e400002"));
+    } catch { /* sem permissão */ }
     servicos.push({
       uuid,
-      nome: conhecido?.nome ?? "Serviço não identificado",
+      nome: temCanal ? "Canal da pulseira (batimentos)" : (conhecido?.nome ?? "Serviço não identificado"),
       caracteristicas,
-      suportado: conhecido?.suportado ?? false,
+      suportado: temCanal || (conhecido?.suportado ?? false),
     });
   }
 
@@ -494,7 +536,7 @@ export async function diagnosticarPulseira(): Promise<DiagnosticoPulseira> {
   } catch { /* ausente */ }
 
   const temFrequenciaCardiaca = servicos.some(
-    (s) => s.uuid.startsWith("0000180d") || s.uuid.startsWith("6e40fff0") || s.uuid.startsWith("6e400001"),
+    (s) => s.uuid.startsWith("0000180d") || s.uuid.startsWith("6e40fff0") || s.uuid.startsWith("6e400001") || s.nome.startsWith("Canal"),
   );
   const temServicoProprietario = servicos.some((s) => !s.suportado && s.caracteristicas > 0);
 

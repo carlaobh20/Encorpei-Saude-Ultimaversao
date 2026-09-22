@@ -70,8 +70,12 @@ export const GATT = {
 export const PROPRIETARY_SERVICE_UUIDS = [
   0xfee7,
   0xfff0,
+  0xffe0,
+  0xff00,
   "0000fee7-0000-1000-8000-00805f9b34fb",
   "0000fff0-0000-1000-8000-00805f9b34fb",
+  "0000ffe0-0000-1000-8000-00805f9b34fb",
+  "0000ff00-0000-1000-8000-00805f9b34fb",
 ] as const;
 
 /**
@@ -95,9 +99,14 @@ export const H59_DEVICE_NAME_PREFIXES = [
 export const COLMI = {
   service: "6e40fff0-b5a3-f393-e0a9-e50e24dcca9e",
   serviceAlternativo: "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
+  /** Mesmo UART, último byte 9f — lote que não responde ao 9e. */
+  serviceVariante: "6e400001-b5a3-f393-e0a9-e50e24dcca9f",
   rx: "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
   tx: "6e400003-b5a3-f393-e0a9-e50e24dcca9e",
 } as const;
+
+/** Serviços em que o canal de batimento pode aparecer. O Chrome só deixa ler o que foi pedido aqui. */
+export const COLMI_SERVICOS = [COLMI.service, COLMI.serviceAlternativo, COLMI.serviceVariante] as const;
 
 export const COLMI_CMD_HISTORICO_FC = 21;
 
