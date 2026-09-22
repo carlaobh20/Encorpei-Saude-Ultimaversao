@@ -31,15 +31,17 @@
  * Ver docs/MAPEAMENTO-CARDIO.md §4 antes de mexer aqui.
  *
  * O QUE ESTE ARQUIVO FAZ HOJE
- * - Lê os serviços GATT PADRÃO, que qualquer firmware desses chips expõe:
- *   Heart Rate (0x180D) e Battery (0x180F). Isso funciona sem SDK.
+ * - Se o firmware expuser o Heart Rate padrão (0x180D), lê por ali.
+ * - O H59 que chegou na mão NÃO expõe 0x180D. O batimento ao vivo sai pelo
+ *   canal Nordic UART do protocolo Colmi/QC (o mesmo do app QWatch PRO):
+ *   comando 105, tipo 1, batimento no byte 3. Pacote de 16 bytes com
+ *   checksum no último. Conferido no cliente público OpenH59, contra o
+ *   aparelho — não é palpite de UUID.
  *
  * O QUE ELE NÃO FAZ (e por quê)
- * - Histórico de sono, SpO₂ e passos vivem num serviço PROPRIETÁRIO
- *   (0xFEE7 / 0xFFF0 conforme o lote). Sem a documentação do fabricante,
- *   decodificar isso é adivinhação. O decodificador fica plugável abaixo:
- *   quando o SDK chegar, implementa-se `decodeProprietaryPacket` e o resto
- *   do app não muda.
+ * - Histórico de sono, SpO₂ e passos usam outros comandos do mesmo canal,
+ *   e a pressão desse aparelho continua sendo estimativa de PPG. Não entram
+ *   aqui: o que esta conexão grava é batimento.
  *
  * REGRA DE OURO
  * A "pressão arterial" desta pulseira é estimada por PPG, sem manguito e sem
@@ -82,6 +84,62 @@ export const PROPRIETARY_SERVICE_UUIDS = [
 export const H59_DEVICE_NAME_PREFIXES = [
   "H59", "H-59", "H59 Max", "QWatch", "QCWireless", "Smart Band", "WearFit", "R3L", "TEK",
 ];
+
+/**
+ * Canal que o H59 usa no lugar do Heart Rate padrão.
+ * Serviço Nordic UART; escreve no RX, escuta no TX.
+ */
+export const COLMI = {
+  service: "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
+  rx: "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
+  tx: "6e400003-b5a3-f393-e0a9-e50e24dcca9e",
+} as const;
+
+const COLMI_REALTIME = 105;
+const COLMI_REALTIME_PARAR = 106;
+const COLMI_TIPO_BATIMENTO = 1;
+
+/** Pacote de 16 bytes: comando, argumentos, checksum (soma dos 15 primeiros) no fim. */
+export function pacoteColmi(cmd: number, args: number[] = []): Uint8Array {
+  const p = new Uint8Array(16);
+  p[0] = cmd & 0xff;
+  args.forEach((b, i) => {
+    if (i < 14) p[i + 1] = b & 0xff;
+  });
+  let soma = 0;
+  for (let i = 0; i < 15; i++) soma = (soma + p[i]) & 0xff;
+  p[15] = soma;
+  return p;
+}
+
+export function pacoteIniciarBatimento(): Uint8Array {
+  return pacoteColmi(COLMI_REALTIME, [COLMI_TIPO_BATIMENTO, 1]);
+}
+
+export function pacotePararBatimento(): Uint8Array {
+  return pacoteColmi(COLMI_REALTIME_PARAR, [COLMI_TIPO_BATIMENTO, 0, 0]);
+}
+
+/**
+ * Batimento de uma notificação do canal, ou null se o pacote for outra coisa
+ * (bateria, fim de medição, lixo).
+ */
+export function lerBatimentoColmi(data: DataView): number | null {
+  if (data.byteLength < 4) return null;
+  if (data.getUint8(0) !== COLMI_REALTIME) return null;
+  if (data.getUint8(1) !== COLMI_TIPO_BATIMENTO) return null;
+  if (data.getUint8(2) !== 0) return null;
+  const bpm = data.getUint8(3);
+  return bpm > 0 ? bpm : null;
+}
+
+/** O aparelho encerrou a medição sob demanda (o LED apaga). */
+export function medicaoColmiEncerrou(data: DataView): boolean {
+  return data.byteLength >= 3
+    && data.getUint8(0) === COLMI_REALTIME
+    && data.getUint8(1) === COLMI_TIPO_BATIMENTO
+    && data.getUint8(2) !== 0;
+}
 
 // ── Decodificação padrão (Heart Rate Measurement, spec Bluetooth SIG) ─
 

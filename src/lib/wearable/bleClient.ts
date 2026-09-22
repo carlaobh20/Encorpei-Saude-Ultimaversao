@@ -17,6 +17,7 @@
  */
 
 import {
+  COLMI,
   GATT,
   H59_DEVICE_NAME_PREFIXES,
   PROPRIETARY_SERVICE_UUIDS,
@@ -24,6 +25,10 @@ import {
   calcularSdnn,
   decodeHeartRateMeasurement,
   fcPlausivel,
+  lerBatimentoColmi,
+  medicaoColmiEncerrou,
+  pacoteIniciarBatimento,
+  pacotePararBatimento,
   type HeartRateSample,
 } from "./h59Protocol";
 
@@ -127,6 +132,13 @@ export function classificarFalhaBluetooth(erro: unknown): {
     };
   }
 
+  if (m.includes("no services matching") || m.includes("0000180d")) {
+    return {
+      classe: "tentativa",
+      mensagem: "Este aparelho conectou, mas não envia batimentos por aqui. Use o arquivo exportado do aplicativo dele, logo abaixo.",
+    };
+  }
+
   return {
     classe: "tentativa",
     mensagem: bruto.trim() || "Não consegui conectar. Tente de novo.",
@@ -138,6 +150,122 @@ export interface ConectarOpts {
   onDisconnect?: () => void;
   /** Janela de RR acumulados para calcular HRV. */
   hrvWindow?: number;
+}
+
+const SERVICOS_OPCIONAIS = [
+  GATT.heartRateService,
+  GATT.batteryService,
+  GATT.deviceInfoService,
+  COLMI.service,
+  ...PROPRIETARY_SERVICE_UUIDS,
+];
+
+function emitirAmostra(opts: ConectarOpts, bpm: number, extra?: Partial<WearableSample>) {
+  if (!fcPlausivel(bpm)) return;
+  opts.onSample({
+    bpm,
+    rmssd: extra?.rmssd ?? null,
+    sdnn: extra?.sdnn ?? null,
+    contactDetected: extra?.contactDetected ?? null,
+    at: new Date().toISOString(),
+  });
+}
+
+async function escreverPacote(ch: any, pacote: Uint8Array) {
+  if (typeof ch.writeValueWithoutResponse === "function") {
+    try {
+      await ch.writeValueWithoutResponse(pacote);
+      return;
+    } catch { /* algumas pilhas só aceitam escrita com resposta */ }
+  }
+  await ch.writeValue(pacote);
+}
+
+/**
+ * Heart Rate padrão (0x180D). Devolve a função de parar, ou null se o
+ * aparelho não tem esse serviço — o caso do H59 que só fala Colmi.
+ */
+async function ligarFrequenciaPadrao(server: BleServer, opts: ConectarOpts): Promise<(() => Promise<void>) | null> {
+  let hrChar: any;
+  try {
+    const hrService = await server.getPrimaryService(GATT.heartRateService);
+    hrChar = await hrService.getCharacteristic(GATT.heartRateMeasurement);
+    await hrChar.startNotifications();
+  } catch {
+    return null;
+  }
+
+  const rrBuffer: number[] = [];
+  const janela = opts.hrvWindow ?? 60;
+  hrChar.addEventListener("characteristicvaluechanged", (event: any) => {
+    const value: DataView = event.target.value;
+    let sample: HeartRateSample;
+    try {
+      sample = decodeHeartRateMeasurement(value);
+    } catch {
+      return;
+    }
+    rrBuffer.push(...sample.rrIntervals);
+    while (rrBuffer.length > janela) rrBuffer.shift();
+    emitirAmostra(opts, sample.bpm, {
+      rmssd: calcularRmssd(rrBuffer),
+      sdnn: calcularSdnn(rrBuffer),
+      contactDetected: sample.contactDetected,
+    });
+  });
+
+  return async () => {
+    try { await hrChar.stopNotifications(); } catch { /* ignora */ }
+  };
+}
+
+/**
+ * Batimento ao vivo pelo canal Colmi/QC. A medição sob demanda acaba sozinha;
+ * enquanto a tela estiver aberta, pedimos de novo. Sem batimento nenhum, para
+ * de insistir para não deixar o LED piscando à toa.
+ */
+async function ligarFrequenciaColmi(server: BleServer, opts: ConectarOpts): Promise<(() => Promise<void>) | null> {
+  let rx: any;
+  let tx: any;
+  try {
+    const svc = await server.getPrimaryService(COLMI.service);
+    rx = await svc.getCharacteristic(COLMI.rx);
+    tx = await svc.getCharacteristic(COLMI.tx);
+    await tx.startNotifications();
+  } catch {
+    return null;
+  }
+
+  let parado = false;
+  let repetir: ReturnType<typeof setTimeout> | null = null;
+  let semBatimento = 0;
+
+  const iniciar = () => escreverPacote(rx, pacoteIniciarBatimento());
+
+  tx.addEventListener("characteristicvaluechanged", (event: any) => {
+    if (parado) return;
+    const value: DataView = event.target.value;
+    const bpm = lerBatimentoColmi(value);
+    if (bpm != null) {
+      semBatimento = 0;
+      emitirAmostra(opts, bpm);
+      return;
+    }
+    if (!medicaoColmiEncerrou(value)) return;
+    if (semBatimento >= 2) return;
+    semBatimento += 1;
+    if (repetir) clearTimeout(repetir);
+    repetir = setTimeout(() => { if (!parado) iniciar().catch(() => {}); }, 1500);
+  });
+
+  await iniciar();
+
+  return async () => {
+    parado = true;
+    if (repetir) clearTimeout(repetir);
+    try { await escreverPacote(rx, pacotePararBatimento()); } catch { /* ignora */ }
+    try { await tx.stopNotifications(); } catch { /* ignora */ }
+  };
 }
 
 /**
@@ -155,12 +283,7 @@ export async function conectarPulseira(opts: ConectarOpts): Promise<BleConnectio
       ...H59_DEVICE_NAME_PREFIXES.map((namePrefix) => ({ namePrefix })),
       { services: [GATT.heartRateService] },
     ],
-    optionalServices: [
-      GATT.heartRateService,
-      GATT.batteryService,
-      GATT.deviceInfoService,
-      ...PROPRIETARY_SERVICE_UUIDS,
-    ],
+    optionalServices: SERVICOS_OPCIONAIS,
   });
 
   const server: BleServer = await device.gatt.connect();
@@ -175,35 +298,12 @@ export async function conectarPulseira(opts: ConectarOpts): Promise<BleConnectio
     /* nem todo firmware expõe — não é erro */
   }
 
-  // Frequência cardíaca ao vivo.
-  const rrBuffer: number[] = [];
-  const janela = opts.hrvWindow ?? 60;
-
-  const hrService = await server.getPrimaryService(GATT.heartRateService);
-  const hrChar = await hrService.getCharacteristic(GATT.heartRateMeasurement);
-  await hrChar.startNotifications();
-
-  hrChar.addEventListener("characteristicvaluechanged", (event: any) => {
-    const value: DataView = event.target.value;
-    let sample: HeartRateSample;
-    try {
-      sample = decodeHeartRateMeasurement(value);
-    } catch {
-      return;
-    }
-    if (!fcPlausivel(sample.bpm)) return;
-
-    rrBuffer.push(...sample.rrIntervals);
-    while (rrBuffer.length > janela) rrBuffer.shift();
-
-    opts.onSample({
-      bpm: sample.bpm,
-      rmssd: calcularRmssd(rrBuffer),
-      sdnn: calcularSdnn(rrBuffer),
-      contactDetected: sample.contactDetected,
-      at: new Date().toISOString(),
-    });
-  });
+  const pararPadrao = await ligarFrequenciaPadrao(server, opts);
+  const parar = pararPadrao ?? await ligarFrequenciaColmi(server, opts);
+  if (!parar) {
+    if (device.gatt?.connected) device.gatt.disconnect();
+    throw new Error("Este aparelho conectou, mas não envia batimentos por aqui. Use o arquivo exportado do aplicativo dele, logo abaixo.");
+  }
 
   device.addEventListener("gattserverdisconnected", () => opts.onDisconnect?.());
 
@@ -224,9 +324,7 @@ export async function conectarPulseira(opts: ConectarOpts): Promise<BleConnectio
     firmware,
     readBattery,
     disconnect: async () => {
-      try {
-        await hrChar.stopNotifications();
-      } catch { /* ignora */ }
+      await parar();
       if (device.gatt?.connected) device.gatt.disconnect();
     },
   };
@@ -262,6 +360,7 @@ const NOMES_CONHECIDOS: Record<string, { nome: string; suportado: boolean }> = {
   "0000180a": { nome: "Informações do dispositivo", suportado: true },
   "00001800": { nome: "Identificação genérica", suportado: true },
   "00001801": { nome: "Atributos genéricos", suportado: true },
+  "6e400001": { nome: "Canal da pulseira (batimentos)", suportado: true },
   "0000fee7": { nome: "Serviço proprietário do fabricante", suportado: false },
   "0000fff0": { nome: "Serviço proprietário do fabricante", suportado: false },
   "0000ffe0": { nome: "Serviço proprietário do fabricante", suportado: false },
@@ -283,12 +382,7 @@ export async function diagnosticarPulseira(): Promise<DiagnosticoPulseira> {
   const bluetooth = (navigator as any).bluetooth;
   const device: BleDevice = await bluetooth.requestDevice({
     acceptAllDevices: true,
-    optionalServices: [
-      GATT.heartRateService,
-      GATT.batteryService,
-      GATT.deviceInfoService,
-      ...PROPRIETARY_SERVICE_UUIDS,
-    ],
+    optionalServices: SERVICOS_OPCIONAIS,
   });
 
   const server: BleServer = await device.gatt.connect();
@@ -299,7 +393,7 @@ export async function diagnosticarPulseira(): Promise<DiagnosticoPulseira> {
     encontrados = await server.getPrimaryServices();
   } catch {
     // Alguns navegadores só entregam os serviços declarados em optionalServices.
-    for (const uuid of [GATT.heartRateService, GATT.batteryService, GATT.deviceInfoService]) {
+    for (const uuid of [GATT.heartRateService, GATT.batteryService, GATT.deviceInfoService, COLMI.service]) {
       try { encontrados.push(await server.getPrimaryService(uuid)); } catch { /* ausente */ }
     }
   }
@@ -332,7 +426,9 @@ export async function diagnosticarPulseira(): Promise<DiagnosticoPulseira> {
     bateria = (await ch.readValue()).getUint8(0);
   } catch { /* ausente */ }
 
-  const temFrequenciaCardiaca = servicos.some((s) => s.uuid.startsWith("0000180d"));
+  const temFrequenciaCardiaca = servicos.some(
+    (s) => s.uuid.startsWith("0000180d") || s.uuid.startsWith("6e400001"),
+  );
   const temServicoProprietario = servicos.some((s) => !s.suportado && s.caracteristicas > 0);
 
   if (device.gatt?.connected) device.gatt.disconnect();
