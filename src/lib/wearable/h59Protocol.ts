@@ -87,13 +87,24 @@ export const H59_DEVICE_NAME_PREFIXES = [
 
 /**
  * Canal que o H59 usa no lugar do Heart Rate padrão.
- * Serviço Nordic UART; escreve no RX, escuta no TX.
+ *
+ * O serviço NÃO é o Nordic UART de catálogo (6e400001). Neste firmware é
+ * 6e40fff0, com as mesmas características de escrita e notificação. Pedir o
+ * UUID errado faz o navegador dizer que o serviço não existe.
  */
 export const COLMI = {
-  service: "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
+  service: "6e40fff0-b5a3-f393-e0a9-e50e24dcca9e",
+  serviceAlternativo: "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
   rx: "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
   tx: "6e400003-b5a3-f393-e0a9-e50e24dcca9e",
 } as const;
+
+export const COLMI_CMD_HISTORICO_FC = 21;
+
+export interface PontoBatimento {
+  at: string;
+  bpm: number;
+}
 
 const COLMI_REALTIME = 105;
 const COLMI_REALTIME_PARAR = 106;
@@ -118,6 +129,69 @@ export function pacoteIniciarBatimento(): Uint8Array {
 
 export function pacotePararBatimento(): Uint8Array {
   return pacoteColmi(COLMI_REALTIME_PARAR, [COLMI_TIPO_BATIMENTO, 0, 0]);
+}
+
+/**
+ * Meia-noite local daquele dia, escrita como se fosse UTC.
+ * É assim que a pulseira indexa o histórico: o relógio dela é local.
+ */
+export function instanteHistorico(diasAtras: number, agora = new Date()): { bandTs: number; inicioLocal: Date } {
+  const inicioLocal = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() - diasAtras);
+  const bandTs = Math.floor(Date.UTC(inicioLocal.getFullYear(), inicioLocal.getMonth(), inicioLocal.getDate()) / 1000);
+  return { bandTs, inicioLocal };
+}
+
+export function pacoteHistoricoBatimento(bandTs: number): Uint8Array {
+  return pacoteColmi(COLMI_CMD_HISTORICO_FC, [
+    bandTs & 0xff,
+    (bandTs >> 8) & 0xff,
+    (bandTs >> 16) & 0xff,
+    (bandTs >>> 24) & 0xff,
+  ]);
+}
+
+/**
+ * Junta os pacotes do comando 21 numa curva de 5 em 5 minutos.
+ * Byte 0 no slot significa "não mediu". 0xFF no índice encerra sem dados.
+ */
+export function lerHistoricoBatimento(pacotes: Uint8Array[], inicioLocal: Date): PontoBatimento[] {
+  let tamanho = 0;
+  let bruto: number[] = [];
+  let cursor = 0;
+  let temCabecalho = false;
+
+  for (const p of pacotes) {
+    if (p.length < 2 || p[0] !== COLMI_CMD_HISTORICO_FC) continue;
+    const indice = p[1];
+    if (indice === 0xff) return [];
+    if (indice === 0) {
+      tamanho = p[2] ?? 0;
+      bruto = new Array(tamanho * 13).fill(0);
+      temCabecalho = true;
+      continue;
+    }
+    if (indice === 1) {
+      for (let i = 0; i < 9 && 6 + i < p.length; i++) bruto[i] = p[6 + i];
+      cursor = 9;
+      continue;
+    }
+    for (let i = 0; i < 13 && cursor + i < bruto.length && 2 + i < p.length; i++) bruto[cursor + i] = p[2 + i];
+    cursor += 13;
+  }
+
+  if (!temCabecalho) return [];
+
+  const pontos: PontoBatimento[] = [];
+  const limite = Math.min(288, bruto.length);
+  for (let i = 0; i < limite; i++) {
+    const bpm = bruto[i];
+    if (!fcPlausivel(bpm)) continue;
+    pontos.push({
+      bpm,
+      at: new Date(inicioLocal.getTime() + i * 5 * 60 * 1000).toISOString(),
+    });
+  }
+  return pontos;
 }
 
 /**

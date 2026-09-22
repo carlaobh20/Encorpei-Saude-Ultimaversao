@@ -25,11 +25,15 @@ import {
   calcularSdnn,
   decodeHeartRateMeasurement,
   fcPlausivel,
+  instanteHistorico,
   lerBatimentoColmi,
+  lerHistoricoBatimento,
   medicaoColmiEncerrou,
+  pacoteHistoricoBatimento,
   pacoteIniciarBatimento,
   pacotePararBatimento,
   type HeartRateSample,
+  type PontoBatimento,
 } from "./h59Protocol";
 
 // A tipagem do Web Bluetooth não vem no lib.dom padrão de todos os targets.
@@ -147,6 +151,8 @@ export function classificarFalhaBluetooth(erro: unknown): {
 
 export interface ConectarOpts {
   onSample: (s: WearableSample) => void;
+  /** Histórico já gravado na pulseira, sem passar pelo aplicativo dela. */
+  onHistorico?: (pontos: PontoBatimento[], deviceName: string) => void | Promise<void>;
   onDisconnect?: () => void;
   /** Janela de RR acumulados para calcular HRV. */
   hrvWindow?: number;
@@ -157,6 +163,7 @@ const SERVICOS_OPCIONAIS = [
   GATT.batteryService,
   GATT.deviceInfoService,
   COLMI.service,
+  COLMI.serviceAlternativo,
   ...PROPRIETARY_SERVICE_UUIDS,
 ];
 
@@ -219,45 +226,104 @@ async function ligarFrequenciaPadrao(server: BleServer, opts: ConectarOpts): Pro
   };
 }
 
-/**
- * Batimento ao vivo pelo canal Colmi/QC. A medição sob demanda acaba sozinha;
- * enquanto a tela estiver aberta, pedimos de novo. Sem batimento nenhum, para
- * de insistir para não deixar o LED piscando à toa.
- */
-async function ligarFrequenciaColmi(server: BleServer, opts: ConectarOpts): Promise<(() => Promise<void>) | null> {
-  let rx: any;
-  let tx: any;
-  try {
-    const svc = await server.getPrimaryService(COLMI.service);
-    rx = await svc.getCharacteristic(COLMI.rx);
-    tx = await svc.getCharacteristic(COLMI.tx);
-    await tx.startNotifications();
-  } catch {
-    return null;
-  }
+const esperar = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+function copiarPacote(value: DataView): Uint8Array {
+  return new Uint8Array(value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength));
+}
+
+/**
+ * Abre o canal Colmi. O H59 anuncia 6e40fff0; alguns lotes usam o UART
+ * padrão 6e400001. Os dois falam os mesmos comandos.
+ */
+async function abrirCanalColmi(server: BleServer): Promise<{ rx: any; tx: any } | null> {
+  for (const uuid of [COLMI.service, COLMI.serviceAlternativo]) {
+    try {
+      const svc = await server.getPrimaryService(uuid);
+      const rx = await svc.getCharacteristic(COLMI.rx);
+      const tx = await svc.getCharacteristic(COLMI.tx);
+      return { rx, tx };
+    } catch { /* este UUID não está neste aparelho */ }
+  }
+  return null;
+}
+
+/**
+ * Pede o histórico de batimentos dos últimos 7 dias e devolve o que a
+ * pulseira já tinha gravado. Não depende do aplicativo do fabricante.
+ */
+async function baixarHistoricoBatimento(
+  rx: any,
+  recebidos: Uint8Array[],
+): Promise<PontoBatimento[]> {
+  const pontos: PontoBatimento[] = [];
+  for (let dia = 0; dia < 7; dia++) {
+    const { bandTs, inicioLocal } = instanteHistorico(dia);
+    const marca = recebidos.length;
+    try {
+      await escreverPacote(rx, pacoteHistoricoBatimento(bandTs));
+    } catch {
+      break;
+    }
+    const limite = Date.now() + 2500;
+    while (Date.now() < limite) {
+      await esperar(200);
+      const lote = recebidos.slice(marca);
+      if (lote.some((p) => p[0] === 21 && p[1] === 0xff)) break;
+    }
+    pontos.push(...lerHistoricoBatimento(recebidos.slice(marca), inicioLocal));
+  }
+  return pontos;
+}
+
+/**
+ * Batimento ao vivo pelo canal Colmi/QC, depois de puxar o que já estava
+ * gravado. A medição sob demanda acaba sozinha; enquanto a tela estiver
+ * aberta, pedimos de novo. Sem batimento nenhum, para de insistir para não
+ * deixar o LED piscando à toa.
+ */
+async function ligarFrequenciaColmi(
+  server: BleServer,
+  opts: ConectarOpts,
+  deviceName: string,
+): Promise<(() => Promise<void>) | null> {
+  const canal = await abrirCanalColmi(server);
+  if (!canal) return null;
+  const { rx, tx } = canal;
+
+  const recebidos: Uint8Array[] = [];
   let parado = false;
   let repetir: ReturnType<typeof setTimeout> | null = null;
   let semBatimento = 0;
+  let aoVivo = false;
 
   const iniciar = () => escreverPacote(rx, pacoteIniciarBatimento());
 
   tx.addEventListener("characteristicvaluechanged", (event: any) => {
-    if (parado) return;
-    const value: DataView = event.target.value;
-    const bpm = lerBatimentoColmi(value);
+    const pacote = copiarPacote(event.target.value as DataView);
+    recebidos.push(pacote);
+    if (parado || !aoVivo) return;
+    const bpm = lerBatimentoColmi(event.target.value);
     if (bpm != null) {
       semBatimento = 0;
       emitirAmostra(opts, bpm);
       return;
     }
-    if (!medicaoColmiEncerrou(value)) return;
+    if (!medicaoColmiEncerrou(event.target.value)) return;
     if (semBatimento >= 2) return;
     semBatimento += 1;
     if (repetir) clearTimeout(repetir);
     repetir = setTimeout(() => { if (!parado) iniciar().catch(() => {}); }, 1500);
   });
 
+  await tx.startNotifications();
+
+  try {
+    const historico = await baixarHistoricoBatimento(rx, recebidos);
+    if (historico.length > 0) await opts.onHistorico?.(historico, deviceName);
+  } catch { /* histórico vazio não impede o batimento ao vivo */ }
+
+  aoVivo = true;
   await iniciar();
 
   return async () => {
@@ -299,7 +365,7 @@ export async function conectarPulseira(opts: ConectarOpts): Promise<BleConnectio
   }
 
   const pararPadrao = await ligarFrequenciaPadrao(server, opts);
-  const parar = pararPadrao ?? await ligarFrequenciaColmi(server, opts);
+  const parar = pararPadrao ?? await ligarFrequenciaColmi(server, opts, device.name ?? "Pulseira");
   if (!parar) {
     if (device.gatt?.connected) device.gatt.disconnect();
     throw new Error("Este aparelho conectou, mas não envia batimentos por aqui. Use o arquivo exportado do aplicativo dele, logo abaixo.");
@@ -360,6 +426,7 @@ const NOMES_CONHECIDOS: Record<string, { nome: string; suportado: boolean }> = {
   "0000180a": { nome: "Informações do dispositivo", suportado: true },
   "00001800": { nome: "Identificação genérica", suportado: true },
   "00001801": { nome: "Atributos genéricos", suportado: true },
+  "6e40fff0": { nome: "Canal da pulseira (batimentos)", suportado: true },
   "6e400001": { nome: "Canal da pulseira (batimentos)", suportado: true },
   "0000fee7": { nome: "Serviço proprietário do fabricante", suportado: false },
   "0000fff0": { nome: "Serviço proprietário do fabricante", suportado: false },
@@ -393,7 +460,7 @@ export async function diagnosticarPulseira(): Promise<DiagnosticoPulseira> {
     encontrados = await server.getPrimaryServices();
   } catch {
     // Alguns navegadores só entregam os serviços declarados em optionalServices.
-    for (const uuid of [GATT.heartRateService, GATT.batteryService, GATT.deviceInfoService, COLMI.service]) {
+    for (const uuid of [GATT.heartRateService, GATT.batteryService, GATT.deviceInfoService, COLMI.service, COLMI.serviceAlternativo]) {
       try { encontrados.push(await server.getPrimaryService(uuid)); } catch { /* ausente */ }
     }
   }
@@ -427,7 +494,7 @@ export async function diagnosticarPulseira(): Promise<DiagnosticoPulseira> {
   } catch { /* ausente */ }
 
   const temFrequenciaCardiaca = servicos.some(
-    (s) => s.uuid.startsWith("0000180d") || s.uuid.startsWith("6e400001"),
+    (s) => s.uuid.startsWith("0000180d") || s.uuid.startsWith("6e40fff0") || s.uuid.startsWith("6e400001"),
   );
   const temServicoProprietario = servicos.some((s) => !s.suportado && s.caracteristicas > 0);
 

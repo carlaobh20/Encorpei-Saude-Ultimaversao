@@ -263,6 +263,17 @@ export default function PulseiraPage() {
               setErro("Perdi a conexão com a internet no meio do envio. As próximas medidas continuam tentando.");
             });
         },
+        onHistorico: async (pontos, deviceName) => {
+          nomeDoAparelhoRef.current = deviceName;
+          const r = await sync.importar(
+            pontos.map((p) => ({ recordedAt: p.at, heartRate: p.bpm, validation: "estimated" as const })),
+            { deviceName, protocolo: "ble" },
+          );
+          if (r.importados > 0) {
+            setGravadasNaSessao((n) => n + r.importados);
+            setUltimaGravacao(new Date().toISOString());
+          }
+        },
         onDisconnect: () => { setConexao(null); setAmostra(null); },
       });
 
