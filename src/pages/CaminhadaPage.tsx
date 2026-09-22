@@ -49,7 +49,7 @@ import {
   referenciaSentarLevantar, lerRecuperacaoFc, type TipoTeste, type EstadoZona,
 } from "@/lib/clinical/capacity";
 import {
-  conectarPulseira, bluetoothDisponivel, motivoIndisponivel, type BleConnection,
+  conectarPulseira, bluetoothDisponivel, motivoIndisponivel, classificarFalhaBluetooth, type BleConnection,
 } from "@/lib/wearable/bleClient";
 import type { WalkSession } from "@/types/cardio";
 
@@ -100,7 +100,7 @@ function usePulseiraAoVivo() {
       });
       setConexao(con);
     } catch (e) {
-      setErro(e instanceof Error ? e.message : "Não consegui conectar. Tente de novo.");
+      setErro(classificarFalhaBluetooth(e).mensagem);
     } finally {
       setConectando(false);
     }

@@ -65,6 +65,74 @@ export function motivoIndisponivel(): string | null {
   return null;
 }
 
+/**
+ * O que fazer com a frase que o navegador devolveu ao recusar a conexão.
+ *
+ * "bloqueio" acontece antes de qualquer aparelho: o Chrome nem abre a lista.
+ * A frase crua mais comum é "Web Bluetooth API globally disabled." — o
+ * navegador (preview embutido, WebView, ou a opção de site desligada em
+ * Configurações → Bluetooth) recusou a API inteira. Isso não é falha de
+ * envio e não pode virar "Não deu certo" na tela.
+ *
+ * "tentativa" é o que sobra: a busca chegou a começar e quebrou no meio.
+ */
+export type ClasseFalhaBluetooth = "bloqueio" | "tentativa";
+
+const AVISO_API_BLOQUEADA =
+  "Este navegador bloqueou o Bluetooth, então a pulseira nem chega a ser procurada. Abra o app no Chrome ou no Edge, com o Bluetooth do celular ou do computador ligado. Se já estiver neles, vá em Configurações do site, Bluetooth, e permita que os sites peçam para conectar. Enquanto isso, os dados entram pelo arquivo, logo abaixo.";
+
+export function classificarFalhaBluetooth(erro: unknown): {
+  classe: ClasseFalhaBluetooth;
+  mensagem: string;
+} {
+  const bruto = erro instanceof Error ? erro.message : typeof erro === "string" ? erro : "";
+  const m = bruto.toLowerCase();
+
+  if (
+    m.includes("globally disabled") ||
+    m.includes("disabled web bluetooth") ||
+    m.includes("enterprise policy") ||
+    m.includes("permissions policy") ||
+    m.includes("fenced frame") ||
+    m.includes("opaque origin")
+  ) {
+    return { classe: "bloqueio", mensagem: AVISO_API_BLOQUEADA };
+  }
+
+  if (m.includes("adapter not available")) {
+    return {
+      classe: "bloqueio",
+      mensagem: "O Bluetooth deste celular ou computador está desligado. Ligue e toque em conectar de novo.",
+    };
+  }
+
+  if (m.includes("user cancelled") || m.includes("chooser")) {
+    return {
+      classe: "bloqueio",
+      mensagem: "Você fechou a lista de aparelhos. Toque em conectar e escolha a pulseira.",
+    };
+  }
+
+  if (m.includes("denied the browser permission") || m.includes("not allowed")) {
+    return {
+      classe: "bloqueio",
+      mensagem: "O navegador não deixou procurar a pulseira. Quando ele perguntar, permita o Bluetooth e tente de novo.",
+    };
+  }
+
+  if (m.includes("user gesture")) {
+    return {
+      classe: "bloqueio",
+      mensagem: "Toque de novo no botão de conectar para o navegador permitir a busca.",
+    };
+  }
+
+  return {
+    classe: "tentativa",
+    mensagem: bruto.trim() || "Não consegui conectar. Tente de novo.",
+  };
+}
+
 export interface ConectarOpts {
   onSample: (s: WearableSample) => void;
   onDisconnect?: () => void;

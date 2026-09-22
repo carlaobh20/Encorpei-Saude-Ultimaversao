@@ -48,7 +48,7 @@ import {
   useWearableSync, TIPO_ROTULO, type ResumoImportacao, type TipoImportado,
 } from "@/hooks/useWearableSync";
 import {
-  conectarPulseira, bluetoothDisponivel, motivoIndisponivel, diagnosticarPulseira,
+  conectarPulseira, bluetoothDisponivel, motivoIndisponivel, classificarFalhaBluetooth, diagnosticarPulseira,
   type BleConnection, type WearableSample, type DiagnosticoPulseira,
 } from "@/lib/wearable/bleClient";
 import {
@@ -165,6 +165,10 @@ export default function PulseiraPage() {
   const [amostra, setAmostra] = useState<WearableSample | null>(null);
   const [bateria, setBateria] = useState<number | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  // Bloqueio do navegador (API desligada, rádio off, paciente cancelou a lista).
+  // Fica fora de `erro` de propósito: `erro` vira o estado "Não deu certo", e
+  // isso só é verdade quando uma tentativa de envio falhou.
+  const [avisoBluetooth, setAvisoBluetooth] = useState<string | null>(null);
   const [gravadasNaSessao, setGravadasNaSessao] = useState(0);
   const [ultimaGravacao, setUltimaGravacao] = useState<string | null>(null);
   const [encerrando, setEncerrando] = useState(false);
@@ -231,8 +235,9 @@ export default function PulseiraPage() {
   // ── Conectar ──────────────────────────────────────────────────────
 
   const conectar = async () => {
+    setAvisoBluetooth(null);
     const impedimento = motivoIndisponivel();
-    if (impedimento) { setErro(impedimento); return; }
+    if (impedimento) { setErro(null); setAvisoBluetooth(impedimento); return; }
     setErro(null);
     setConectando(true);
     setGravadasNaSessao(0);
@@ -282,7 +287,9 @@ export default function PulseiraPage() {
       con.readBattery().then(setBateria).catch(() => {});
       toast.success("Aparelho conectado. Fique parado um minuto para a primeira medida ser salva.");
     } catch (e) {
-      setErro(e instanceof Error ? e.message : "Não consegui conectar. Tente de novo.");
+      const falha = classificarFalhaBluetooth(e);
+      if (falha.classe === "bloqueio") setAvisoBluetooth(falha.mensagem);
+      else setErro(falha.mensagem);
     } finally {
       setConectando(false);
     }
@@ -383,7 +390,7 @@ export default function PulseiraPage() {
       setDiagnostico(await diagnosticarPulseira());
       setTecnicoAberto(false);
     } catch (e) {
-      setErroDiagnostico(e instanceof Error ? e.message : "Não consegui testar o aparelho. Tente de novo.");
+      setErroDiagnostico(classificarFalhaBluetooth(e).mensagem);
     } finally {
       setDiagnosticando(false);
     }
@@ -507,9 +514,9 @@ export default function PulseiraPage() {
             </Button>
           )}
 
-          {erro && (
+          {(avisoBluetooth || erro) && (
             <p className="text-sm text-warning mt-3 flex items-start gap-2">
-              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" /> {erro}
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" /> {avisoBluetooth ?? erro}
             </p>
           )}
 

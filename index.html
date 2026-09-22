@@ -13,6 +13,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Encorpei Saúde" />
     <meta name="theme-color" content="#F2F5F9" />
+    <!-- A pulseira usa Web Bluetooth. Sem isto, um navegador que trata
+         recurso poderoso omitido como negado recusa requestDevice. -->
+    <meta http-equiv="Permissions-Policy" content="bluetooth=(self)" />
 
     <!-- Icons -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
