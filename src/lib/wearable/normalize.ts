@@ -173,8 +173,12 @@ export function linhasParaLeituras(
         total_minutes: l.sleepMinutes,
         deep_minutes: l.deepMinutes ?? null,
         light_minutes: l.lightMinutes ?? null,
-        rem_minutes: null, awake_minutes: null, awakenings: null,
-        efficiency_pct: null, min_heart_rate: null, min_spo2: null,
+        rem_minutes: l.remMinutes ?? null,
+        awake_minutes: l.awakeMinutes ?? null,
+        awakenings: l.awakenings ?? null,
+        efficiency_pct: l.efficiencyPct ?? null,
+        min_heart_rate: l.minHeartRate ?? null,
+        min_spo2: l.minSpo2 ?? null,
         // Actigrafia por movimento, não polissonografia (docs §4.2).
         validation_status: "estimated",
       });
@@ -182,6 +186,128 @@ export function linhasParaLeituras(
   }
 
   return out;
+}
+
+/** Colunas de sono que podem nascer vazias e ser preenchidas depois, sem apagar o que já foi gravado. */
+export const CAMPOS_COMPLETAR_SONO = [
+  "deep_minutes", "light_minutes", "rem_minutes", "awake_minutes",
+  "awakenings", "efficiency_pct", "min_heart_rate", "min_spo2",
+] as const;
+
+export type CampoCompletarSono = (typeof CAMPOS_COMPLETAR_SONO)[number];
+
+export interface NoiteGravada {
+  id: string;
+  sleep_date: string;
+  deep_minutes: number | null;
+  light_minutes: number | null;
+  rem_minutes: number | null;
+  awake_minutes: number | null;
+  awakenings: number | null;
+  efficiency_pct: number | null;
+  min_heart_rate: number | null;
+  min_spo2: number | null;
+}
+
+export interface DecisaoSono<T> {
+  inserir: T[];
+  completar: { id: string; patch: Partial<Record<CampoCompletarSono, number>>; linhas: number }[];
+  /** Linhas que só preencheram uma noite nova, antes do insert. */
+  mescladasNoInsert: number;
+  ignoradas: number;
+}
+
+/**
+ * Uma linha por `(paciente, sleep_date)`. Noite nova insere. Noite já gravada
+ * só ganha coluna que está null e a linha nova traz.
+ */
+export function decidirGravacaoSono<T extends { sleep_date: string } & Partial<Record<CampoCompletarSono, number | null>>>(
+  linhas: T[],
+  existentes: NoiteGravada[],
+): DecisaoSono<T> {
+  const porData = new Map<string, NoiteGravada>();
+  for (const e of existentes) porData.set(String(e.sleep_date).slice(0, 10), e);
+
+  const pendente = new Map<string, T>();
+  const inserir: T[] = [];
+  const patchPorId = new Map<string, { patch: Partial<Record<CampoCompletarSono, number>>; linhas: number }>();
+  let mescladasNoInsert = 0;
+  let ignoradas = 0;
+
+  const valorAtual = (dia: string, campo: CampoCompletarSono): number | null => {
+    const ins = pendente.get(dia);
+    if (ins) return ins[campo] ?? null;
+    const ex = porData.get(dia);
+    if (!ex) return null;
+    const acc = patchPorId.get(ex.id);
+    if (acc && acc.patch[campo] != null) return acc.patch[campo] ?? null;
+    return ex[campo] ?? null;
+  };
+
+  for (const linha of linhas) {
+    const dia = String(linha.sleep_date).slice(0, 10);
+    const ex = porData.get(dia);
+    const ins = pendente.get(dia);
+
+    if (!ex && !ins) {
+      const copia = { ...linha };
+      pendente.set(dia, copia);
+      inserir.push(copia);
+      continue;
+    }
+
+    let preencheu = false;
+    for (const campo of CAMPOS_COMPLETAR_SONO) {
+      const novo = linha[campo];
+      if (novo == null) continue;
+      if (valorAtual(dia, campo) != null) continue;
+      preencheu = true;
+      if (ins) ins[campo] = novo;
+      else if (ex) {
+        const acc = patchPorId.get(ex.id) ?? { patch: {}, linhas: 0 };
+        acc.patch[campo] = novo;
+        patchPorId.set(ex.id, acc);
+      }
+    }
+    if (!preencheu) ignoradas++;
+    else if (ins) mescladasNoInsert++;
+    else if (ex) {
+      const acc = patchPorId.get(ex.id);
+      if (acc) acc.linhas++;
+    }
+  }
+
+  return {
+    inserir,
+    completar: [...patchPorId.entries()].map(([id, acc]) => ({ id, patch: acc.patch, linhas: acc.linhas })),
+    mescladasNoInsert,
+    ignoradas,
+  };
+}
+
+export function noiteDePacote(
+  noite: {
+    sleepDate: string;
+    recordedAt: string;
+    campos: { total_minutes: number } & Partial<Record<CampoCompletarSono, number>>;
+  },
+  ctx: DeviceContext,
+): Novo<SleepReading> {
+  return {
+    ...base(ctx, noite.recordedAt, "device"),
+    vital_type: "sleep",
+    sleep_date: noite.sleepDate,
+    total_minutes: noite.campos.total_minutes,
+    deep_minutes: noite.campos.deep_minutes ?? null,
+    light_minutes: noite.campos.light_minutes ?? null,
+    rem_minutes: noite.campos.rem_minutes ?? null,
+    awake_minutes: noite.campos.awake_minutes ?? null,
+    awakenings: noite.campos.awakenings ?? null,
+    efficiency_pct: noite.campos.efficiency_pct ?? null,
+    min_heart_rate: noite.campos.min_heart_rate ?? null,
+    min_spo2: noite.campos.min_spo2 ?? null,
+    validation_status: "estimated",
+  };
 }
 
 /** Rótulo curto de proveniência, usado nos badges das telas. */

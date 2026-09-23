@@ -40,6 +40,12 @@ export interface LinhaImportada {
   sleepMinutes?: number;
   deepMinutes?: number;
   lightMinutes?: number;
+  remMinutes?: number;
+  awakeMinutes?: number;
+  awakenings?: number;
+  efficiencyPct?: number;
+  minHeartRate?: number;
+  minSpo2?: number;
   calories?: number;
   /**
    * Tudo que vem de PPG/acelerômetro nasce "estimated". Ver docs §4.2: o
@@ -62,6 +68,12 @@ export const CAMPO_ROTULO: Record<CampoImportado, string> = {
   sleepMinutes: "Sono (total)",
   deepMinutes: "Sono profundo",
   lightMinutes: "Sono leve",
+  remMinutes: "Sono REM",
+  awakeMinutes: "Tempo acordado",
+  awakenings: "Despertares",
+  efficiencyPct: "Eficiência do sono",
+  minHeartRate: "Batimentos mínimos",
+  minSpo2: "Oxigenação mínima",
   calories: "Calorias",
 };
 
@@ -140,6 +152,13 @@ const SINONIMOS: Record<CampoImportado, string[]> = {
   ],
   deepMinutes: ["deep sleep", "deep", "deep sleep time", "sono profundo", "profundo"],
   lightMinutes: ["light sleep", "light", "light sleep time", "sono leve", "leve"],
+  // Sem sinônimo até um export real mostrar o cabeçalho. O mapeamento manual aceita a coluna.
+  remMinutes: [],
+  awakeMinutes: [],
+  awakenings: [],
+  efficiencyPct: [],
+  minHeartRate: [],
+  minSpo2: [],
   calories: ["calories", "calorias", "kcal", "cal", "energy", "energia"],
 };
 
@@ -149,7 +168,8 @@ const SINONIMOS: Record<CampoImportado, string[]> = {
  * sono profundo seja consumida antes de a de sono total olhar para ela.
  */
 const ORDEM_RESOLUCAO: CampoImportado[] = [
-  "recordedAt", "deepMinutes", "lightMinutes", "sleepMinutes",
+  "recordedAt", "deepMinutes", "lightMinutes", "remMinutes", "awakeMinutes", "sleepMinutes",
+  "awakenings", "efficiencyPct", "minHeartRate", "minSpo2",
   "systolic", "diastolic", "spo2", "heartRate", "steps", "calories",
 ];
 
@@ -163,11 +183,19 @@ const FAIXAS: Partial<Record<CampoImportado, [number, number]>> = {
   sleepMinutes: [1, 1440],
   deepMinutes: [0, 1440],
   lightMinutes: [0, 1440],
+  remMinutes: [0, 1440],
+  awakeMinutes: [0, 1440],
+  awakenings: [0, 1440],
+  efficiencyPct: [0, 100],
+  minHeartRate: [20, 260],
+  minSpo2: [50, 100],
   calories: [0, 20_000],
 };
 
 /** Campos cujo valor é duração e pode vir como "7h30", "7:30" ou "7,5". */
-const CAMPOS_DURACAO: CampoImportado[] = ["sleepMinutes", "deepMinutes", "lightMinutes"];
+const CAMPOS_DURACAO: CampoImportado[] = [
+  "sleepMinutes", "deepMinutes", "lightMinutes", "remMinutes", "awakeMinutes",
+];
 
 function normalizar(s: string): string {
   return s
@@ -535,6 +563,12 @@ export function importarCsv(
       sleepMinutes: valor(cols, "sleepMinutes"),
       deepMinutes: valor(cols, "deepMinutes"),
       lightMinutes: valor(cols, "lightMinutes"),
+      remMinutes: valor(cols, "remMinutes"),
+      awakeMinutes: valor(cols, "awakeMinutes"),
+      awakenings: valor(cols, "awakenings"),
+      efficiencyPct: valor(cols, "efficiencyPct"),
+      minHeartRate: valor(cols, "minHeartRate"),
+      minSpo2: valor(cols, "minSpo2"),
       calories: valor(cols, "calories"),
       validation: "estimated",
     };
@@ -575,6 +609,12 @@ export function importarCsv(
       const mm = l.sleepMinutes % 60;
       itens.push({ rotulo: "Sono", valor: `${hh}h${String(mm).padStart(2, "0")}` });
     }
+    if (l.remMinutes != null) itens.push({ rotulo: "Sono REM", valor: `${l.remMinutes} min` });
+    if (l.awakeMinutes != null) itens.push({ rotulo: "Acordado", valor: `${l.awakeMinutes} min` });
+    if (l.awakenings != null) itens.push({ rotulo: "Despertares", valor: String(l.awakenings) });
+    if (l.efficiencyPct != null) itens.push({ rotulo: "Eficiência", valor: `${l.efficiencyPct}%` });
+    if (l.minHeartRate != null) itens.push({ rotulo: "Batimentos mínimos", valor: `${l.minHeartRate} bpm` });
+    if (l.minSpo2 != null) itens.push({ rotulo: "Oxigenação mínima", valor: `${l.minSpo2}%` });
     return { quando: fmtData(l.recordedAt), itens };
   });
 

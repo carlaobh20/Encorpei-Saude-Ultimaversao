@@ -29,6 +29,7 @@ import {
   lerBatimentoColmi,
   lerHistoricoBatimento,
   medicaoColmiEncerrou,
+  pacoteEhFrequenciaCardiaca,
   pacoteHistoricoBatimento,
   pacoteIniciarBatimento,
   pacotePararBatimento,
@@ -153,6 +154,11 @@ export interface ConectarOpts {
   onSample: (s: WearableSample) => void;
   /** Histórico já gravado na pulseira, sem passar pelo aplicativo dela. */
   onHistorico?: (pontos: PontoBatimento[], deviceName: string) => void | Promise<void>;
+  /**
+   * Pacote do canal Colmi que não é comando 21, 105 nem 106.
+   * Quem grava é o hook — aqui só entregamos os bytes já copiados.
+   */
+  onPacoteProprietario?: (pacote: Uint8Array) => void;
   onDisconnect?: () => void;
   /** Janela de RR acumulados para calcular HRV. */
   hrvWindow?: number;
@@ -331,8 +337,12 @@ async function ligarFrequenciaColmi(
   const iniciar = () => escreverPacote(rx, pacoteIniciarBatimento());
 
   tx.addEventListener("characteristicvaluechanged", (event: any) => {
-    const pacote = copiarPacote(event.target.value as DataView);
+    const view = event.target.value as DataView;
+    const pacote = copiarPacote(view);
     recebidos.push(pacote);
+    if (!parado && !pacoteEhFrequenciaCardiaca(view)) {
+      opts.onPacoteProprietario?.(pacote);
+    }
     if (parado || !aoVivo) return;
     const bpm = lerBatimentoColmi(event.target.value);
     if (bpm != null) {

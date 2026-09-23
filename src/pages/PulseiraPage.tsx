@@ -147,6 +147,7 @@ const TIPOS: TipoImportado[] = ["batimentos", "oxigenacao", "pressao", "atividad
 const ORDEM_CAMPOS: CampoImportado[] = [
   "recordedAt", "heartRate", "spo2", "systolic", "diastolic",
   "steps", "calories", "sleepMinutes", "deepMinutes", "lightMinutes",
+  "remMinutes", "awakeMinutes", "awakenings", "efficiencyPct", "minHeartRate", "minSpo2",
 ];
 
 export default function PulseiraPage() {
@@ -262,6 +263,21 @@ export default function PulseiraPage() {
               // devolve o relógio do throttle e a próxima batida tenta de novo.
               setErro("Perdi a conexão com a internet no meio do envio. As próximas medidas continuam tentando.");
             });
+        },
+        onPacoteProprietario: (pacote) => {
+          sync
+            .gravarPacoteProprietario(pacote, {
+              deviceId: idDoAparelhoRef.current,
+              deviceName: nomeDoAparelhoRef.current,
+            })
+            .then(async (gravou) => {
+              if (!gravou) return;
+              const quando = new Date().toISOString();
+              setGravadasNaSessao((n) => n + 1);
+              setUltimaGravacao(quando);
+              try { await sync.marcarSincronizacao(idDoAparelhoRef.current, quando); } catch { /* o dado já entrou */ }
+            })
+            .catch(() => {});
         },
         onHistorico: async (pontos, deviceName) => {
           nomeDoAparelhoRef.current = deviceName;

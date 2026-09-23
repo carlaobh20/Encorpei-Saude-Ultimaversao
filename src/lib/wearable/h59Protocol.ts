@@ -39,9 +39,12 @@
  *   aparelho — não é palpite de UUID.
  *
  * O QUE ELE NÃO FAZ (e por quê)
- * - Histórico de sono, SpO₂ e passos usam outros comandos do mesmo canal,
- *   e a pressão desse aparelho continua sendo estimativa de PPG. Não entram
- *   aqui: o que esta conexão grava é batimento.
+ * - Não pede histórico de sono, SpO₂ nem passos. Esses comandos não estão
+ *   no repositório. 21, 105 e 106 continuam sendo só frequência cardíaca.
+ * - SpO₂, passos e pressão estimada não ganham gravador aqui.
+ * - Pacote que não é esses três comandos passa por `decodeProprietaryPacket`.
+ *   `kind: "sleep"` com `total_minutes` inteiro de 1 a 1440 vira noite.
+ *   Sem isso, o hex vai cru para `raw_device_data` e não cria noite.
  *
  * REGRA DE OURO
  * A "pressão arterial" desta pulseira é estimada por PPG, sem manguito e sem
@@ -148,6 +151,13 @@ export function instanteHistorico(diasAtras: number, agora = new Date()): { band
   const inicioLocal = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() - diasAtras);
   const bandTs = Math.floor(Date.UTC(inicioLocal.getFullYear(), inicioLocal.getMonth(), inicioLocal.getDate()) / 1000);
   return { bandTs, inicioLocal };
+}
+
+/** Comandos 21, 105 e 106. O resto do canal não é batimento. */
+export function pacoteEhFrequenciaCardiaca(data: DataView): boolean {
+  if (data.byteLength < 1) return false;
+  const cmd = data.getUint8(0);
+  return cmd === COLMI_CMD_HISTORICO_FC || cmd === COLMI_REALTIME || cmd === COLMI_REALTIME_PARAR;
 }
 
 export function pacoteHistoricoBatimento(bandTs: number): Uint8Array {
@@ -319,6 +329,134 @@ export function bufferParaHex(view: DataView): string {
     bytes.push(view.getUint8(i).toString(16).padStart(2, "0"));
   }
   return bytes.join(" ");
+}
+
+/**
+ * Chaves numéricas de `sleep_records` que um `kind: "sleep"` pode trazer.
+ * Fora desta lista o valor não entra na noite.
+ */
+export const CHAVES_SONO = [
+  "total_minutes", "deep_minutes", "light_minutes", "rem_minutes", "awake_minutes",
+  "awakenings", "efficiency_pct", "min_heart_rate", "min_spo2",
+] as const;
+
+export type ChaveSono = (typeof CHAVES_SONO)[number];
+
+const FAIXA_SONO: Record<ChaveSono, [number, number]> = {
+  total_minutes: [1, 1440],
+  deep_minutes: [0, 1440],
+  light_minutes: [0, 1440],
+  rem_minutes: [0, 1440],
+  awake_minutes: [0, 1440],
+  awakenings: [0, 1440],
+  efficiency_pct: [0, 100],
+  min_heart_rate: [20, 260],
+  min_spo2: [50, 100],
+};
+
+/** Data local da noite. `AAAA-MM-DD` vale como está; instante vira o dia do relógio local, como `instanteHistorico`. */
+export function dataLocalDaNoite(valor: string): string | null {
+  const dia = /^(\d{4})-(\d{2})-(\d{2})$/.exec(valor);
+  if (dia) {
+    const y = Number(dia[1]);
+    const m = Number(dia[2]);
+    const d = Number(dia[3]);
+    const dt = new Date(y, m - 1, d);
+    if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) return null;
+    return `${dia[1]}-${dia[2]}-${dia[3]}`;
+  }
+  const dt = new Date(valor);
+  if (Number.isNaN(dt.getTime())) return null;
+  const m = String(dt.getMonth() + 1).padStart(2, "0");
+  const d = String(dt.getDate()).padStart(2, "0");
+  return `${dt.getFullYear()}-${m}-${d}`;
+}
+
+function numeroDeSono(chave: ChaveSono, valor: unknown): number | null {
+  if (typeof valor !== "number" || !Number.isFinite(valor)) return null;
+  if (chave !== "efficiency_pct" && !Number.isInteger(valor)) return null;
+  const [min, max] = FAIXA_SONO[chave];
+  if (valor < min || valor > max) return null;
+  return valor;
+}
+
+function instanteValido(valor?: string): string | null {
+  if (!valor) return null;
+  const dt = new Date(valor);
+  if (Number.isNaN(dt.getTime())) return null;
+  return dt.toISOString();
+}
+
+export interface SonoExtraido {
+  destino: "sono";
+  sleepDate: string;
+  recordedAt: string;
+  campos: { total_minutes: number } & Partial<Record<ChaveSono, number>>;
+}
+
+export interface CruExtraido {
+  destino: "cru";
+  raw_payload: { hex: string };
+  payload_format: "hex";
+  device_timestamp: string | null;
+  processed: false;
+}
+
+export type PacoteClassificado = SonoExtraido | CruExtraido | { destino: "outro" };
+
+function cruDe(data: DataView, deviceTimestamp?: string): CruExtraido {
+  return {
+    destino: "cru",
+    raw_payload: { hex: bufferParaHex(data) },
+    payload_format: "hex",
+    device_timestamp: instanteValido(deviceTimestamp),
+    processed: false,
+  };
+}
+
+function extrairSono(packet: ProprietaryPacket): SonoExtraido | null {
+  const total = numeroDeSono("total_minutes", packet.payload.total_minutes);
+  if (total == null) return null;
+
+  const sleepDate =
+    (typeof packet.payload.sleep_date === "string" ? dataLocalDaNoite(packet.payload.sleep_date) : null)
+    ?? (packet.deviceTimestamp ? dataLocalDaNoite(packet.deviceTimestamp) : null)
+    ?? (typeof packet.payload.recorded_at === "string" ? dataLocalDaNoite(packet.payload.recorded_at) : null);
+  if (!sleepDate) return null;
+
+  const campos: SonoExtraido["campos"] = { total_minutes: total };
+  for (const chave of CHAVES_SONO) {
+    if (chave === "total_minutes") continue;
+    const n = numeroDeSono(chave, packet.payload[chave]);
+    if (n != null) campos[chave] = n;
+  }
+
+  let recordedAt = instanteValido(packet.deviceTimestamp);
+  if (!recordedAt && typeof packet.payload.recorded_at === "string") {
+    recordedAt = instanteValido(packet.payload.recorded_at);
+  }
+  if (!recordedAt) {
+    const [y, m, d] = sleepDate.split("-").map(Number);
+    recordedAt = new Date(y, m - 1, d).toISOString();
+  }
+
+  return { destino: "sono", sleepDate, recordedAt, campos };
+}
+
+/**
+ * `kind: "sleep"` só vira noite com `total_minutes` válido e uma data.
+ * `unknown`, ou sono sem isso, fica cru. SpO₂, passos e pressão não são deste fluxo.
+ */
+export function classificarPacoteProprietario(data: DataView): PacoteClassificado {
+  const decoded = decodeProprietaryPacket(data);
+  if (decoded.kind === "spo2" || decoded.kind === "steps" || decoded.kind === "bp_estimate") {
+    return { destino: "outro" };
+  }
+  if (decoded.kind === "sleep") {
+    const noite = extrairSono(decoded);
+    if (noite) return noite;
+  }
+  return cruDe(data, decoded.deviceTimestamp);
 }
 
 // ── Sanidade fisiológica ─────────────────────────────────────────────

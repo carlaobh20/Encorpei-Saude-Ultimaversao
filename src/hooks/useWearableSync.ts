@@ -32,11 +32,15 @@ import { getDevBypass } from "@/contexts/DevBypass";
 import { queryKeys } from "@/lib/queryKeys";
 import {
   amostraParaLeituras,
+  decidirGravacaoSono,
   linhasParaLeituras,
+  noiteDePacote,
   type DeviceContext,
+  type NoiteGravada,
 } from "@/lib/wearable/normalize";
 import type { WearableSample } from "@/lib/wearable/bleClient";
 import type { LinhaImportada } from "@/lib/wearable/importer";
+import { classificarPacoteProprietario } from "@/lib/wearable/h59Protocol";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -394,6 +398,108 @@ export function useWearableSync(patientUserId?: string) {
     []
   );
 
+  const buscarNoites = useCallback(
+    async (inicio: string, fim: string): Promise<NoiteGravada[]> => {
+      const out: NoiteGravada[] = [];
+      if (!uid) return out;
+      const colunas = "id,sleep_date,deep_minutes,light_minutes,rem_minutes,awake_minutes,awakenings,efficiency_pct,min_heart_rate,min_spo2";
+      for (let offset = 0; ; offset += PAGINA_LEITURA) {
+        const { data, error } = await (supabase as any)
+          .from("sleep_records")
+          .select(colunas)
+          .eq("patient_user_id", uid)
+          .gte("sleep_date", inicio)
+          .lte("sleep_date", fim)
+          .order("sleep_date", { ascending: true })
+          .range(offset, offset + PAGINA_LEITURA - 1);
+        if (error) throw error;
+        const linhas = (data ?? []) as NoiteGravada[];
+        out.push(...linhas);
+        if (linhas.length < PAGINA_LEITURA) break;
+      }
+      return out;
+    },
+    [uid]
+  );
+
+  /**
+   * Grava noites sem segunda linha na mesma data. O que já está preenchido fica;
+   * coluna null recebe o valor novo.
+   */
+  const persistirSono = useCallback(
+    async (linhas: Record<string, any>[]): Promise<ContagemTipo & { erros: string[] }> => {
+      const conta: ContagemTipo & { erros: string[] } = { ...zerado(), erros: [] };
+      if (linhas.length === 0 || !uid) return conta;
+
+      const datas = linhas.map((l) => String(l.sleep_date).slice(0, 10)).sort();
+      const existentes = await buscarNoites(datas[0], datas[datas.length - 1]);
+      const decisao = decidirGravacaoSono(linhas as Array<{ sleep_date: string }>, existentes);
+      conta.ignorados = decisao.ignoradas;
+
+      const parcial = zerado();
+      await inserirLote(
+        "sleep_records",
+        decisao.inserir.map((l) => limpar("sleep_records", l)),
+        parcial,
+        conta.erros,
+        () => {}
+      );
+      conta.importados += parcial.importados;
+      conta.falhas += parcial.falhas;
+      if (parcial.falhas === 0) conta.importados += decisao.mescladasNoInsert;
+      else conta.falhas += decisao.mescladasNoInsert;
+
+      for (const item of decisao.completar) {
+        const { error } = await (supabase as any)
+          .from("sleep_records")
+          .update(item.patch)
+          .eq("id", item.id)
+          .eq("patient_user_id", uid);
+        if (error) {
+          conta.falhas += item.linhas;
+          const msg = (error as any)?.message ?? "erro desconhecido";
+          if (conta.erros.length < 5 && !conta.erros.includes(msg)) conta.erros.push(msg);
+        } else {
+          conta.importados += item.linhas;
+        }
+      }
+      return conta;
+    },
+    [uid, buscarNoites, inserirLote]
+  );
+
+  /**
+   * Pacote que não é batimento (21, 105, 106). Sono clínico vai para
+   * `sleep_records`; o que o decodificador não entende vai cru para
+   * `raw_device_data` e não cria noite.
+   */
+  const gravarPacoteProprietario = useCallback(
+    async (pacote: Uint8Array, ctx: Omit<DeviceContext, "patientUserId">): Promise<boolean> => {
+      if (demo || !uid || pacote.byteLength === 0) return false;
+      const view = new DataView(pacote.buffer, pacote.byteOffset, pacote.byteLength);
+      const classificado = classificarPacoteProprietario(view);
+      if (classificado.destino === "outro") return false;
+      if (classificado.destino === "cru") {
+        const { error } = await (supabase as any).from("raw_device_data").insert({
+          patient_user_id: uid,
+          device_id: ctx.deviceId ?? null,
+          raw_payload: classificado.raw_payload,
+          payload_format: classificado.payload_format,
+          device_timestamp: classificado.device_timestamp,
+          processed: false,
+        });
+        if (error) throw error;
+        return false;
+      }
+      const noite = noiteDePacote(classificado, { ...ctx, patientUserId: uid });
+      const r = await persistirSono([noite]);
+      if (r.importados > 0) qc.invalidateQueries({ queryKey: queryKeys.sleep.all });
+      if (r.falhas > 0 && r.importados === 0) throw new Error(r.erros[0] ?? "não consegui gravar o sono");
+      return r.importados > 0;
+    },
+    [demo, uid, persistirSono, qc]
+  );
+
   /**
    * Importa TODAS as linhas normalizadas — sem teto de 50, e incluindo
    * atividade e sono, que o normalizador já produzia e a tela jogava fora.
@@ -483,14 +589,25 @@ export function useWearableSync(patientUserId?: string) {
           chaveArquivo: (r) => String(r.activity_date).slice(0, 10),
           valorJanela: (r) => String(r.activity_date).slice(0, 10),
         },
-        {
-          tipo: "sono", tabela: "sleep_records", campoJanela: "sleep_date",
-          colunas: "sleep_date", linhas: leituras.sleep as any[],
-          chaveBanco: (r) => String(r.sleep_date).slice(0, 10),
-          chaveArquivo: (r) => String(r.sleep_date).slice(0, 10),
-          valorJanela: (r) => String(r.sleep_date).slice(0, 10),
-        },
       ];
+
+      if (leituras.sleep.length > 0) {
+        const conta = resumo.porTipo.sono;
+        try {
+          const r = await persistirSono(leituras.sleep as any[]);
+          conta.importados += r.importados;
+          conta.ignorados += r.ignorados;
+          conta.falhas += r.falhas;
+          for (const msg of r.erros) {
+            if (resumo.erros.length < 5 && !resumo.erros.includes(msg)) resumo.erros.push(msg);
+          }
+        } catch (e) {
+          conta.falhas += leituras.sleep.length;
+          const msg = e instanceof Error ? e.message : "não consegui conferir o que já estava salvo";
+          if (resumo.erros.length < 5) resumo.erros.push(msg);
+        }
+        avancar(leituras.sleep.length);
+      }
 
       for (const plano of planos) {
         const conta = resumo.porTipo[plano.tipo];
@@ -543,7 +660,7 @@ export function useWearableSync(patientUserId?: string) {
       setProgresso({ fase: null, feitos: 0, total: 0 });
       return resumo;
     },
-    [demo, uid, registrarDispositivo, buscarExistentes, inserirLote, marcarSincronizacao, invalidar]
+    [demo, uid, registrarDispositivo, buscarExistentes, inserirLote, marcarSincronizacao, invalidar, persistirSono]
   );
 
   return {
@@ -553,6 +670,7 @@ export function useWearableSync(patientUserId?: string) {
     marcarSincronizacao,
     gravarAmostra,
     gravarUltimaAmostra,
+    gravarPacoteProprietario,
     reiniciarThrottle,
     importar,
   };

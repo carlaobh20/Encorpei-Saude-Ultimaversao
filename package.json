@@ -13,7 +13,8 @@
     "preview": "vite preview",
     "check": "tsc -p tsconfig.app.json --noEmit && eslint . --max-warnings 400",
     "typecheck:raw": "tsc -p tsconfig.app.json --noEmit",
-    "typecheck": "tsc -p tsconfig.app.json --noEmit"
+    "typecheck": "tsc -p tsconfig.app.json --noEmit",
+    "test": "node --experimental-strip-types --test src/lib/wearable/sono.test.ts"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.14",
