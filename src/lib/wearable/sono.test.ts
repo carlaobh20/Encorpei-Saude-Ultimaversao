@@ -78,6 +78,34 @@ test("arquivo com total, profundo e leve continua estimado, uma noite", () => {
   assert.equal(sono[0].sleep_date, lido.linhas[0].recordedAt.slice(0, 10));
 });
 
+test("noite desta semana no formato da tela original entra na leitura", () => {
+  // A tela da pulseira mostra 8 h 11 min = profundo 2 h 17 + leve 4 h 44 + REM 1 h 10 + desperto 0.
+  const csv = [
+    "data,sono profundo,sono leve,rem,desperto",
+    "22/09/2026,2 h 17 min,4 h 44 min,1 h 10 min,0 h 0 min",
+    "23/09/2026,2 h 17 min,4 h 44 min,1 h 10 min,0 h 0 min",
+  ].join("\n");
+  const lido = importarCsv(csv);
+  assert.equal(lido.linhas.length, 2);
+  const sono = linhasParaLeituras(lido.linhas, ctx).sleep;
+  assert.equal(sono.length, 2);
+  const agora = new Date("2026-09-23T15:00:00.000Z");
+  assert.equal(new Set(sono.map((s) => s.sleep_date)).size, 2);
+  for (const noite of sono) {
+    assert.equal(noite.total_minutes, 8 * 60 + 11);
+    assert.equal(noite.deep_minutes, 2 * 60 + 17);
+    assert.equal(noite.light_minutes, 4 * 60 + 44);
+    assert.equal(noite.rem_minutes, 1 * 60 + 10);
+    assert.equal(noite.awake_minutes, 0);
+    assert.equal(noite.efficiency_pct, null);
+    assert.equal(noiteNaJanela(noite.sleep_date, agora), true);
+  }
+
+  const comTotal = importarCsv("data,sono total\n23/09/2026,8 h 11 min\n");
+  assert.equal(comTotal.linhas.length, 1);
+  assert.equal(comTotal.linhas[0].sleepMinutes, 8 * 60 + 11);
+});
+
 test("coluna nova só entra por mapeamento manual; fora da faixa cai o campo, não a noite", () => {
   const csv = "data,sono,fase rem,eficiencia\n03/09/2026,400,90,150\n";
   const semMapa = importarCsv(csv);

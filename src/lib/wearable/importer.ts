@@ -152,9 +152,10 @@ const SINONIMOS: Record<CampoImportado, string[]> = {
   ],
   deepMinutes: ["deep sleep", "deep", "deep sleep time", "sono profundo", "profundo"],
   lightMinutes: ["light sleep", "light", "light sleep time", "sono leve", "leve"],
-  // Sem sinônimo até um export real mostrar o cabeçalho. O mapeamento manual aceita a coluna.
-  remMinutes: [],
-  awakeMinutes: [],
+  // Rótulos da tela de sono da pulseira (REM, Desperto). Igualdade exata:
+  // "sono rem" continua fora, senão volta o includes.
+  remMinutes: ["rem"],
+  awakeMinutes: ["desperto"],
   awakenings: [],
   efficiencyPct: [],
   minHeartRate: [],
@@ -330,7 +331,8 @@ function parseDuracaoMinutos(v: string): number | undefined {
   const bruto = v.trim().toLowerCase();
   if (!bruto) return undefined;
 
-  const hm = bruto.match(/^(\d{1,2})\s*(?:h|:)\s*(\d{1,2})?\s*m?$/);
+  // "8 h 11 min" é o texto da tela. Sem o "min", o número virava 811 e saía da faixa.
+  const hm = bruto.match(/^(\d{1,2})\s*(?:h|:)\s*(\d{1,2})?\s*(?:minutos|min|m)?$/);
   if (hm) {
     const h = Number(hm[1]);
     const m = hm[2] ? Number(hm[2]) : 0;
@@ -572,6 +574,18 @@ export function importarCsv(
       calories: valor(cols, "calories"),
       validation: "estimated",
     };
+
+    // A tela não tem coluna "total": 8 h 11 min é profundo + leve + REM + desperto.
+    if (
+      linha.sleepMinutes == null
+      && linha.deepMinutes != null
+      && linha.lightMinutes != null
+      && linha.remMinutes != null
+      && linha.awakeMinutes != null
+    ) {
+      const soma = linha.deepMinutes + linha.lightMinutes + linha.remMinutes + linha.awakeMinutes;
+      if (soma >= 1 && soma <= 1440) linha.sleepMinutes = soma;
+    }
 
     const temAlgo =
       linha.heartRate != null || linha.spo2 != null || linha.systolic != null ||
