@@ -13,6 +13,7 @@ import {
 } from "./h59Protocol.ts";
 import { importarCsv } from "./importer.ts";
 import { decidirGravacaoSono, linhasParaLeituras, noiteDePacote, type NoiteGravada } from "./normalize.ts";
+import { noiteNaJanela } from "../janelaSono.ts";
 
 afterEach(() => setProprietaryDecoder(() => null));
 
@@ -178,6 +179,18 @@ test("data da noite segue o calendário local da pulseira", () => {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const dia = String(d.getDate()).padStart(2, "0");
   assert.equal(dataLocalDaNoite(iso), `${d.getFullYear()}-${m}-${dia}`);
+});
+
+test("duas noites salvas antes dos 90 dias entram na leitura", () => {
+  const agora = new Date("2026-09-23T15:00:00.000Z");
+  const corte90 = new Date(agora);
+  corte90.setUTCDate(corte90.getUTCDate() - 90);
+  const limite90 = corte90.toISOString().slice(0, 10);
+  for (const dia of ["2026-01-15", "2026-03-01"]) {
+    assert.ok(dia < limite90);
+    assert.equal(noiteNaJanela(dia, agora), true);
+  }
+  assert.equal(noiteNaJanela("2026-09-23", agora), true);
 });
 
 test("reimportar preenche só o que estava vazio", () => {

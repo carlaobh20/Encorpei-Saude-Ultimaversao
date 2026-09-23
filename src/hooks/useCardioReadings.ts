@@ -21,6 +21,7 @@ import type {
   ActivityReading, BloodPressureReading, GlucoseReading, HeartRateReading,
   SleepReading, Spo2Reading, WeightReading,
 } from "@/types/cardio";
+import { limitesSono } from "@/lib/janelaSono";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -360,13 +361,14 @@ export function useGlucose(patientUserId?: string, opcoes?: OpcoesSerie) {
 // ── Sono ─────────────────────────────────────────────────────────────
 
 export function useSleep(patientUserId?: string, opcoes?: OpcoesSerie) {
-  // Sono é uma linha por noite: 90 dias cabem em 90 linhas com folga. O teto
-  // baixo aqui é adequado, não uma limitação disfarçada — mas continua
-  // reportado em `cobertura.truncado` se algum dia deixar de ser.
+  // Uma linha por noite. A janela de 90 dias das outras séries escondia
+  // noite antiga e a tela caía em "sem dados" com o registro já salvo.
+  // O teto de 400 linhas continua; `cobertura.truncado` avisa se estourar.
+  const sono = limitesSono();
   const r = useLeituras<SleepReading>(
     { tabela: "sleep_records", chave: queryKeys.sleep.de, demo: DEMO_SLEEP, ordenarPor: "sleep_date", limite: 400 },
     patientUserId,
-    opcoes
+    { ...opcoes, desde: opcoes?.desde ?? sono.desde, ate: opcoes?.ate ?? sono.ate },
   );
   const mediaMinutos =
     r.data.length > 0 ? Math.round(r.data.slice(0, 7).reduce((s, x) => s + x.total_minutes, 0) / Math.min(7, r.data.length)) : null;
