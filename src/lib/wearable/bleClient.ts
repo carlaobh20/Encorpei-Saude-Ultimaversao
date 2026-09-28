@@ -17,6 +17,10 @@
  */
 
 import {
+  escolherPermitido,
+  deveRetomarAposQueda,
+} from "./conexaoFixa";
+import {
   COLMI_SERVICOS,
   GATT,
   H59_DEVICE_NAME_PREFIXES,
@@ -162,6 +166,11 @@ export interface ConectarOpts {
   onDisconnect?: () => void;
   /** Janela de RR acumulados para calcular HRV. */
   hrvWindow?: number;
+  /**
+   * Permanece ao sair de /pulseira. Se o rádio cair, tenta o mesmo aparelho
+   * — sem seletor e sem arquivo. A caminhada deixa desligado.
+   */
+  fixa?: boolean;
 }
 
 const SERVICOS_OPCIONAIS = [
@@ -375,6 +384,114 @@ async function ligarFrequenciaColmi(
   };
 }
 
+/** Sessões fixas ficam referenciadas para o GC não derrubar a ligação ao sair da página. */
+const sessoesFixas = new Set<BleConnection>();
+
+export function temSessaoFixa(): boolean {
+  return sessoesFixas.size > 0;
+}
+
+/**
+ * Liga um aparelho já escolhido. `fixa` segura a referência e, na queda do
+ * rádio, reconecta o mesmo objeto — sem `requestDevice` e sem arquivo.
+ * ponytail: cada retomada chama de novo o ligar, e o ciclo anterior se cala
+ * pela flag `parado` dele. Um listener único se a queda passar de MAX_RETOMADAS.
+ */
+async function abrirSessao(device: BleDevice, opts: ConectarOpts): Promise<BleConnection> {
+  const impedimento = motivoIndisponivel();
+  if (impedimento) throw new Error(impedimento);
+
+  let pedidoEncerrar = false;
+  let tentativasQueda = 0;
+  let parar: (() => Promise<void>) | null = null;
+  let firmware: string | null = null;
+  let api: BleConnection | null = null;
+
+  const subir = async () => {
+    const server: BleServer = await device.gatt.connect();
+    if (!firmware) {
+      try {
+        const info = await server.getPrimaryService(GATT.deviceInfoService);
+        const ch = await info.getCharacteristic(GATT.firmwareRevision);
+        firmware = new TextDecoder().decode(await ch.readValue());
+      } catch {
+        /* nem todo firmware expõe — não é erro */
+      }
+    }
+    if (parar) {
+      try { await parar(); } catch { /* ciclo anterior já mudo */ }
+    }
+    const pararPadrao = await ligarFrequenciaPadrao(server, opts);
+    const novo = pararPadrao ?? await ligarFrequenciaColmi(server, opts, device.name ?? "Pulseira");
+    if (!novo) {
+      pedidoEncerrar = true;
+      const vistos = rotuloCanais((await listarServicos(server)).map((s) => prefixoUuid(s.uuid)));
+      if (device.gatt?.connected) device.gatt.disconnect();
+      throw new Error(
+        vistos
+          ? `A pulseira conectou, mas nenhum canal entregou batimentos. Canais vistos: ${vistos}.`
+          : "A pulseira conectou, mas o navegador não mostrou os canais dela. Toque em conectar e escolha a pulseira outra vez na lista.",
+      );
+    }
+    parar = novo;
+  };
+
+  device.addEventListener("gattserverdisconnected", () => {
+    if (pedidoEncerrar) {
+      if (api) sessoesFixas.delete(api);
+      opts.onDisconnect?.();
+      return;
+    }
+    if (!opts.fixa || !deveRetomarAposQueda(tentativasQueda)) {
+      if (api) sessoesFixas.delete(api);
+      opts.onDisconnect?.();
+      return;
+    }
+    tentativasQueda += 1;
+    subir()
+      .then(() => { tentativasQueda = 0; })
+      .catch(() => {
+        if (api) sessoesFixas.delete(api);
+        opts.onDisconnect?.();
+      });
+  });
+
+  try {
+    await subir();
+  } catch (e) {
+    pedidoEncerrar = true;
+    throw e;
+  }
+
+  const readBattery = async (): Promise<number | null> => {
+    try {
+      const server: BleServer = device.gatt?.connected ? device.gatt : await device.gatt.connect();
+      const svc = await server.getPrimaryService(GATT.batteryService);
+      const ch = await svc.getCharacteristic(GATT.batteryLevel);
+      const v = await ch.readValue();
+      return v.getUint8(0);
+    } catch {
+      return null;
+    }
+  };
+
+  api = {
+    deviceName: device.name ?? "Pulseira",
+    deviceId: device.id ?? "unknown",
+    firmware,
+    readBattery,
+    disconnect: async () => {
+      pedidoEncerrar = true;
+      if (api) sessoesFixas.delete(api);
+      if (parar) await parar();
+      if (device.gatt?.connected) device.gatt.disconnect();
+    },
+  };
+
+  if (opts.fixa) sessoesFixas.add(api);
+  return api;
+}
+
 /**
  * Abre o seletor nativo do navegador, conecta e passa a emitir amostras.
  * Precisa ser chamado a partir de um gesto do usuário (clique) — exigência
@@ -393,53 +510,21 @@ export async function conectarPulseira(opts: ConectarOpts): Promise<BleConnectio
     optionalServices: SERVICOS_OPCIONAIS,
   });
 
-  const server: BleServer = await device.gatt.connect();
+  return abrirSessao(device, opts);
+}
 
-  // Firmware (rastreabilidade da leitura — vai junto no registro clínico).
-  let firmware: string | null = null;
-  try {
-    const info = await server.getPrimaryService(GATT.deviceInfoService);
-    const ch = await info.getCharacteristic(GATT.firmwareRevision);
-    firmware = new TextDecoder().decode(await ch.readValue());
-  } catch {
-    /* nem todo firmware expõe — não é erro */
-  }
-
-  const pararPadrao = await ligarFrequenciaPadrao(server, opts);
-  const parar = pararPadrao ?? await ligarFrequenciaColmi(server, opts, device.name ?? "Pulseira");
-  if (!parar) {
-    const vistos = rotuloCanais((await listarServicos(server)).map((s) => prefixoUuid(s.uuid)));
-    if (device.gatt?.connected) device.gatt.disconnect();
-    throw new Error(
-      vistos
-        ? `A pulseira conectou, mas nenhum canal entregou batimentos. Canais vistos: ${vistos}.`
-        : "A pulseira conectou, mas o navegador não mostrou os canais dela. Toque em conectar e escolha a pulseira outra vez na lista.",
-    );
-  }
-
-  device.addEventListener("gattserverdisconnected", () => opts.onDisconnect?.());
-
-  const readBattery = async (): Promise<number | null> => {
-    try {
-      const svc = await server.getPrimaryService(GATT.batteryService);
-      const ch = await svc.getCharacteristic(GATT.batteryLevel);
-      const v = await ch.readValue();
-      return v.getUint8(0);
-    } catch {
-      return null;
-    }
-  };
-
-  return {
-    deviceName: device.name ?? "Pulseira",
-    deviceId: device.id ?? "unknown",
-    firmware,
-    readBattery,
-    disconnect: async () => {
-      await parar();
-      if (device.gatt?.connected) device.gatt.disconnect();
-    },
-  };
+/**
+ * Retoma um aparelho que este navegador já autorizou. Sem seletor e sem
+ * arquivo. No iPhone devolve null — o navegador não fala Bluetooth.
+ */
+export async function retomarPulseira(externalId: string, opts: ConectarOpts): Promise<BleConnection | null> {
+  if (motivoIndisponivel()) return null;
+  const bluetooth = (navigator as any).bluetooth;
+  if (typeof bluetooth?.getDevices !== "function") return null;
+  const lista: BleDevice[] = await bluetooth.getDevices();
+  const device = escolherPermitido(lista, externalId);
+  if (!device) return null;
+  return abrirSessao(device, { ...opts, fixa: true });
 }
 
 // ── Diagnóstico ──────────────────────────────────────────────────────

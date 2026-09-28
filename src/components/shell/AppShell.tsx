@@ -22,6 +22,7 @@ import { getDevBypass, clearDevBypass } from "@/contexts/DevBypass";
 import { APP_NAME } from "@/lib/config";
 import { RegistroRapido } from "@/components/registro/RegistroRapido";
 import { useMarcaClinica } from "@/hooks/useMarcaClinica";
+import { useConexaoFixa } from "@/hooks/useConexaoFixa";
 
 /**
  * Casca do app do PACIENTE.
@@ -904,6 +905,7 @@ function MarcaNoTopo() {
 const ESTILO_SHELL = { "--barra-inferior": "calc(4rem + env(safe-area-inset-bottom, 0px))" } as CSSProperties;
 
 export function AppShell() {
+  useConexaoFixa();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [registroAberto, setRegistroAberto] = useState(false);
   const location = useLocation();
