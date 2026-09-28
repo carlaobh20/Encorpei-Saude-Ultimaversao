@@ -404,6 +404,8 @@ export interface RegisteredDevice {
   category: string;
   protocol: "ble" | "health_connect" | "healthkit" | "import" | "manual";
   vital_types: VitalType[];
+  /** Id local do Web Bluetooth, quando a ligação fixa já autorizou o aparelho. */
+  external_id?: string | null;
   last_sync_at?: string | null;
   status: "active" | "inactive";
   created_at: string;

@@ -51,6 +51,7 @@ import {
   conectarPulseira, bluetoothDisponivel, motivoIndisponivel, classificarFalhaBluetooth, diagnosticarPulseira,
   type BleConnection, type WearableSample, type DiagnosticoPulseira,
 } from "@/lib/wearable/bleClient";
+import { descartarPendente, guardarPendente } from "@/lib/wearable/conexaoFixa";
 import {
   importarCsv, CAMPO_ROTULO,
   type ResultadoImportacao, type CampoImportado,
@@ -83,7 +84,7 @@ const ESTADO: Record<EstadoPulseira, {
   },
   sincronizando: {
     titulo: "Sincronizando",
-    frase: "Enviando suas medidas. Não feche esta tela.",
+    frase: "Enviando suas medidas. Pode sair desta tela; fechar o navegador interrompe até você abrir o app de novo.",
     variante: "informativo",
   },
   atualizada: {
@@ -178,6 +179,7 @@ export default function PulseiraPage() {
   // a desconexão. Refs em vez de estado para ele não capturar valor velho.
   const idDoAparelhoRef = useRef<string | null>(null);
   const nomeDoAparelhoRef = useRef<string>("Pulseira");
+  const montada = useRef(true);
 
   // ── Importação ────────────────────────────────────────────────────
   const [textoArquivo, setTextoArquivo] = useState<string | null>(null);
@@ -194,7 +196,7 @@ export default function PulseiraPage() {
   const [erroDiagnostico, setErroDiagnostico] = useState<string | null>(null);
   const [tecnicoAberto, setTecnicoAberto] = useState(false);
 
-  useEffect(() => () => { conexao?.disconnect().catch(() => {}); }, [conexao]);
+  useEffect(() => () => { montada.current = false; }, []);
 
   const aparelho = devices.find((d) => d.category === "h59") ?? null;
 
@@ -246,22 +248,34 @@ export default function PulseiraPage() {
 
     try {
       const con = await conectarPulseira({
+        fixa: true,
         onSample: (s) => {
-          setAmostra(s);
+          if (montada.current) setAmostra(s);
           // Throttle e modo demo ficam dentro do hook: aqui só tentamos.
           sync
             .gravarAmostra(s, { deviceId: idDoAparelhoRef.current, deviceName: nomeDoAparelhoRef.current })
             .then(async (gravou) => {
               if (!gravou) return;
+              descartarPendente({ at: s.at, bpm: s.bpm });
               const quando = new Date().toISOString();
-              setGravadasNaSessao((n) => n + 1);
-              setUltimaGravacao(quando);
+              if (montada.current) {
+                setGravadasNaSessao((n) => n + 1);
+                setUltimaGravacao(quando);
+              }
               try { await sync.marcarSincronizacao(idDoAparelhoRef.current, quando); } catch { /* o dado já entrou */ }
             })
             .catch(() => {
-              // Falha de rede no meio da sessão não derruba a tela: o hook
-              // devolve o relógio do throttle e a próxima batida tenta de novo.
-              setErro("Perdi a conexão com a internet no meio do envio. As próximas medidas continuam tentando.");
+              // Falha de rede não pede arquivo: a amostra fica na fila e entra
+              // quando a internet volta, mesmo se esta tela já fechou.
+              guardarPendente({
+                at: s.at,
+                bpm: s.bpm,
+                deviceName: nomeDoAparelhoRef.current,
+                deviceId: idDoAparelhoRef.current,
+              });
+              if (montada.current) {
+                setErro("Perdi a conexão com a internet no meio do envio. As próximas medidas continuam tentando.");
+              }
             });
         },
         onPacoteProprietario: (pacote) => {

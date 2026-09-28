@@ -185,19 +185,47 @@ export function useWearableSync(patientUserId?: string) {
    * devolve o id dela — que é o `source_device_id` de toda leitura gravada
    * depois. Sem esse id, o médico vê "veio de um dispositivo" sem saber qual.
    *
-   * A chave de identidade é (paciente, categoria, nome anunciado). O certo seria
-   * um `external_id` com o id do Web Bluetooth, mas a tabela não tem essa coluna
-   * e migração está fora do escopo desta correção — fica anotado aqui porque é a
-   * próxima melhoria: o nome anunciado pode repetir entre aparelhos do mesmo lote.
+   * A chave é `external_id` (id local do Web Bluetooth) quando existe. Sem ele,
+   * cai no nome anunciado — que pode repetir entre aparelhos do mesmo lote.
+   * Nome igual com outro `external_id` vira outra linha, em vez de roubar a primeira.
    */
   const registrarDispositivo = useCallback(
     async (info: DadosDoDispositivo): Promise<string | null> => {
       if (demo || !uid) return null;
 
       const nome = info.deviceName?.trim() || "Pulseira";
+      const externo = info.externalId?.trim() || null;
+      const vitais = info.vitalTypes ?? ["heart_rate"];
+
+      const gravarPatch = async (id: string, patch: Record<string, any>) => {
+        const { error } = await (supabase as any)
+          .from("registered_devices").update(patch).eq("id", id);
+        if (error) throw error;
+        qc.invalidateQueries({ queryKey: queryKeys.devices.all });
+      };
+
+      if (externo) {
+        const { data: peloId, error: erroId } = await (supabase as any)
+          .from("registered_devices")
+          .select("id")
+          .eq("patient_user_id", uid)
+          .eq("external_id", externo)
+          .limit(1)
+          .maybeSingle();
+        if (erroId) throw erroId;
+        if (peloId?.id) {
+          const patch: Record<string, any> = {
+            status: "active", protocol: info.protocolo, display_name: nome,
+          };
+          if (info.firmware) patch.firmware = info.firmware;
+          await gravarPatch(peloId.id as string, patch);
+          return peloId.id as string;
+        }
+      }
+
       const { data: existente, error: erroBusca } = await (supabase as any)
         .from("registered_devices")
-        .select("id, firmware, vital_types")
+        .select("id, external_id")
         .eq("patient_user_id", uid)
         .eq("category", "h59")
         .eq("display_name", nome)
@@ -205,15 +233,11 @@ export function useWearableSync(patientUserId?: string) {
         .maybeSingle();
       if (erroBusca) throw erroBusca;
 
-      const vitais = info.vitalTypes ?? ["heart_rate"];
-
-      if (existente?.id) {
+      if (existente?.id && (!externo || !existente.external_id || existente.external_id === externo)) {
         const patch: Record<string, any> = { status: "active", protocol: info.protocolo };
         if (info.firmware) patch.firmware = info.firmware;
-        const { error } = await (supabase as any)
-          .from("registered_devices").update(patch).eq("id", existente.id);
-        if (error) throw error;
-        qc.invalidateQueries({ queryKey: queryKeys.devices.all });
+        if (externo && !existente.external_id) patch.external_id = externo;
+        await gravarPatch(existente.id as string, patch);
         return existente.id as string;
       }
 
@@ -230,6 +254,7 @@ export function useWearableSync(patientUserId?: string) {
           protocol: info.protocolo,
           vital_types: vitais,
           firmware: info.firmware ?? null,
+          external_id: externo,
           status: "active",
         })
         .select("id")
@@ -526,7 +551,7 @@ export function useWearableSync(patientUserId?: string) {
 
       // O aparelho precisa existir ANTES das leituras: `source_device_id` é
       // chave estrangeira para `registered_devices`.
-      const deviceId = await registrarDispositivo({ ...info, protocolo: "import" });
+      const deviceId = await registrarDispositivo(info);
 
       const leituras = linhasParaLeituras(linhas, {
         patientUserId: uid,

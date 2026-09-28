@@ -311,6 +311,8 @@ export interface DeviceRow extends Timestamps {
   protocol: string;
   vital_types: string[];
   firmware: string | null;
+  /** Id local do Web Bluetooth. Não é UUID de serviço. */
+  external_id: string | null;
   last_sync_at: string | null;
   status: string;
 }
@@ -370,7 +372,7 @@ export type Database = {
       cardio_patients: Table<CardioPatientRow, "comorbidities" | "history" | "intake" | "updated_at">;
       professional_patient_links: Table<LinkRow, "status">;
       cardio_targets: Table<TargetsRow, "updated_at">;
-      registered_devices: Table<DeviceRow, "status" | "vital_types" | "category" | "protocol">;
+      registered_devices: Table<DeviceRow, "status" | "vital_types" | "category" | "protocol" | "external_id">;
       raw_device_data: Table<RawDeviceRow, "processed" | "received_at">;
       bp_readings: Table<BpRow, "recorded_at" | "context" | "cuff_validated" | "source_type" | "entered_by" | "validation_status">;
       hr_readings: Table<HrRow, "recorded_at" | "source_type" | "entered_by" | "validation_status">;
