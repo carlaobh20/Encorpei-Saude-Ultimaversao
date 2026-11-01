@@ -257,7 +257,7 @@ export default function ProPatientDetailPage() {
   ];
 
   return (
-    <div className="mx-auto w-full max-w-[1320px] px-5 md:px-8 lg:px-10 py-6 md:py-8">
+    <div className="pro-patient-detail mx-auto w-full max-w-[1320px] px-5 md:px-8 lg:px-10 py-6 md:py-8">
       <PageHeader
         title={patient.full_name}
         subtitle={[
@@ -292,7 +292,7 @@ export default function ProPatientDetailPage() {
       </p>
 
       {/* Abas */}
-      <div className="flex items-center gap-1 mb-6 border-b border-border overflow-x-auto">
+      <div className="clinical-detail-tabs flex items-center gap-1 mb-6 border-b border-border overflow-x-auto">
         {TABS.map((t) => (
           <button
             key={t.key}
@@ -310,7 +310,7 @@ export default function ProPatientDetailPage() {
       {tab === "resumo" && (
         <div className="space-y-6">
           {/* Resumo entre consultas */}
-          <SurfaceCard variant="highlight">
+          <SurfaceCard variant="highlight" className="clinical-patient-summary">
             <SectionHeader title="Resumo entre consultas" icon={ClipboardList} subtitle="o que aconteceu desde o último registro relevante" />
             <p className="text-sm leading-relaxed text-foreground">{resumoParagrafo}</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 text-xs">
@@ -325,7 +325,7 @@ export default function ProPatientDetailPage() {
                 <p className="text-[10px] text-muted-foreground">últimos {pesoRecente.length} registros</p>
               </div>
               <div className="rounded-xl bg-card/70 p-2.5">
-                <p className="text-muted-foreground">Adesão (14d)</p>
+                <p className="text-muted-foreground">Adesão autorrelatada (14d)</p>
                 <p className="font-semibold text-sm tabular-nums">{adesao14 != null ? `${Math.round(adesao14 * 100)}%` : "—"}</p>
               </div>
               <div className="rounded-xl bg-card/70 p-2.5">
@@ -340,12 +340,6 @@ export default function ProPatientDetailPage() {
               </p>
             )}
           </SurfaceCard>
-
-          {/* Plano de monitoramento — o que o paciente vai ser cobrado a registrar */}
-          {/* `professionalId` vinha fixo em `null`: todo item de plano era
-              gravado sem autoria, apesar de a coluna existir e ter índice.
-              O perfil já está carregado nesta tela — passá-lo custa nada. */}
-          <PlanoMonitoramentoEditor patientUserId={patientId} professionalId={doctor?.id ?? null} />
 
           {/* Alvos vs. atual */}
           <div>
@@ -368,6 +362,12 @@ export default function ProPatientDetailPage() {
               <SleepActivityChart sleep={sleep.records} activity={activity.records} />
             </div>
           </div>
+
+          {/* Plano de monitoramento — o que o paciente vai ser cobrado a registrar */}
+          {/* `professionalId` vinha fixo em `null`: todo item de plano era
+              gravado sem autoria, apesar de a coluna existir e ter índice.
+              O perfil já está carregado nesta tela — passá-lo custa nada. */}
+          <PlanoMonitoramentoEditor patientUserId={patientId} professionalId={doctor?.id ?? null} />
         </div>
       )}
 

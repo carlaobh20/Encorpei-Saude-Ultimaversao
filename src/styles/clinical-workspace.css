@@ -1,0 +1,234 @@
+/* Área clínica: densidade de trabalho, com cor reservada ao estado clínico. */
+body:has(.pro-clinical), .pro-clinical {
+  --background: 210 17% 98%;
+  --card: 0 0% 100%;
+  --foreground: 220 16% 13%;
+  --primary: 220 16% 13%;
+  --muted: 210 14% 94%;
+  --secondary: 210 14% 94%;
+  --border: 214 15% 90%;
+  --muted-foreground: 216 10% 43%;
+}
+.pro-clinical :where(button, a, summary, select):focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }
+.app-finance.pro-clinical .app-sidebar { width: 224px; background: hsl(var(--card)); }
+.pro-clinical .app-sidebar-brand { padding: 24px 18px 20px; gap: 9px; }
+.pro-clinical .app-sidebar-brand img { width: 33px !important; height: 33px !important; }
+.pro-clinical .app-sidebar-brand .font-display { font-size: 16px; font-weight: 650; letter-spacing: -.04em; }
+.pro-brand-caption { font-size: 10px; color: hsl(var(--muted-foreground)); letter-spacing: .01em; margin-top: 4px; }
+.pro-nav-group { margin: 18px 12px 8px; color: hsl(var(--muted-foreground)); font-size: 9px; font-weight: 650; letter-spacing: .13em; }
+.pro-clinical .app-nav-item { border-radius: 9px; min-height: 40px; padding: 9px 12px; font-size: 12px; gap: 10px; }
+.pro-clinical .app-nav-item svg { width: 16px; height: 16px; }
+.pro-clinical .pro-workspace-bar { min-height: 56px; padding: 6px 24px; background: hsl(var(--card)); font-size: 12px; }
+.pro-breadcrumb { display: flex; align-items: center; gap: 12px; color: hsl(var(--muted-foreground)); }
+.pro-breadcrumb > svg { width: 17px; height: 17px; color: hsl(var(--foreground)); }
+.pro-breadcrumb strong { color: hsl(var(--foreground)); font-weight: 500; }
+.pro-demo-note { text-align: center; padding: 4px 16px; background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); font-size: 10px; letter-spacing: .03em; }
+.pro-main > div, .pro-page { width: 100%; max-width: 1536px; margin-inline: auto; padding: 24px; }
+.pro-clinical .app-page-header { margin-bottom: 20px; align-items: center; }
+.pro-clinical .app-page-header h1 { font-size: 26px; font-weight: 650; letter-spacing: -.045em; }
+.pro-clinical .app-page-header p { font-size: 12px; margin-top: 5px; }
+.pro-clinical .app-button { border-radius: 9px; min-height: 36px; font-size: 12px; }
+.pro-clinical :where(.app-surface, .app-stat, .app-panel) { border-radius: 12px; padding: 16px; }
+.pro-clinical .app-stat-label { font-size: 11px; }
+.pro-clinical .app-stat-value { font-size: 26px; margin-top: 4px; }
+.pro-clinical .app-stat > div > div:last-child:not(:first-child) { width: 30px; height: 30px; border-radius: 8px; }
+.pro-clinical .app-stat svg { width: 16px; height: 16px; }
+.monitor-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 22px; }
+.monitor-stat-button { text-align: left; background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: 12px; overflow: hidden; transition: border-color .15s; }
+.monitor-stat-button:hover { border-color: hsl(var(--border-strong)); }
+.monitor-stat-button[aria-pressed="true"] { border-color: hsl(var(--foreground)); box-shadow: inset 0 0 0 1px hsl(var(--foreground)); }
+.pro-clinical .monitor-stat { border: 0; background: transparent; padding: 12px 14px 0; border-radius: 0; }
+.pro-clinical .monitor-stat .app-stat-value { margin-top: 3px; line-height: 1.15; }
+.pro-clinical .monitor-stat .app-stat-label { font-size: 11px; font-weight: 500; margin: 0; }
+.monitor-stat-caption { display: block; padding: 5px 14px 12px; color: hsl(var(--muted-foreground)); font-size: 10px; }
+.monitor-stat-priority .app-stat-value { color: hsl(var(--status-danger)); }
+.monitor-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 18px; align-items: start; }
+.pro-clinical .monitor-queue, .pro-clinical .monitor-alerts, .pro-clinical .monitor-overview { padding: 0; min-width: 0; overflow: hidden; }
+.monitor-section-heading { display: flex; gap: 12px; justify-content: space-between; align-items: center; padding: 18px 18px 14px; }
+.monitor-section-heading h2 { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; font-size: 13px; font-weight: 650; letter-spacing: -.02em; }
+.monitor-section-heading h2 > svg { width: 15px; height: 15px; }
+.monitor-section-heading p { margin-top: 5px; font-size: 11px; color: hsl(var(--muted-foreground)); }
+.monitor-count { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding-inline: 5px; border-radius: 6px; background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); font-size: 10px; }
+.monitor-text-link { display: inline-flex; align-items: center; gap: 5px; min-height: 40px; font-size: 11px; font-weight: 550; white-space: nowrap; }
+.monitor-text-link svg { width: 13px; height: 13px; }
+.monitor-filters { display: flex; gap: 8px; padding: 0 18px 10px; }
+.monitor-search { display: flex; flex: 1; min-width: 0; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid hsl(var(--border)); border-radius: 8px; background: hsl(var(--background)); }
+.monitor-search > svg { width: 14px; height: 14px; flex-shrink: 0; color: hsl(var(--muted-foreground)); }
+.monitor-search input { border: 0; background: transparent; height: 36px; font-size: 12px; padding: 0 4px; box-shadow: none; }
+.monitor-search:focus-within { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+.monitor-search input:focus-visible { box-shadow: none; }
+.monitor-search button { display: grid; place-items: center; width: 30px; height: 30px; flex-shrink: 0; }
+.monitor-search button svg { width: 14px; height: 14px; }
+.monitor-filters select { min-width: 0; max-width: 190px; border: 1px solid hsl(var(--border)); border-radius: 8px; padding: 0 10px; background: hsl(var(--card)); font-size: 11px; }
+.monitor-tabs { display: flex; padding: 0 18px; gap: 18px; border-bottom: 1px solid hsl(var(--border)); overflow-x: auto; }
+.monitor-tabs button { display: inline-flex; align-items: center; gap: 6px; min-height: 42px; border-bottom: 2px solid transparent; color: hsl(var(--muted-foreground)); font-size: 11px; font-weight: 500; white-space: nowrap; }
+.monitor-tabs button[aria-pressed="true"] { border-color: hsl(var(--foreground)); color: hsl(var(--foreground)); }
+.monitor-tabs button span { min-width: 17px; border-radius: 4px; padding: 0 4px; background: hsl(var(--muted)); font-size: 10px; }
+.monitor-patient { position: relative; padding: 15px 18px 10px; border-bottom: 1px solid hsl(var(--border)); background: hsl(var(--card)); }
+.monitor-patient:last-child { border-bottom: 0; }
+.monitor-patient:hover { background: hsl(var(--background)); }
+.monitor-patient--prioridade { background: hsl(var(--status-danger) / .025); }
+.monitor-patient--prioridade::before { content: ''; position: absolute; left: 0; top: 14px; bottom: 14px; width: 3px; background: hsl(var(--status-danger)); border-radius: 0 2px 2px 0; }
+.monitor-patient-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(290px, .95fr) 28px; gap: 14px; align-items: start; }
+.monitor-patient-identity { display: flex; gap: 9px; align-items: flex-start; min-width: 0; }
+.monitor-avatar { width: 32px; height: 32px; border-radius: 10px; flex-shrink: 0; display: grid; place-items: center; background: hsl(var(--muted)); color: hsl(var(--foreground)); font-size: 10px; font-weight: 600; }
+.monitor-patient--prioridade .monitor-avatar { background: hsl(var(--status-danger-bg)); color: hsl(var(--status-danger)); }
+.monitor-patient-name { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 7px; }
+.monitor-patient-name a { font-size: 12px; font-weight: 650; line-height: 1.35; }
+.monitor-patient-name a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.monitor-status { display: inline-flex; gap: 4px; align-items: center; padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: 550; line-height: 1.4; }
+.monitor-status i, .monitor-distribution-key i { display: inline-block; width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+.monitor-condition { color: hsl(var(--muted-foreground)); font-size: 10px; margin-top: 4px; line-height: 1.4; }
+.monitor-reason { font-size: 11px; line-height: 1.5; margin-top: 5px; }
+.monitor-patient-measures { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.monitor-measure { display: flex; flex-direction: column; min-width: 0; gap: 3px; }
+.monitor-measure-label { font-size: 9px; color: hsl(var(--muted-foreground)); }
+.monitor-measure strong { font-size: 16px; letter-spacing: -.035em; font-weight: 600; line-height: 1.3; font-variant-numeric: tabular-nums; }
+.monitor-measure strong small { font-size: 9px; font-weight: 400; letter-spacing: 0; color: hsl(var(--muted-foreground)); }
+.monitor-measure .monitor-missing { font-size: 11px; color: hsl(var(--muted-foreground)); font-weight: 400; letter-spacing: 0; }
+.monitor-measure-caption { font-size: 9px; color: hsl(var(--muted-foreground)); line-height: 1.45; }
+.monitor-open { display: grid; place-items: center; width: 28px; height: 32px; border: 1px solid hsl(var(--border)); border-radius: 7px; }
+.monitor-open:hover { color: hsl(var(--primary-foreground)); background: hsl(var(--primary)); }
+.monitor-open svg { width: 14px; height: 14px; }
+.monitor-patient-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 12px; margin-top: 8px; font-size: 9px; color: hsl(var(--muted-foreground)); }
+.monitor-last-reading, .monitor-unread { display: inline-flex; align-items: center; gap: 4px; }
+.monitor-last-reading svg, .monitor-unread svg { width: 11px; height: 11px; flex-shrink: 0; }
+.monitor-unread { color: hsl(var(--status-danger)); }
+.monitor-provenance { margin-left: auto; }
+.monitor-provenance summary { display: flex; align-items: center; gap: 4px; cursor: pointer; list-style: none; min-height: 26px; }
+.monitor-provenance summary::-webkit-details-marker { display: none; }
+.monitor-provenance summary svg { width: 11px; height: 11px; }
+.monitor-provenance[open] { width: 100%; }
+.monitor-provenance[open] summary svg { transform: rotate(180deg); }
+.monitor-provenance dl { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; padding: 10px; background: hsl(var(--muted)); border-radius: 6px; line-height: 1.5; }
+.monitor-provenance dt { font-weight: 600; color: hsl(var(--foreground)); margin-bottom: 4px; }
+.monitor-queue-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px; padding: 12px 18px; border-top: 1px solid hsl(var(--border)); font-size: 9px; color: hsl(var(--muted-foreground)); background: hsl(var(--background) / .6); }
+.monitor-empty { padding: 20px; text-align: center; }
+.monitor-rail { display: grid; gap: 18px; min-width: 0; }
+.monitor-alert { display: block; margin: 0 14px 10px; padding: 12px; border: 1px solid hsl(var(--border)); border-radius: 8px; }
+.monitor-alert:hover { background: hsl(var(--background)); }
+.monitor-alert-meta { display: flex; justify-content: space-between; gap: 8px; font-size: 9px; }
+.monitor-alert-meta > span { font-weight: 600; color: hsl(var(--muted-foreground)); }
+.monitor-alert--warning .monitor-alert-meta > span { color: hsl(var(--status-warning-fg)); }
+.monitor-alert--critical, .monitor-alert--emergency { border-color: hsl(var(--status-danger) / .25); background: hsl(var(--status-danger) / .03); }
+.monitor-alert--critical .monitor-alert-meta > span, .monitor-alert--emergency .monitor-alert-meta > span { color: hsl(var(--status-danger)); }
+.monitor-alert-meta time { color: hsl(var(--muted-foreground)); }
+.monitor-alert > strong { display: block; font-size: 12px; font-weight: 550; line-height: 1.5; margin-top: 6px; }
+.monitor-alert > p { font-size: 10px; margin-top: 3px; color: hsl(var(--muted-foreground)); }
+.monitor-alert-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 9px; color: hsl(var(--muted-foreground)); }
+.monitor-alert-footer span { border-radius: 4px; padding: 2px 6px; background: hsl(var(--muted)); }
+.monitor-alert-footer svg { width: 13px; height: 13px; }
+.monitor-panel-link { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; min-height: 44px; font-size: 11px; font-weight: 500; border-top: 1px solid hsl(var(--border)); }
+.monitor-panel-link svg { width: 13px; height: 13px; }
+.monitor-operational { display: flex; gap: 7px; padding: 10px 18px; background: hsl(var(--background)); color: hsl(var(--muted-foreground)); font-size: 10px; line-height: 1.5; }
+.monitor-operational svg { width: 13px; height: 13px; flex-shrink: 0; margin-top: 1px; }
+.monitor-rail-empty { padding: 8px 18px 18px; color: hsl(var(--muted-foreground)); font-size: 12px; }
+.monitor-distribution { display: flex; height: 7px; gap: 3px; margin: 2px 18px 14px; border-radius: 6px; overflow: hidden; background: hsl(var(--muted)); }
+.monitor-distribution-key { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin: 0 18px 16px; }
+.monitor-distribution-key > div { display: flex; justify-content: space-between; gap: 6px; font-size: 10px; }
+.monitor-distribution-key span { display: inline-flex; align-items: center; gap: 5px; color: hsl(var(--muted-foreground)); }
+.monitor-distribution-key b { font-weight: 550; }
+.monitor-portfolio-metric { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 4px 10px; margin: 0 18px; padding: 12px 0; border-top: 1px solid hsl(var(--border)); }
+.monitor-portfolio-metric > span { font-size: 10px; font-weight: 500; }
+.monitor-portfolio-metric strong { font-size: 20px; font-weight: 600; letter-spacing: -.04em; }
+.monitor-portfolio-metric p { grid-column: 1/-1; font-size: 9px; color: hsl(var(--muted-foreground)); line-height: 1.6; }
+.monitor-coverage { display: grid; grid-template-columns: 1fr auto; gap: 10px; border-top: 1px solid hsl(var(--border)); padding: 14px 18px; font-size: 10px; }
+.monitor-coverage span { color: hsl(var(--muted-foreground)); }
+.monitor-coverage b { font-weight: 550; }
+@media (min-width: 1024px) and (max-width: 1240px) {
+  .monitor-workspace { grid-template-columns: minmax(0, 1fr); }
+  .monitor-rail { grid-template-columns: 1fr 1fr; align-items: start; }
+}
+@media (max-width: 1023px) {
+  .app-finance.pro-clinical .app-mobile-header { min-height: 56px !important; padding: calc(8px + env(safe-area-inset-top, 0px)) 16px 8px; }
+  .pro-clinical .app-mobile-header .app-sidebar-brand { padding: 0; }
+  .app-finance.pro-clinical .pro-mobile-nav { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 0; padding: 4px 4px calc(4px + env(safe-area-inset-bottom, 0px)); position: fixed; bottom: 0; left: 0; right: 0; z-index: 40; border-top: 1px solid hsl(var(--border)); border-bottom: 0; background: hsl(var(--card) / .97); backdrop-filter: blur(16px); overflow: visible; }
+  .pro-clinical .pro-mobile-nav a { flex-direction: column; justify-content: center; gap: 4px; border-radius: 8px; padding: 7px 2px; min-height: 52px; font-size: 10px; background: transparent; color: hsl(var(--muted-foreground)); }
+  .pro-clinical .pro-mobile-nav a[aria-current="page"] { background: hsl(var(--muted)); color: hsl(var(--foreground)); font-weight: 600; }
+  .pro-clinical .pro-mobile-nav a svg { width: 19px; height: 19px; }
+  .pro-main { padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+  .pro-main > div, .pro-page { padding: 20px; }
+  .monitor-workspace { grid-template-columns: minmax(0,1fr); }
+  .monitor-rail { grid-template-columns: 1fr 1fr; align-items: start; }
+  .monitor-stat-button { min-height: 90px; }
+}
+@media (max-width: 639px) {
+  .pro-main > div, .pro-page { padding: 18px 12px; }
+  .pro-clinical .app-page-header { gap: 12px; margin-bottom: 16px; }
+  .pro-clinical .app-page-header h1 { font-size: 25px; }
+  .pro-clinical .app-page-header p { font-size: 12px; }
+  .pro-clinical .app-page-header > div:first-child { flex-basis: 100%; }
+  .pro-clinical .app-page-header .app-button { min-height: 40px; }
+  .monitor-stats { grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+  .pro-clinical .monitor-stat { padding: 10px 12px 0; }
+  .pro-clinical .monitor-stat .app-stat-label { font-size: 10px; }
+  .pro-clinical .monitor-stat .app-stat-value { font-size: 25px; }
+  .monitor-stat-caption { padding: 4px 12px 10px; font-size: 9px; }
+  .monitor-stat-button { min-height: 84px; }
+  .monitor-section-heading { padding: 14px 12px 12px; gap: 8px; }
+  .monitor-section-heading h2 { font-size: 13px; }
+  .monitor-section-heading p { font-size: 11px; line-height: 1.5; }
+  .monitor-section-heading > .monitor-text-link { font-size: 10px; }
+  .monitor-filters { padding: 0 12px 8px; gap: 6px; flex-wrap: wrap; }
+  .monitor-search { flex-basis: 100%; }
+  .monitor-search input { height: 42px; font-size: 16px; }
+  .monitor-search button { width: 40px; height: 40px; }
+  .monitor-filters select { max-width: 100%; width: 100%; height: 40px; font-size: 12px; }
+  .monitor-tabs { gap: 14px; padding-inline: 12px; }
+  .monitor-tabs button { min-height: 44px; font-size: 11px; gap: 4px; }
+  .monitor-patient { padding: 14px 12px 8px; }
+  .monitor-patient-grid { grid-template-columns: minmax(0,1fr) 34px; gap: 10px 6px; }
+  .monitor-patient-identity { gap: 8px; }
+  .monitor-patient-name { gap: 5px; }
+  .monitor-patient-name a { font-size: 13px; }
+  .monitor-condition { font-size: 10px; }
+  .monitor-reason { font-size: 12px; margin-top: 6px; }
+  .monitor-status { font-size: 9px; }
+  .monitor-patient-measures { grid-row: 2; grid-column: 1/-1; gap: 10px; padding: 10px; border-radius: 8px; background: hsl(var(--background)); }
+  .monitor-measure-label { font-size: 10px; }
+  .monitor-measure strong { font-size: 18px; }
+  .monitor-measure-caption { font-size: 10px; }
+  .monitor-open { grid-column: 2; grid-row: 1; width: 34px; height: 44px; }
+  .monitor-patient-footer { font-size: 10px; gap: 0 10px; margin-top: 5px; }
+  .monitor-provenance summary { min-height: 44px; }
+  .monitor-provenance dl { grid-template-columns: 1fr; font-size: 11px; }
+  .monitor-rail { grid-template-columns: 1fr; }
+  .monitor-alert > strong { font-size: 13px; }
+  .monitor-alert > p, .monitor-alert-meta, .monitor-alert-footer, .monitor-operational, .monitor-distribution-key > div, .monitor-portfolio-metric > span, .monitor-coverage { font-size: 11px; }
+  .monitor-portfolio-metric p { font-size: 10px; }
+  .monitor-queue-footer { padding-inline: 12px; font-size: 10px; }
+}
+.clinical-detail-tabs { background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: 9px; padding: 4px; margin-bottom: 18px; gap: 4px; }
+.clinical-detail-tabs button { border: 0; border-radius: 6px; margin-bottom: 0; min-height: 40px; font-size: 12px; }
+.clinical-detail-tabs button.border-primary { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+.pro-clinical .clinical-patient-summary { background: hsl(var(--card)); border-color: hsl(var(--border)); }
+.clinical-patient-summary > p { font-size: 12px; }
+.pro-patient-detail h2 { font-size: 15px; }
+@media (max-width: 639px) {
+  .clinical-detail-tabs button { min-height: 44px; }
+  .clinical-patient-summary > p { font-size: 13px; }
+}
+@media (max-width: 639px) {
+  .monitor-page .app-page-header { flex-wrap: nowrap; }
+  .monitor-page .app-page-header > div:first-child { flex-basis: 0; }
+  .monitor-page .monitor-invite { width: 42px; height: 42px; padding: 0; }
+  .monitor-invite span { display: none; }
+  .monitor-stat-button { min-height: 70px; }
+  .pro-clinical .monitor-stat > div > div:first-child { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+  .pro-clinical .monitor-stat > div > div:last-child:not(:first-child) { display: none; }
+  .pro-clinical .monitor-stat .app-stat-label { font-size: 11px; line-height: 1.3; max-width: 95px; }
+  .pro-clinical .monitor-stat .app-stat-value { margin-top: 0; flex-shrink: 0; }
+  .monitor-search { flex-basis: 0; }
+  .monitor-filters select { width: 130px; font-size: 11px; }
+  .monitor-search input { min-width: 0; }
+  .monitor-tabs { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 0; }
+  .monitor-tabs button { justify-content: center; font-size: 10px; gap: 4px; }
+}
+@media (min-width: 640px) {
+  .monitor-patient-name a { font-size: 13px; }
+  .monitor-reason { font-size: 12px; }
+  .monitor-measure-label, .monitor-measure-caption, .monitor-patient-footer { font-size: 10px; }
+  .monitor-provenance summary { min-height: 24px; }
+}
+.pro-clinical .pro-mobile-nav a { position: relative; }
+.pro-mobile-badge { position: absolute; top: 2px; left: calc(50% + 6px); min-width: 15px; height: 15px; border-radius: 999px; padding: 1px 4px; background: hsl(var(--foreground)); color: hsl(var(--card)); font-size: 9px; text-align: center; }
