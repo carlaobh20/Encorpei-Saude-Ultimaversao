@@ -1,3 +1,4 @@
+import { MonitoramentoInterativo } from "@/components/hoje/MonitoramentoInterativo";
 /**
  * HojePage — a home do paciente.
  *
@@ -44,7 +45,6 @@ import { AppModal } from "@/components/shell/AppModal";
 import { Button } from "@/components/ui/button";
 import { RegistroRapido } from "@/components/registro/RegistroRapido";
 import { CuidadoDeHoje } from "@/components/hoje/CuidadoDeHoje";
-import { UltimosRegistros } from "@/components/hoje/UltimosRegistros";
 import { MinhaEvolucao } from "@/components/hoje/MinhaEvolucao";
 import { PainelPulseira } from "@/components/hoje/PainelPulseira";
 import { PainelEquipe } from "@/components/hoje/PainelEquipe";
@@ -439,7 +439,7 @@ export default function HojePage() {
               onResolver={resolver}
             />
         </div>
-        <div className="patient-readings"><UltimosRegistros /></div>
+        <div className="patient-readings"><MonitoramentoInterativo onRegistrar={() => setRegistroAberto(true)} /></div>
         <div className="patient-team"><PainelEquipe /></div>
         <div className="patient-evolution"><MinhaEvolucao /></div>
         <div className="patient-device"><PainelPulseira /></div>
