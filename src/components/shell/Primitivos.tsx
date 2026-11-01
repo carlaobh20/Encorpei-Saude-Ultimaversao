@@ -174,7 +174,7 @@ export function CartaoMedida({ m, className }: { m: MedidaExibida; className?: s
         </p>
       )}
 
-      <div className="mt-2 space-y-1">
+      <div className="app-reading-meta mt-2 space-y-1">
         {m.quando ? <p className="text-xs text-muted-foreground">{m.quando}</p> : null}
         {m.origem ? (
           <span className="inline-flex items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">

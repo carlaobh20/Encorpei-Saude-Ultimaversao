@@ -1,5 +1,5 @@
 /**
- * "Seus últimos registros" — a grade de números do corpo.
+ * "Últimos registros" — a grade de números do corpo.
  *
  * ── Por que grade e não uma medida só ─────────────────────────────────
  * A versão anterior mostrava UM "último registro" — o mais recente entre
@@ -81,7 +81,7 @@ export function UltimosRegistros() {
   ];
 
   return (
-    <section>
+    <section className="patient-records-section">
       {/*
         "Ver todos" apontava para /meu-coracao — que é "Minha evolução"
         (percentual na meta, capacidade, idade do coração) e não tem lista de
@@ -95,29 +95,26 @@ export function UltimosRegistros() {
         para lá que cada cartão da grade já leva; a frase abaixo explicita
         isso, porque cartão clicável sem pista de que é clicável não é acesso.
       */}
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 mb-3">
-        <h2 className="font-display text-xl font-semibold leading-tight">Seus últimos registros</h2>
+      <div className="patient-section-heading flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 mb-3">
+        <h2 className="font-display text-xl font-semibold leading-tight">Últimos registros</h2>
         <Link
           to="/meu-mes"
           className="text-base font-medium text-primary shrink-0 rounded-lg px-1"
         >
-          Ver o resumo do mês
+          Meu mês
         </Link>
       </div>
 
-      {/*
-        1 coluna no muito estreito (< 340px, onde dois cartões fariam "124/78"
-        quebrar no meio), 2 no celular comum, 3 no desktop. `min-w-0` vive
-        dentro do primitivo, então nada estoura a grade.
-      */}
-      <div className="grid grid-cols-1 min-[340px]:grid-cols-2 xl:grid-cols-3 gap-3">
+      {/* No celular, linhas compactas preservam número, unidade e origem.
+          No computador, as três medidas ficam lado a lado. */}
+      <div className="patient-readings-grid">
         {medidas.map((m) => (
           <CartaoMedida key={m.rotulo} m={m} />
         ))}
       </div>
 
       <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-        Toque em uma medida para ver o histórico completo dela, com o período que você escolher.
+        Toque em uma medida para abrir o histórico.
       </p>
     </section>
   );

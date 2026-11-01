@@ -98,7 +98,7 @@ export function RegistroRapido({ aberto, onFechar }: { aberto: boolean; onFechar
           dos formulários do paciente. */}
       <SheetContent
         side="bottom"
-        className="leitura-paciente mx-auto sm:max-w-2xl rounded-t-2xl max-h-[88vh] overflow-y-auto pb-8"
+        className="app-finance patient-experience patient-register-sheet leitura-paciente mx-auto sm:max-w-2xl rounded-t-2xl max-h-[88vh] overflow-y-auto pb-8"
       >
         <SheetHeader className="text-left">
           <SheetTitle className="flex items-center gap-2">

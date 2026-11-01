@@ -54,9 +54,9 @@ export function PainelEquipe() {
   const { consultado } = useMyProfessionals();
 
   return (
-    <Painel titulo="Minha equipe">
+    <Painel titulo="Meu acompanhamento" className="patient-team-card">
       {medico ? (
-        <div className="flex items-center gap-3">
+        <div className="patient-doctor-identity flex items-center gap-3">
           <span
             className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full
                        bg-cardio-50 text-primary text-base font-semibold"
@@ -121,7 +121,7 @@ export function PainelEquipe() {
 
       {/* A consulta é um bloco à parte porque ela existe (ou não) independente
           do vínculo: consulta pode estar marcada antes do código ser usado. */}
-      <div className="mt-4 pt-4 border-t border-border">
+      <div className="patient-appointment mt-4 pt-4 border-t border-border">
         {proxima ? (
           <Link to="/agenda" className="flex items-start gap-3 -mx-1 px-1 py-1 rounded-xl">
             <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/8 text-primary">
@@ -162,13 +162,13 @@ export function PainelEquipe() {
           apoio (~320px), e duas colunas ali cortavam os dois rótulos
           ("Mensa…", "Quem …"). Entre 640 e 1279px ele ocupa a largura toda da
           página e as duas colunas cabem. */}
-      <div className="mt-4 pt-4 border-t border-border grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-2">
+      <div className="patient-team-actions mt-4 pt-4 border-t border-border grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-2">
         <Link
           to="/medico"
           className="flex items-center gap-2 min-h-[48px] rounded-xl border border-border px-3 py-2 text-base font-medium"
         >
           <MessageCircle className="h-5 w-5 text-primary shrink-0" strokeWidth={1.75} aria-hidden />
-          <span className="truncate">Mensagens</span>
+          <span className="truncate">Falar com minha equipe</span>
         </Link>
         <Link
           to="/cuidadores"
