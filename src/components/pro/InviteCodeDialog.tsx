@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Copy, Check, Trash2, Ticket, Share2 } from "lucide-react";
 
-export function InviteCodeDialog() {
+export function InviteCodeDialog({ compact = false }: { compact?: boolean }) {
   const { pendingInvites, generateInvite, revokeInvite } = useInviteCode();
   const { profile } = useProfessionalProfile();
   const { toast } = useToast();
@@ -61,8 +61,8 @@ export function InviteCodeDialog() {
   return (
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setShareCode(null); }}>
       <DialogTrigger asChild>
-        <Button>
-          <Plus className="h-4 w-4" /> Convidar paciente
+        <Button className={compact ? "monitor-invite" : undefined} aria-label="Convidar paciente" title="Convidar paciente">
+          <Plus className="h-4 w-4" /><span>Convidar paciente</span>
         </Button>
       </DialogTrigger>
       <DialogContent className={shareCode ? "sm:max-w-2xl" : undefined}>
