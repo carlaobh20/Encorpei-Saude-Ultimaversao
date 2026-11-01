@@ -156,7 +156,7 @@ export interface MedidaExibida {
 export function CartaoMedida({ m, className }: { m: MedidaExibida; className?: string }) {
   const conteudo = (
     <>
-      <div className="flex items-center gap-2 mb-2">
+      <div className="app-reading-label flex items-center gap-2 mb-2">
         <m.icone className="h-5 w-5 text-primary shrink-0" strokeWidth={1.75} aria-hidden />
         <span className="text-sm font-medium text-muted-foreground truncate">{m.rotulo}</span>
       </div>
@@ -168,7 +168,7 @@ export function CartaoMedida({ m, className }: { m: MedidaExibida; className?: s
         // de quebra entre "129/77" e "mmHg", a unidade saía por fora do cartão
         // (29px além da borda em 390px). Agora ela desce de linha quando não
         // cabe — e continua ao lado do número sempre que cabe.
-        <p className="flex flex-wrap items-baseline gap-x-1 text-[28px] leading-none font-semibold tabular-nums text-foreground">
+        <p className="app-reading-value flex flex-wrap items-baseline gap-x-1 text-[28px] leading-none font-semibold tabular-nums text-foreground">
           <span>{m.valor}</span>
           {m.unidade ? <span className="text-base font-medium text-muted-foreground">{m.unidade}</span> : null}
         </p>
@@ -188,7 +188,7 @@ export function CartaoMedida({ m, className }: { m: MedidaExibida; className?: s
     </>
   );
 
-  const base = "rounded-2xl border border-border bg-card p-4 shadow-sm min-w-0";
+  const base = "app-reading rounded-2xl border border-border bg-card p-4 shadow-sm min-w-0";
 
   if (m.para) {
     return (
@@ -243,7 +243,7 @@ export function LinhaRecurso({
   );
 
   const base =
-    "flex items-center gap-3 w-full min-h-[64px] rounded-2xl border border-border bg-card px-4 py-3 shadow-sm transition-shadow hover:shadow-md";
+    "app-resource flex items-center gap-3 w-full min-h-[64px] rounded-2xl border border-border bg-card px-4 py-3 shadow-sm transition-shadow hover:shadow-md";
 
   if (para) return <Link to={para} className={cn(base, className)}>{dentro}</Link>;
   if (onClick) return <button type="button" onClick={onClick} className={cn(base, className)}>{dentro}</button>;
@@ -286,7 +286,7 @@ export function Painel({
   className?: string;
 }) {
   return (
-    <section className={cn("rounded-2xl border border-border bg-card p-4 md:p-5 shadow-sm", className)}>
+    <section className={cn("app-panel rounded-2xl border border-border bg-card p-4 md:p-5 shadow-sm", className)}>
       <div className="flex items-start justify-between gap-3 mb-3">
         <h2 className="text-lg font-semibold leading-tight">{titulo}</h2>
         {acao ? <div className="shrink-0">{acao}</div> : null}

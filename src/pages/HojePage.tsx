@@ -309,16 +309,22 @@ export default function HojePage() {
   const melhorConquista = conquistas[0] ?? null;
 
   return (
-    <div className="pb-4">
+    <div className="app-home pb-4">
+      <div className="app-home-intro">
+        <p className="app-home-eyebrow">Minha saúde · visão geral</p>
+        <PageHeader
+          title={nome ? `${saudacao()}, ${nome}` : saudacao()}
+          subtitle={frase}
+        />
+        <nav aria-label="Atalhos da minha saúde" className="app-home-shortcuts">
+          <Link to="/meu-mes"><FileText aria-hidden />Meu resumo</Link>
+          <Link to="/remedios"><Pill aria-hidden />Remédios</Link>
+          <Link to="/exames"><FlaskConical aria-hidden />Exames</Link>
+        </nav>
+      </div>
       <LayoutPainel
         principal={
           <>
-            {/* ── 1. Saudação ─────────────────────────────────────── */}
-            <PageHeader
-              title={nome ? `${saudacao()}, ${nome}` : saudacao()}
-              subtitle={frase}
-            />
-
             {/* ── 2. Aviso prioritário, só quando existe ───────────── */}
             {alertaAberto && (
               <section

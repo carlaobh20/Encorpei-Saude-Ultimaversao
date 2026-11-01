@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, Bell, LogOut, Menu, Calendar, MessageSquare, FileText, ClipboardCheck, BarChart3, Settings, Palette, Stethoscope, MessageSquarePlus, MessageCircleHeart } from "lucide-react";
+import { LayoutDashboard, Users, Bell, LogOut, Menu, Calendar, MessageSquare, FileText, BarChart3, Settings, Palette, MessageSquarePlus, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useProfessionalProfile, useProfessionalAlerts, useProfessionalPatients, usePatientMessages } from "@/hooks/useProfessional";
+import { useProfessionalProfile, useProfessionalAlerts, useProfessionalPatients } from "@/hooks/useProfessional";
 
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -32,11 +32,11 @@ const PRO_NAV = [
 
 function ProLogo() {
   return (
-    <div className="flex items-center gap-2.5 px-4 py-5">
+    <div className="app-sidebar-brand flex items-center gap-2.5 px-4 py-5">
       <img src="/logo-symbol.png" alt="Encorpei" width={40} height={40} className="object-contain shrink-0" style={{ width: 40, height: 40 }} />
       <div className="flex flex-col leading-tight">
-        <span className="font-display font-medium text-[17px] tracking-tight text-foreground">Encorpei</span>
-        <span className="font-script text-[14px] text-primary -mt-0.5">Cardio · Painel do médico</span>
+        <span className="font-display font-medium text-[17px] tracking-tight text-foreground">Encorpei Saúde</span>
+        <span className="font-script text-[14px] text-primary -mt-0.5">Painel do profissional</span>
       </div>
     </div>
   );
@@ -56,7 +56,7 @@ function ProSidebarNav({ onItemClick }: { onItemClick?: () => void }) {
   const unreadMessages = useUnreadMessages(activePatientIds);
 
   return (
-    <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5">
+    <nav aria-label="Painel do profissional" className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5">
       {PRO_NAV.map((item) => {
         const isActive = item.exact
           ? location.pathname === item.path
@@ -66,8 +66,9 @@ function ProSidebarNav({ onItemClick }: { onItemClick?: () => void }) {
             key={item.path}
             to={item.path}
             end={item.exact}
+            aria-current={isActive ? "page" : undefined}
             className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition-colors",
+              "app-nav-item flex items-center gap-3 min-h-[44px] px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition-colors",
               "text-muted-foreground hover:text-cardio-dark hover:bg-cardio-50",
               isActive && "bg-cardio-50 text-cardio-dark font-semibold",
             )}
@@ -127,12 +128,23 @@ function ProSidebarFooter({ onItemClick }: { onItemClick?: () => void }) {
 
 export function ProShell() {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const location = useLocation();
+  const { profile } = useProfessionalProfile();
+
+  useEffect(() => {
+    setDrawerOpen(false);
+    window.scrollTo({ top: 0 });
+  }, [location.pathname]);
 
   return (
-    <div className="flex min-h-screen w-full bg-background">
+    <div className="app-finance flex min-h-screen w-full bg-background">
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex lg:flex-col lg:w-60 border-r border-border bg-card shrink-0 sticky top-0 h-screen">
+      <aside className="app-sidebar hidden lg:flex lg:flex-col lg:w-60 border-r border-border bg-card shrink-0 sticky top-0 h-screen">
         <ProLogo />
+        <div className="mx-4 mb-4 rounded-2xl border border-border bg-card p-4">
+          <p className="flex items-center gap-2 text-sm font-semibold"><ShieldCheck className="h-4 w-4" aria-hidden />Cuidado conectado</p>
+          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Pacientes, registros e prioridades em um só lugar.</p>
+        </div>
         <ProSidebarNav />
         <ProSidebarFooter />
       </aside>
@@ -141,17 +153,17 @@ export function ProShell() {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Mobile TopBar */}
         <header
-          className="lg:hidden sticky top-0 z-40 flex items-center justify-between px-4 pb-2 border-b border-border bg-card/90 backdrop-blur-md"
+          className="app-topbar app-mobile-header lg:hidden sticky top-0 z-40 flex items-center justify-between px-4 pb-2 border-b border-border bg-card/90 backdrop-blur-md"
           style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)", minHeight: "calc(env(safe-area-inset-top, 0px) + 60px)" }}
         >
           <ProLogo />
           <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="touch-target">
+              <Button variant="ghost" size="icon" className="touch-target" aria-label="Abrir menu do profissional">
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-72 p-0 bg-card flex flex-col">
+            <SheetContent side="right" className="app-finance w-72 p-0 bg-background flex flex-col">
               <div className="border-b border-border">
                 <ProLogo />
               </div>
@@ -161,6 +173,17 @@ export function ProShell() {
           </Sheet>
         </header>
 
+        <div className="pro-workspace-bar">
+          <p><span className="font-semibold">{profile?.clinic_name || "Meu consultório"}</span><span className="ml-3 text-muted-foreground">Acompanhamento dos pacientes</span></p>
+          <NavLink to="/pro/agenda"><Calendar className="h-4 w-4" aria-hidden />Ver agenda</NavLink>
+        </div>
+        <nav className="pro-mobile-nav" aria-label="Acessos principais do profissional">
+          {PRO_NAV.slice(0, 5).map((item) => (
+            <NavLink key={item.path} to={item.path} end={item.exact}>
+              <item.icon aria-hidden />{item.label}
+            </NavLink>
+          ))}
+        </nav>
         <main className="flex-1 bg-background">
           <Outlet />
         </main>

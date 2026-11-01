@@ -4,7 +4,7 @@ import {
 } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
-  ChevronDown, ChevronRight, LogOut, MessageCircle, Plus, Siren, X,
+  ChevronDown, ChevronRight, LogOut, MessageCircle, Plus, Siren, UserRound, X,
 } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { NavLink } from "@/components/NavLink";
@@ -95,7 +95,7 @@ function Logo({ compact }: { compact?: boolean }) {
   // e a plataforma vira a linha de baixo, discreta. Sem marca: só a plataforma.
   if (temMarca) {
     return (
-      <div className="flex items-center gap-2.5 px-4 py-3.5 border-b border-border">
+      <div className="app-sidebar-brand flex items-center gap-2.5 px-4 py-3.5 border-b border-border">
         <img
           src={marca.logoUrl ?? "/logo-symbol.png"}
           alt={marca.clinica ?? marca.medico}
@@ -120,7 +120,7 @@ function Logo({ compact }: { compact?: boolean }) {
   }
 
   return (
-    <div className="flex items-center gap-2.5 px-4 py-3.5 border-b border-border">
+    <div className="app-sidebar-brand flex items-center gap-2.5 px-4 py-3.5 border-b border-border">
       <img
         src="/logo-symbol.png"
         alt={APP_NAME}
@@ -168,7 +168,7 @@ function ItemNav({
         // min-h-[48px] e texto de 16px: meta de produto para alvo de toque e
         // legibilidade. Linha de menu curta demais é o erro clássico de
         // acessibilidade em app para idoso — erra o toque, volta, desiste.
-        "flex items-center gap-3 min-h-[48px] px-3 py-3 rounded-xl text-base font-medium transition-colors",
+        "app-nav-item flex items-center gap-3 min-h-[48px] px-3 py-3 rounded-xl text-base font-medium transition-colors",
         "text-foreground-soft hover:text-cardio-dark hover:bg-cardio-50",
         // Seleção evidente: fundo azul claro + texto no azul escuro da marca
         // + peso. Três sinais, porque só um (cor) some para quem não enxerga
@@ -279,7 +279,7 @@ function BotaoRegistrarMenu({ onClick }: { onClick: () => void }) {
       onClick={onClick}
       aria-haspopup="dialog"
       className={cn(
-        "w-full inline-flex items-center justify-center gap-2 min-h-[52px] rounded-2xl",
+        "app-register-menu w-full inline-flex items-center justify-center gap-2 min-h-[52px] rounded-2xl",
         "bg-primary px-4 text-base font-semibold text-primary-foreground",
         "shadow-sm transition hover:brightness-110 motion-reduce:transition-none"
       )}
@@ -630,7 +630,7 @@ function FaixaDemo() {
     // ficava por cima do nome do médico e, no desktop, por cima do conteúdo que
     // passava por baixo dela. A faixa rola com a página e continua sendo a
     // primeira coisa que se vê ao abrir e ao voltar ao topo.
-    <div className="relative z-50 flex items-center justify-between gap-3 bg-warning/15 border-b border-warning/40 px-4 py-2 text-sm text-foreground">
+    <div className="app-demo-banner relative z-50 flex items-center justify-between gap-3 bg-warning/15 border-b border-warning/40 px-4 py-2 text-sm text-foreground">
       <span className="font-medium">
         Modo demonstração — dados fictícios, nada é salvo.
       </span>
@@ -675,7 +675,7 @@ function CabecalhoConteudo() {
   );
 
   return (
-    <header className="hidden lg:flex items-center justify-between gap-4 border-b border-border bg-card px-8 py-3">
+    <header className="app-topbar hidden lg:flex items-center justify-between gap-4 border-b border-border bg-card px-8 py-3">
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{data}</p>
 
       <NavLink
@@ -733,7 +733,7 @@ function BotaoEmergencia() {
         // "Mensagens" e "Exames" da coluna de apoio. No celular ele continua:
         // lá não existe lateral aberta.
         "lg:hidden",
-        "fixed right-4 z-40 inline-flex items-center gap-2 min-h-[48px] rounded-full",
+        "app-emergency-link fixed right-4 z-40 inline-flex items-center gap-2 min-h-[48px] rounded-full",
         "bg-error px-4 py-3 text-white shadow-lg shadow-error/30 hover:brightness-110 transition",
         // Underscore vira espaço no Tailwind — e calc() sem espaço em volta
         // do "+" é CSS inválido, então ele é obrigatório aqui.
@@ -771,7 +771,7 @@ function BarraInferior({
   return (
     <nav
       aria-label="Navegação principal"
-      className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-card border-t border-border pb-[env(safe-area-inset-bottom)]"
+      className="app-bottom-nav lg:hidden fixed bottom-0 inset-x-0 z-40 bg-card border-t border-border pb-[env(safe-area-inset-bottom)]"
     >
       {/* grid-cols-5 com min-w-0 em cada célula: em 360px os rótulos mais
           longos ("Minha equipe") quebram em duas linhas em vez de estourar
@@ -852,7 +852,7 @@ function BotaoRegistrar({ item, onClick }: { item: BottomNavItem; onClick: () =>
       onClick={onClick}
       aria-label={item.descricao ?? item.label}
       aria-haspopup="dialog"
-      className={cn(CELULA_BARRA, "justify-end pb-1.5 text-primary")}
+      className={cn(CELULA_BARRA, "app-register-tab justify-end pb-1.5 text-primary")}
     >
       <span
         className={cn(
@@ -878,7 +878,7 @@ function MarcaNoTopo() {
   const { marca, temMarca } = useMarcaClinica();
 
   if (!temMarca) {
-    return <img src="/logo-symbol.png" alt={APP_NAME} width={30} height={30} className="object-contain" style={{ width: 30, height: 30 }} />;
+    return <div className="flex items-center gap-2.5"><img src="/logo-symbol.png" alt="" width={36} height={36} className="object-contain" /><div><p className="text-base font-semibold tracking-tight">{APP_NAME}</p><p className="text-xs text-muted-foreground">Seu cuidado, todos os dias</p></div></div>;
   }
 
   return (
@@ -920,11 +920,11 @@ export function AppShell() {
     // tamanho dentro do app do paciente — sem mexer nas telas do médico, que
     // são densas de propósito (docs/CONTRATO-DE-CODIGO.md, "Tom de escrita").
     // `--barra-inferior` é a altura reservada embaixo: barra + área segura.
-    <div className="leitura-paciente flex min-h-screen w-full bg-background" style={ESTILO_SHELL}>
+    <div className="app-finance leitura-paciente flex min-h-screen w-full bg-background" style={ESTILO_SHELL}>
       {/* Menu lateral — desktop. Branco sobre o fundo cinza-azulado da página,
           com uma borda fina de 1px em vez de sombra: a lateral é chão, não
           cartão, e sombra aqui faria ela competir com o conteúdo. */}
-      <aside className="hidden lg:flex lg:flex-col lg:w-[252px] shrink-0 sticky top-0 h-screen border-r border-border bg-card">
+      <aside className="app-sidebar hidden lg:flex lg:flex-col lg:w-[252px] shrink-0 sticky top-0 h-screen border-r border-border bg-card">
         <MenuLateral onRegistrar={() => setRegistroAberto(true)} />
       </aside>
 
@@ -935,14 +935,15 @@ export function AppShell() {
             de baixo, ao alcance do polegar, e repetir um menu aqui em cima
             criaria dois caminhos para a mesma coisa em telas onde o topo é
             justamente a parte mais difícil de alcançar. */}
-        <header className="lg:hidden sticky top-0 z-30 flex items-center bg-card/95 backdrop-blur border-b border-border px-4 py-2.5">
+        <header className="app-topbar app-mobile-header lg:hidden sticky top-0 z-30 flex items-center bg-card/95 backdrop-blur border-b border-border px-4 py-2.5">
           <MarcaNoTopo />
+          <NavLink to="/conta" aria-label="Minha conta" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-secondary text-foreground"><UserRound className="h-5 w-5" aria-hidden /></NavLink>
         </header>
 
         <CabecalhoConteudo />
 
         <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-          <SheetContent side="left" className="leitura-paciente w-[300px] max-w-[88vw] p-0 flex flex-col">
+          <SheetContent side="left" className="app-finance leitura-paciente w-[300px] max-w-[88vw] p-0 flex flex-col">
             <MenuLateral
               onItemClick={() => setDrawerOpen(false)}
               onRegistrar={() => setRegistroAberto(true)}
@@ -963,7 +964,7 @@ export function AppShell() {
         */}
         <main
           className={cn(
-            "flex-1 w-full px-4 py-5 lg:px-8 lg:py-8",
+            "app-content flex-1 w-full px-4 py-5 lg:px-8 lg:py-8",
             "pb-[calc(9.5rem_+_env(safe-area-inset-bottom,0px))] lg:pb-28"
           )}
         >

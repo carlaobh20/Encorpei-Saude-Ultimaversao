@@ -1,0 +1,157 @@
+/* Identidade do Finanças Pessoais, restrita às áreas internas do Saúde.
+   Cores clínicas continuam semânticas; o cinza/preto organiza a interface. */
+body:has(.app-finance),
+.app-finance {
+  --background: 0 0% 100%;
+  --foreground: 0 0% 8%;
+  --foreground-soft: 0 0% 32%;
+  --card: 0 0% 95%;
+  --card-foreground: 0 0% 8%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 8%;
+  --primary: 0 0% 8%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 89%;
+  --secondary-foreground: 0 0% 8%;
+  --muted: 0 0% 89%;
+  --muted-foreground: 0 0% 39%;
+  --accent: 0 0% 8%;
+  --accent-foreground: 0 0% 100%;
+  --border: 0 0% 86%;
+  --border-soft: 0 0% 92%;
+  --border-strong: 0 0% 77%;
+  --input: 0 0% 83%;
+  --ring: 0 0% 8%;
+  --surface-1: 0 0% 100%;
+  --surface-2: 0 0% 95%;
+  --surface-3: 0 0% 89%;
+  --surface-4: 0 0% 86%;
+  --surface-warm: 0 0% 98%;
+  --brand-cardio: 0 0% 8%;
+  --brand-cardio-dark: 0 0% 4%;
+  --brand-cardio-light: 0 0% 45%;
+  --brand-cardio-50: 0 0% 95%;
+  --brand-cardio-100: 0 0% 89%;
+  --font-display: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-script: var(--font-display);
+  --shadow-color: 0 0% 8%;
+  --shadow-card: none;
+  --shadow-brand: none;
+  --shadow-brand-lg: none;
+  --shadow-sm: none;
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans);
+  font-feature-settings: 'calt', 'tnum';
+}
+
+.app-finance :where(h1, h2, h3, .font-display) { font-family: var(--font-display); }
+.app-finance .app-page-header h1 { font-size: clamp(1.6rem, 3vw, 2rem); line-height: 1.2; letter-spacing: -.045em; font-weight: 600; }
+.app-finance .app-page-header p { max-width: 65ch; }
+.app-finance .app-button, body:has(.app-finance) [role="dialog"] .app-button { border-radius: 999px; box-shadow: none; }
+.app-finance .app-button:not([data-size="icon"]), body:has(.app-finance) [role="dialog"] .app-button:not([data-size="icon"]) { white-space: normal; line-height: 1.3; }
+.app-finance :where(.app-surface, .app-stat, .app-panel, .app-reading, .app-resource) { border-radius: 20px; box-shadow: none; }
+.app-finance .app-reading { padding: 18px; min-height: 174px; }
+.app-finance .app-reading-label { margin-bottom: 20px; }
+.app-finance .app-reading-label > svg { width: 34px; height: 34px; padding: 7px; border-radius: 50%; background: hsl(var(--muted)); }
+.app-finance .app-reading-value { font-size: clamp(1.65rem, 3vw, 2.1rem); letter-spacing: -.055em; }
+.app-finance .app-stat { min-width: 0; }
+.app-finance .app-stat > div { gap: 12px; }
+.app-finance .app-stat-label { white-space: normal; overflow: visible; font-size: 13px; line-height: 1.4; }
+.app-finance .app-stat-value { margin-top: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.app-finance :where(.app-reading, .app-resource):hover { border-color: hsl(var(--border-strong)); background: hsl(var(--surface-3) / .6); }
+.app-finance .app-sidebar { background: hsl(var(--background)); width: 256px; }
+.app-finance .app-nav-item { border-radius: 999px; padding-inline: 16px; }
+.app-finance .app-nav-item[aria-current="page"] { background: hsl(var(--foreground)); color: hsl(var(--background)); }
+.app-finance .app-nav-item[aria-current="page"] > svg { color: inherit; }
+.app-finance .app-sidebar-brand { border-bottom: 0; padding: 24px 20px; }
+.app-finance .app-register-menu { border-radius: 999px; background: hsl(var(--secondary)); color: hsl(var(--foreground)); }
+.app-finance .app-topbar { background: hsl(var(--background) / .96); }
+.app-finance .app-content { max-width: 1536px; margin-inline: auto; }
+.app-finance .app-bottom-nav { background: hsl(var(--background) / .97); backdrop-filter: blur(16px); }
+.app-finance .app-bottom-nav [aria-current="page"]::after { content: ''; position: absolute; bottom: 5px; width: 24px; height: 3px; border-radius: 999px; background: currentColor; }
+.app-finance .app-bottom-nav .app-register-tab { justify-content: center; padding-bottom: 0; gap: 2px; }
+.app-finance .app-register-tab > span:first-child { position: static; transform: none; width: 34px; height: 34px; box-shadow: none; --tw-ring-shadow: 0 0 transparent; }
+.app-finance .app-register-tab svg { width: 22px; height: 22px; }
+.app-finance .app-register-tab > span:last-child { font-weight: 500; }
+.app-finance .app-demo-banner { background: hsl(var(--secondary) / .5); border-color: hsl(var(--border)); }
+.app-finance .app-demo-banner button { color: hsl(var(--foreground)); }
+.app-finance .app-home { max-width: 1440px; margin-inline: auto; }
+.app-home-intro { margin-bottom: 24px; }
+.app-home-intro .app-page-header { margin-bottom: 0; }
+.app-home-eyebrow { margin-bottom: 10px; font-size: 13px; color: hsl(var(--muted-foreground)); }
+.app-home-shortcuts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+.app-home-shortcuts a { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; border-radius: 999px; padding: 9px 16px; background: hsl(var(--card)); font-size: 14px; font-weight: 500; }
+.app-home-shortcuts a:hover { background: hsl(var(--secondary)); }
+.app-home-shortcuts svg { width: 17px; height: 17px; }
+
+/* Um único cartão de ação, com o mesmo conteúdo em todas as larguras. */
+.app-finance .care-today { background: hsl(var(--foreground)); color: hsl(var(--background)); border-radius: 24px; box-shadow: none; padding: 24px; }
+.care-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.care-heading > div:first-child { min-width: 0; }
+.care-eyebrow { font-size: 12px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; opacity: .7; margin-bottom: 8px; }
+.care-heading h2 { color: inherit; font-size: 24px; letter-spacing: -.04em; font-weight: 600; line-height: 1.2; }
+.care-origin { font-size: 14px; line-height: 1.5; opacity: .8; margin-top: 8px; max-width: 42ch; }
+.care-count { flex-shrink: 0; display: flex; align-items: baseline; gap: 3px; font-variant-numeric: tabular-nums; }
+.care-count strong { font-size: 32px; font-weight: 600; letter-spacing: -.06em; }
+.care-count span { font-size: 16px; opacity: .65; }
+.care-progress { margin-top: 20px; }
+.care-progress p { margin-top: 8px; font-size: 13px; opacity: .8; }
+.care-next { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 76px; margin-top: 20px; padding: 16px; border-radius: 16px; background: hsl(var(--background)); color: hsl(var(--foreground)); text-align: left; }
+.care-next:hover { background: hsl(var(--secondary)); }
+.care-next-icon { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; flex-shrink: 0; background: hsl(var(--card)); }
+.care-next-icon svg { width: 22px; height: 22px; }
+.care-next-copy { flex: 1; min-width: 0; }
+.care-next-copy strong { display: block; font-size: 16px; line-height: 1.35; font-weight: 600; }
+.care-next-copy small { display: block; font-size: 13px; color: hsl(var(--muted-foreground)); margin-top: 4px; line-height: 1.4; }
+.care-next-arrow { width: 20px; height: 20px; flex-shrink: 0; }
+.care-other { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.care-other button { border: 1px solid hsl(var(--background) / .3); border-radius: 999px; min-height: 44px; padding: 8px 14px; font-size: 14px; }
+.care-other button:hover { background: hsl(var(--background) / .1); }
+.care-completed { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 18px; }
+.care-completed li { display: flex; gap: 6px; align-items: center; font-size: 13px; opacity: .85; }
+.care-completed svg { width: 17px; height: 17px; }
+.care-finished { display: flex; gap: 12px; padding-top: 20px; font-size: 16px; }
+.care-finished svg { flex-shrink: 0; width: 24px; }
+.care-finished p + p { opacity: .8; font-size: 14px; margin-top: 6px; }
+.care-today :focus-visible { outline: 2px solid hsl(var(--background)); outline-offset: 4px; }
+.app-finance .pro-workspace-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 64px; border-bottom: 1px solid hsl(var(--border)); padding: 12px 32px; font-size: 13px; }
+.app-finance .pro-workspace-bar a { min-height: 44px; display: inline-flex; align-items: center; gap: 8px; }
+.app-finance .pro-mobile-nav { display: flex; overflow-x: auto; gap: 8px; padding: 12px 16px; border-bottom: 1px solid hsl(var(--border)); }
+.pro-mobile-nav a { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; min-height: 44px; border-radius: 999px; background: hsl(var(--card)); padding: 10px 16px; font-size: 14px; }
+.pro-mobile-nav a[aria-current="page"] { background: hsl(var(--foreground)); color: hsl(var(--background)); }
+.pro-mobile-nav svg { width: 18px; height: 18px; }
+
+@media (min-width: 1024px) {
+  .app-finance .pro-mobile-nav { display: none; }
+}
+@media (max-width: 1023px) {
+  .app-finance .pro-workspace-bar { display: none; }
+  .app-finance .app-mobile-header { justify-content: space-between; gap: 12px; min-height: 72px; padding: calc(12px + env(safe-area-inset-top, 0px)) 20px 12px; }
+  .app-finance .app-mobile-header .app-sidebar-brand { padding: 4px 0; }
+  .app-finance .app-content { padding-top: 24px; }
+  .app-home-intro { margin-bottom: 20px; }
+  .app-home-intro .app-page-header h1 { font-size: 28px; }
+  .app-home-shortcuts { margin-top: 16px; gap: 6px; }
+  .app-home-shortcuts a { padding-inline: 12px; font-size: 13px; }
+  .app-finance .care-today { padding: 20px; }
+  .care-heading h2 { font-size: 22px; }
+  .app-finance .app-reading { padding: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-finance *, .app-finance *::before, .app-finance *::after { scroll-behavior: auto; transition-duration: .01ms; animation-duration: .01ms; }
+}
+
+@media (max-width: 1023px) {
+  .app-finance .app-emergency-link {
+    left: 0; right: 0; bottom: var(--barra-inferior);
+    min-height: 44px; padding: 8px 20px; border-radius: 0;
+    background: hsl(var(--status-danger-bg)); color: hsl(var(--status-danger));
+    border-top: 1px solid hsl(var(--status-danger) / .2); box-shadow: none;
+    justify-content: center;
+  }
+  .app-finance .app-emergency-link span { font-size: 14px; }
+  .app-finance .app-demo-banner { font-size: 13px; gap: 8px; }
+}
+@media (max-width: 389px) {
+  .app-home-shortcuts a { padding-inline: 10px; gap: 6px; }
+}

@@ -13,11 +13,11 @@ interface StatCardProps {
 
 export function StatCard({ label, value, icon: Icon, trend, className, iconColor }: StatCardProps) {
   return (
-    <div className={cn("surface-card rounded-2xl p-4 md:p-5", className)}>
+    <div className={cn("app-stat surface-card rounded-2xl p-4 md:p-5", className)}>
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-medium text-muted-foreground mb-1 truncate">{label}</p>
-          <p className="text-2xl font-bold tracking-tight">{value}</p>
+          <p className="app-stat-label text-xs font-medium text-muted-foreground mb-1 truncate">{label}</p>
+          <p className="app-stat-value text-2xl font-bold tracking-tight">{value}</p>
           {trend && (
             <p className={cn(
               "text-xs font-medium mt-1",
