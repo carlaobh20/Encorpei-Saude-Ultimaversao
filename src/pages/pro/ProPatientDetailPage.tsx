@@ -1,3 +1,4 @@
+import { MonitoramentoInterativo } from "@/components/hoje/MonitoramentoInterativo";
 /**
  * DETALHE DO PACIENTE — "a tela que economiza a consulta" (docs §2.7, §5).
  *
@@ -351,6 +352,8 @@ export default function ProPatientDetailPage() {
             <TargetsGrid targets={targets} mrpa={mrpa} restingHr={hr.repouso[0]?.bpm ?? null} weightNow={weight.ultimo?.value ?? null} ldl={ultimoPorMarcador.get("ldl")?.value_num ?? null} stepsAvg={activity.passosMedia} sleepHours={sleep.mediaMinutos != null ? sleep.mediaMinutos / 60 : null} />
             <MetasCombinadasCard metas={metasDoPaciente.metas} />
           </div>
+
+          {patientId && <MonitoramentoInterativo patientId={patientId} />}
 
           {/* Gráficos */}
           <div>
