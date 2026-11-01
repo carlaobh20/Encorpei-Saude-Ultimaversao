@@ -49,11 +49,10 @@ export function CuidadoDeHoje({
   const Icone = prioritaria ? ICONE_DA_METRICA[prioritaria.metric] : CalendarCheck;
 
   return (
-    <CartaoDestaque className="care-today">
+    <CartaoDestaque className="care-today patient-care-card">
       <div className="care-heading">
         <div>
-          <p className="care-eyebrow">Seu plano, um passo de cada vez</p>
-          <h2>Seu cuidado de hoje</h2>
+          <h2>Cuidados de hoje</h2>
           <p className="care-origin">{origem}</p>
         </div>
         {total > 0 && (
@@ -65,7 +64,7 @@ export function CuidadoDeHoje({
 
       {total > 0 && (
         <div className="care-progress">
-          <BarraProgresso feitos={concluidasCount} total={total} />
+          <BarraProgresso feitos={concluidasCount} total={total} tom="escuro" />
           <p>{concluidasCount} de {total} cuidados concluídos</p>
         </div>
       )}
@@ -92,6 +91,7 @@ export function CuidadoDeHoje({
         </div>
       )}
 
+      <div className="care-checklist">
       {demaisAbertas.length > 0 && (
         <div className="care-other" role="group" aria-label="Também combinado para hoje">
           {demaisAbertas.map((p) => (
@@ -109,6 +109,7 @@ export function CuidadoDeHoje({
           ))}
         </ul>
       )}
+      </div>
     </CartaoDestaque>
   );
 }

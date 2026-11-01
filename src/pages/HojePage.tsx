@@ -17,14 +17,10 @@
  *
  * ── O que esta reformulação (visual) mudou ────────────────────────────
  *
- * A página era uma coluna só, empilhada, projetada para o celular e esticada
- * no desktop: num monitor de 1440px sobrava metade da tela em branco enquanto
- * o paciente rolava para achar a consulta. Agora há duas colunas
- * (`LayoutPainel`): à esquerda o fluxo do dia — saudação, aviso, cuidado de
- * hoje, registros, evolução —, à direita o contexto que se consulta e não se
- * executa — pulseira, equipe, atalhos. No celular a mesma ordem vira uma
- * coluna e rola; NÃO tentamos caber tudo na primeira tela, porque o preço
- * disso seria encolher texto que já é o piso legível para 68 anos.
+ * A home do paciente organiza o cuidado de hoje, os registros recentes e a
+ * equipe em cartões compactos. No computador, o acompanhamento ocupa a
+ * coluna lateral; no celular ele vem depois dos registros e antes da evolução.
+ * Alertas permanecem antes das ações, e cada medida mantém data e origem.
  *
  * O que NÃO mudou: nenhuma regra clínica, nenhum limiar, nenhum cálculo.
  * Todo dado desta tela sai dos hooks como eles já o devolvem, e onde falta
@@ -42,7 +38,7 @@ import {
 import {
   usePendenciasDeHoje, type MetricaPlano, type Pendencia,
 } from "@/hooks/usePlanoMonitoramento";
-import { PageHeader, SurfaceCard, Atalho, LayoutPainel, Painel } from "@/components/shell";
+import { PageHeader, SurfaceCard, Atalho, Painel } from "@/components/shell";
 import { TabPageSkeleton } from "@/components/shell/Skeletons";
 import { AppModal } from "@/components/shell/AppModal";
 import { Button } from "@/components/ui/button";
@@ -309,27 +305,25 @@ export default function HojePage() {
   const melhorConquista = conquistas[0] ?? null;
 
   return (
-    <div className="app-home pb-4">
+    <div className="app-home patient-home-page pb-4">
       <div className="app-home-intro">
-        <p className="app-home-eyebrow">Minha saúde · visão geral</p>
+        <p className="app-home-eyebrow">Minha saúde</p>
         <PageHeader
           title={nome ? `${saudacao()}, ${nome}` : saudacao()}
           subtitle={frase}
         />
         <nav aria-label="Atalhos da minha saúde" className="app-home-shortcuts">
-          <Link to="/meu-mes"><FileText aria-hidden />Meu resumo</Link>
+          <Link to="/meu-mes"><FileText aria-hidden />Meu mês</Link>
           <Link to="/remedios"><Pill aria-hidden />Remédios</Link>
           <Link to="/exames"><FlaskConical aria-hidden />Exames</Link>
         </nav>
       </div>
-      <LayoutPainel
-        principal={
-          <>
+      <div className="patient-alerts">
             {/* ── 2. Aviso prioritário, só quando existe ───────────── */}
             {alertaAberto && (
               <section
                 className={cn(
-                  "rounded-2xl p-4 md:p-5 border-l-4",
+                  "patient-health-alert rounded-2xl p-4 md:p-5 border-l-4",
                   avisoGrave
                     ? "bg-error-bg border-error"
                     : "bg-warning-bg border-warning"
@@ -377,7 +371,7 @@ export default function HojePage() {
 
             {!alertaAberto && sinalDeAtencao && (
               <section
-                className="rounded-2xl p-4 md:p-5 bg-warning-bg border-l-4 border-warning"
+                className="patient-health-alert rounded-2xl p-4 md:p-5 bg-warning-bg border-l-4 border-warning"
                 aria-label="Sinal que precisa de atenção"
               >
                 <div className="flex items-start gap-3">
@@ -413,7 +407,7 @@ export default function HojePage() {
 
             {/* Cadastro incompleto: empurrão suave, sem trancar o app. */}
             {profile && !profile.onboarding_completed && (
-              <SurfaceCard variant="highlight">
+              <SurfaceCard variant="highlight" className="patient-onboarding">
                 <Link to="/onboarding" className="flex items-start gap-3 -m-1 p-1 rounded-xl">
                   <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <ClipboardList className="h-5 w-5" strokeWidth={1.75} aria-hidden />
@@ -431,7 +425,9 @@ export default function HojePage() {
               </SurfaceCard>
             )}
 
-            {/* ── 3. O único bloco azul da página ──────────────────── */}
+      </div>
+      <div className="patient-home-layout">
+        <div className="patient-today">
             <CuidadoDeHoje
               prescrito={plano.prescrito}
               total={plano.total}
@@ -442,15 +438,13 @@ export default function HojePage() {
               rotuloAcao={prioritaria ? ACAO_DA_METRICA[prioritaria.metric].botao : ""}
               onResolver={resolver}
             />
-
-            {/* ── 4. Seus últimos registros ────────────────────────── */}
-            <UltimosRegistros />
-
-            {/* ── 5. Minha evolução ────────────────────────────────── */}
-            <MinhaEvolucao />
-
-            {/* ── 6. Aprender e Meu mês, em peso menor ─────────────── */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
+        </div>
+        <div className="patient-readings"><UltimosRegistros /></div>
+        <div className="patient-team"><PainelEquipe /></div>
+        <div className="patient-evolution"><MinhaEvolucao /></div>
+        <div className="patient-device"><PainelPulseira /></div>
+        <div className="patient-learning">
+            <div className="patient-learning-grid">
               <Painel titulo="Aprender a cuidar">
                 {proximaLicao ? (
                   <Link to="/aprender" className="flex items-start gap-3 -mx-1 px-1 py-1 rounded-xl">
@@ -511,13 +505,26 @@ export default function HojePage() {
               </Painel>
             </div>
 
-            {/* O questionário mensal fica no fim, discreto, e some no resto
-                do mês: ele não é o motivo de abrir o app hoje. */}
+        </div>
+        <div className="patient-resources">
+            <Painel titulo="Acesso rápido">
+              {/* Uma coluna a partir de 1280px: é onde a grade passa a morar na
+                  coluna de apoio estreita, e duas colunas ali cortavam
+                  "Sintomas" e "Remédios" pela metade. */}
+              <div className="patient-access-grid">
+                <Atalho icone={Stethoscope} rotulo="Sintomas" para="/sintomas" />
+                <Atalho icone={FlaskConical} rotulo="Exames" para="/exames" />
+                <Atalho icone={Pill} rotulo="Remédios" para="/remedios" />
+                <Atalho icone={Target} rotulo="Metas" para="/metas" />
+              </div>
+            </Painel>
+        </div>
+        <div className="patient-followup">
             {qol.devePerguntar && (
               <button
                 type="button"
                 onClick={() => setQolAberto(true)}
-                className="w-full text-left rounded-2xl border border-dashed border-border bg-card/50 p-4 md:p-5
+                className="patient-survey w-full text-left rounded-2xl border border-dashed border-border bg-card/50 p-4 md:p-5
                            flex items-center gap-3"
               >
                 <ClipboardList className="h-5 w-5 text-muted-foreground shrink-0" aria-hidden="true" />
@@ -532,34 +539,8 @@ export default function HojePage() {
                 <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" aria-hidden="true" />
               </button>
             )}
-          </>
-        }
-        apoio={
-          <>
-            {/* ── Coluna de apoio: contexto que se consulta ────────── */}
-            <PainelPulseira />
-            <PainelEquipe />
-
-            {/*
-              Acesso rápido — quatro destinos, e SÓ estes quatro. Eles não se
-              repetem em nenhum outro ponto da página: atalho duplicado ensina
-              que a página tem dois lugares para a mesma coisa, e o paciente
-              passa a procurar nos dois.
-            */}
-            <Painel titulo="Acesso rápido">
-              {/* Uma coluna a partir de 1280px: é onde a grade passa a morar na
-                  coluna de apoio estreita, e duas colunas ali cortavam
-                  "Sintomas" e "Remédios" pela metade. */}
-              <div className="grid grid-cols-2 xl:grid-cols-1 gap-2">
-                <Atalho icone={Stethoscope} rotulo="Sintomas" para="/sintomas" />
-                <Atalho icone={FlaskConical} rotulo="Exames" para="/exames" />
-                <Atalho icone={Pill} rotulo="Remédios" para="/remedios" />
-                <Atalho icone={Target} rotulo="Metas" para="/metas" />
-              </div>
-            </Painel>
-          </>
-        }
-      />
+        </div>
+      </div>
 
       <DialogoQualidadeDeVida
         open={qolAberto}

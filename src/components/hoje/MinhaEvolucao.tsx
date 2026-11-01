@@ -112,12 +112,12 @@ export function MinhaEvolucao() {
   }, [bp.readings]);
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-4 md:p-5 shadow-sm">
+    <section className="patient-evolution-card rounded-2xl border border-border bg-card p-4 md:p-5 shadow-sm">
       {/* `flex-wrap` + `basis-48`: em 360–390px o link da direita ("Ver evolução
           completa") comia a linha inteira e sobrava uma coluna de 130px, onde o
           título quebrava em duas linhas e o subtítulo em três. Agora o link
           desce para a linha de baixo; em tela larga a linha continua única. */}
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+      <div className="patient-section-heading flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <div className="min-w-0 flex-1 basis-48">
           <h2 className="font-display text-xl font-semibold leading-tight">Minha evolução</h2>
           <p className="text-base text-muted-foreground mt-0.5">
@@ -128,7 +128,7 @@ export function MinhaEvolucao() {
           to="/meu-coracao"
           className="text-base font-medium text-primary shrink-0 rounded-lg px-1"
         >
-          Ver evolução completa
+          Ver detalhes
         </Link>
       </div>
 
@@ -150,7 +150,7 @@ export function MinhaEvolucao() {
         <>
           {/* Altura fixa: o ResponsiveContainer precisa de um pai com altura
               resolvida, senão colapsa para zero e o gráfico some sem erro. */}
-          <div className="mt-4 h-[220px] w-full">
+          <div className="patient-evolution-chart mt-4 h-[220px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={dados} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
                 {/* Grade só na horizontal e discreta: ela serve para ler

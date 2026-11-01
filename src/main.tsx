@@ -6,6 +6,7 @@ import "./index.css";
 import "./styles/patient-mobile.css";
 import "./styles/app-finance.css";
 import "./styles/clinical-workspace.css";
+import "./styles/patient-experience.css";
 
 // Ciclo de atualização: verificação periódica + faixa discreta.
 // Antes: updateSW(true) recarregava a página sem avisar — um paciente

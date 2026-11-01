@@ -62,7 +62,7 @@ export function PainelPulseira() {
         };
 
   return (
-    <Painel titulo="Minha pulseira">
+    <Painel titulo="Minha pulseira" className="patient-device-card">
       {isLoading ? (
         <p className="text-base text-muted-foreground">Carregando…</p>
       ) : (

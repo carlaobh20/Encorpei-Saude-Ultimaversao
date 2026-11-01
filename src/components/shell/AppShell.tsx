@@ -6,7 +6,7 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   ChevronDown, ChevronRight, LogOut, MessageCircle, Plus, Siren, UserRound, X,
 } from "lucide-react";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { NavLink } from "@/components/NavLink";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PWAInstallPrompt } from "@/components/shell/PWAInstallPrompt";
@@ -632,7 +632,7 @@ function FaixaDemo() {
     // primeira coisa que se vê ao abrir e ao voltar ao topo.
     <div className="app-demo-banner relative z-50 flex items-center justify-between gap-3 bg-warning/15 border-b border-warning/40 px-4 py-2 text-sm text-foreground">
       <span className="font-medium">
-        Modo demonstração — dados fictícios, nada é salvo.
+        Demonstração · dados fictícios
       </span>
       <button
         onClick={() => {
@@ -920,7 +920,7 @@ export function AppShell() {
     // tamanho dentro do app do paciente — sem mexer nas telas do médico, que
     // são densas de propósito (docs/CONTRATO-DE-CODIGO.md, "Tom de escrita").
     // `--barra-inferior` é a altura reservada embaixo: barra + área segura.
-    <div className="app-finance leitura-paciente flex min-h-screen w-full bg-background" style={ESTILO_SHELL}>
+    <div className="app-finance patient-experience leitura-paciente flex min-h-screen w-full bg-background" style={ESTILO_SHELL}>
       {/* Menu lateral — desktop. Branco sobre o fundo cinza-azulado da página,
           com uma borda fina de 1px em vez de sombra: a lateral é chão, não
           cartão, e sombra aqui faria ela competir com o conteúdo. */}
@@ -943,7 +943,8 @@ export function AppShell() {
         <CabecalhoConteudo />
 
         <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-          <SheetContent side="left" className="app-finance leitura-paciente w-[300px] max-w-[88vw] p-0 flex flex-col">
+          <SheetContent side="left" className="app-finance patient-experience leitura-paciente w-[300px] max-w-[88vw] p-0 flex flex-col">
+            <SheetTitle className="sr-only">Menu do paciente</SheetTitle>
             <MenuLateral
               onItemClick={() => setDrawerOpen(false)}
               onRegistrar={() => setRegistroAberto(true)}
