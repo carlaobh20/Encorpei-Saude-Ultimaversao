@@ -25,7 +25,7 @@ export function SurfaceCard({ variant = "default", className, children, onClick,
   const Comp = onClick ? "button" : "div";
   return (
     <Comp
-      className={cn("rounded-2xl p-4 md:p-5", variantStyles[variant], className)}
+      className={cn("app-surface rounded-2xl p-4 md:p-5", variantStyles[variant], className)}
       onClick={onClick}
       aria-label={ariaLabel}
     >

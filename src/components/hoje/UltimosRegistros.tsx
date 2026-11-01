@@ -106,11 +106,11 @@ export function UltimosRegistros() {
       </div>
 
       {/*
-        1 coluna no muito estreito (≤ 380px, onde dois cartões fariam "124/78"
+        1 coluna no muito estreito (< 340px, onde dois cartões fariam "124/78"
         quebrar no meio), 2 no celular comum, 3 no desktop. `min-w-0` vive
         dentro do primitivo, então nada estoura a grade.
       */}
-      <div className="grid grid-cols-1 min-[380px]:grid-cols-2 xl:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 min-[340px]:grid-cols-2 xl:grid-cols-3 gap-3">
         {medidas.map((m) => (
           <CartaoMedida key={m.rotulo} m={m} />
         ))}

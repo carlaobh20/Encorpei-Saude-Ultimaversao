@@ -4,6 +4,7 @@ import { trackDayReturn } from "@/lib/analytics";
 import App from "./App.tsx";
 import "./index.css";
 import "./styles/patient-mobile.css";
+import "./styles/app-finance.css";
 
 // Ciclo de atualização: verificação periódica + faixa discreta.
 // Antes: updateSW(true) recarregava a página sem avisar — um paciente

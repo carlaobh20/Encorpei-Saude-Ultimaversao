@@ -31,7 +31,7 @@ export function PageHeader({ title, subtitle, backLink, action }: PageHeaderProp
   const navigate = useNavigate();
 
   return (
-    <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3 mb-6">
+    <div className="app-page-header flex flex-wrap items-start justify-between gap-x-4 gap-y-3 mb-6">
       {/* `basis-64` é o que faz o `flex-wrap` acima funcionar de verdade: com
           `flex-1` puro (base 0) o bloco de texto encolhia até o título partir no
           meio da palavra ("Exam/es" em 360px) e a ação nunca descia de linha.
