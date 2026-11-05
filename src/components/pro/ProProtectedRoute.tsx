@@ -6,7 +6,6 @@ import { useHasPatientProfile, perfilDosMetadados } from "@/hooks/useAccountRole
 import { getDevBypass } from "@/contexts/DevBypass";
 import { classifyError } from "@/lib/errorHandler";
 import { Button } from "@/components/ui/button";
-import { ProPendingApprovalScreen } from "@/components/pro/ProPendingApprovalScreen";
 import { WrongPortalBlock } from "@/components/WrongPortalBlock";
 
 export function ProProtectedRoute() {
@@ -78,22 +77,8 @@ export function ProProtectedRoute() {
 
   if (!profile) return <Navigate to="/pro/onboarding" replace />;
 
-  // Cadastro existe, mas ainda não foi aprovado por um admin (ou foi
-  // recusado) — sem acesso ao painel até isso mudar. Redesenho de 26/08/2026
-  // (referência visual enviada pelo usuário) — ver ProPendingApprovalScreen.
-  if (profile.approval_status === "pending") {
-    return (
-      <ProPendingApprovalScreen
-        onSignOut={signOut}
-        onLogoClick={async (e) => {
-          e.preventDefault();
-          try { await signOut(); } catch { /* mesmo se falhar, garante o reload abaixo */ }
-          window.location.href = "/landing";
-        }}
-      />
-    );
-  }
-
+  // Cadastro aberto: perfis pendentes antigos também podem acessar.
+  // Rejeições explícitas do administrador continuam bloqueadas.
   if (profile.approval_status === "rejected") {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-background p-8 text-center">

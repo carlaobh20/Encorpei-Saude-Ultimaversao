@@ -16,6 +16,7 @@ export default function ResetPasswordPage() {
   const [done, setDone] = useState(false);
   const [isRecovery, setIsRecovery] = useState(false);
   const navigate = useNavigate();
+  const adminRecovery = new URLSearchParams(window.location.search).get("portal") === "admin";
 
   useEffect(() => {
     // O Supabase acrescenta #access_token=...&type=recovery na URL do link.
@@ -62,8 +63,8 @@ export default function ResetPasswordPage() {
             </div>
             <h1 className="font-display text-2xl font-medium tracking-tight text-foreground">Senha alterada!</h1>
             <p className="text-sm text-muted-foreground">Sua senha foi atualizada. Já pode entrar com ela.</p>
-            <Button size="xl" className="w-full h-[56px] rounded-2xl" onClick={() => navigate("/hoje")}>
-              Ir para o app
+            <Button size="xl" className="w-full h-[56px] rounded-2xl" onClick={() => navigate(adminRecovery ? "/admin" : "/hoje")}>
+              {adminRecovery ? "Ir para o painel administrativo" : "Ir para o app"}
             </Button>
           </div>
         </div>
@@ -128,7 +129,7 @@ export default function ResetPasswordPage() {
               <p className="text-sm text-muted-foreground mb-4">
                 Se você chegou aqui por engano, volte para o login.
               </p>
-              <Button variant="outline" size="xl" className="rounded-2xl" onClick={() => navigate("/auth")}>
+              <Button variant="outline" size="xl" className="rounded-2xl" onClick={() => navigate(adminRecovery ? "/admin/auth" : "/auth")}>
                 Ir para o login
               </Button>
             </div>

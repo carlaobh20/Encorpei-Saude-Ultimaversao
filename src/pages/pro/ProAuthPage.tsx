@@ -351,7 +351,7 @@ export default function ProAuthPage() {
                     </span>
                   </label>
                   <div className="rounded-2xl bg-secondary/60 p-4 text-sm text-muted-foreground leading-relaxed">
-                    Seu cadastro passa por uma análise da nossa equipe antes de liberar o acesso ao painel de pacientes.
+                    Conclua seu cadastro para acessar o painel e convidar seus pacientes, sem aguardar aprovação manual.
                   </div>
                 </>
               )}

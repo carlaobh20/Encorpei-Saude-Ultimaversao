@@ -3,9 +3,9 @@ import { Users, Stethoscope, Clock3, Link2, MessageSquareWarning, MessagesSquare
 import { useAdminStats } from "@/hooks/useAdminStats";
 
 const CARDS = [
-  { key: "total_patients" as const, label: "Pacientes cadastradas", icon: Users },
+  { key: "total_patients" as const, label: "Pacientes cadastrados", icon: Users },
   { key: "total_professionals" as const, label: "Médicos cadastrados", icon: Stethoscope },
-  { key: "pending_professionals" as const, label: "Médicos aguardando aprovação", icon: Clock3, link: "/admin/medicos", highlight: true },
+  { key: "pending_professionals" as const, label: "Cadastros com status pendente", icon: Clock3, link: "/admin/medicos", highlight: true },
   { key: "active_links" as const, label: "Vínculos ativos", icon: Link2 },
   { key: "feedback_new" as const, label: "Feedbacks novos", icon: MessageSquareWarning },
   { key: "feedback_total" as const, label: "Feedbacks (total)", icon: MessageSquareWarning },
@@ -20,7 +20,7 @@ export default function AdminDashboardPage() {
       <header className="mb-6">
         <h1 className="text-2xl font-semibold">Dashboard</h1>
         <p className="text-sm text-white/50 mt-1">
-          Números reais do banco — nada aqui é estimativa. v1: contagens gerais e feedbacks.
+          Acompanhe cadastros, vínculos e atividade do Encorpei Saúde.
         </p>
       </header>
 

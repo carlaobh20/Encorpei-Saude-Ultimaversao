@@ -1,4 +1,4 @@
-import { Route } from "react-router-dom";
+import { Route, Navigate } from "react-router-dom";
 import { lazy } from "react";
 import { AdminProtectedRoute } from "@/components/admin/AdminProtectedRoute";
 import { AdminShell } from "@/components/admin/AdminShell";
@@ -11,7 +11,10 @@ const AdminFeedbackPage  = lazy(() => import("@/pages/admin/AdminFeedbackPage"))
 const AdminSettingsPage  = lazy(() => import("@/pages/admin/AdminSettingsPage"));
 
 export const adminPublicRoutes = (
-  <Route path="/admin/auth" element={<AdminAuthPage />} />
+  <>
+    <Route path="/admin/auth" element={<AdminAuthPage />} />
+    <Route path="/auth;admin" element={<Navigate to="/admin/auth" replace />} />
+  </>
 );
 
 export const adminProtectedRoutes = (
