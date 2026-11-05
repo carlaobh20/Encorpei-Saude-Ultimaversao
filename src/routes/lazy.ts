@@ -54,3 +54,5 @@ export const ProRelatoriosPage   = lazy(() => import("@/pages/pro/ProRelatoriosP
 export const ProAccountPage      = lazy(() => import("@/pages/pro/ProAccountPage"));
 export const ProMarcaPage        = lazy(() => import("@/pages/pro/ProMarcaPage"));
 export const ProFeedbackPage     = lazy(() => import("@/pages/pro/ProFeedbackPage"));
+
+export const IntegracoesPage = lazy(() => import("@/pages/IntegracoesPage"));

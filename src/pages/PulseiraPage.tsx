@@ -22,6 +22,7 @@
  * Regra do §6 que atravessa o arquivo: nenhuma frase aqui prescreve conduta, e
  * a pressão vinda da pulseira é sempre rotulada estimativa.
  */
+import { Link } from "react-router-dom";
 import { H59_RECURSOS } from "@/lib/wearable/h59Capabilities";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -462,6 +463,7 @@ export default function PulseiraPage() {
     // o piso de 12px sobre os `text-[10.5px]` que sobraram por aqui.
     <TelaPaciente>
       <PageHeader title="Pulseira" subtitle="Compatibilidade: LOKMAT H59MAX · C4001B" />
+      <Link to="/integracoes" className="block text-primary underline mb-4">Apple Saúde, Health Connect e outras plataformas →</Link>
 
       {/* ══ Tela principal: estado, última sincronização, uma ação ══ */}
       <div className="mb-6">

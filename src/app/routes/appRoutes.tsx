@@ -3,7 +3,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppShell } from "@/components/shell/AppShell";
 import {
   HojePage, PressaoPage, PesoPage, GlicemiaPage, AtividadePage, SonoPage, RemediosPage, ExamesPage,
-  AgendaPage, MetasPage, PulseiraPage, SintomasPage, EmergenciaPage,
+  AgendaPage, MetasPage, PulseiraPage, IntegracoesPage, SintomasPage, EmergenciaPage,
   MedicoChatPage, ContaPage, ConfiguracoesPage, FeedbackPage,
   MeuCoracaoPage, ComoEstouPage, CaminhadaPage, AlimentacaoPage,
   AprenderPage, MeuMesPage, CuidadoresPage,
@@ -29,6 +29,7 @@ export const appRoutes = (
       <Route path="/exames"        element={<ExamesPage />} />
       <Route path="/agenda"        element={<AgendaPage />} />
       <Route path="/metas"         element={<MetasPage />} />
+      <Route path="/integracoes" element={<IntegracoesPage />} />
       <Route path="/pulseira"      element={<PulseiraPage />} />
       {/* /sintomas não tem item de menu de propósito: chega-se por ele pelo
           Registro Rápido e pelo cartão do Hoje, que é quando o paciente

@@ -127,14 +127,14 @@ export function linhasParaLeituras(
     if (l.heartRate != null) {
       out.heartRate.push({
         ...b, vital_type: "heart_rate", bpm: l.heartRate,
-        context: "resting", irregular_flag: null,
+        context: null, irregular_flag: null,
         rmssd: null, sdnn: null,
         validation_status: "estimated",
       });
     }
     if (l.spo2 != null) {
       out.spo2.push({
-        ...b, vital_type: "spo2", value: l.spo2, context: "spot",
+        ...b, vital_type: "spo2", value: l.spo2, context: null,
         time_below_90_pct: null,
         validation_status: "estimated",
       });
