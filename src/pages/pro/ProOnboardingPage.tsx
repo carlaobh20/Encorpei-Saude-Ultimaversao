@@ -25,8 +25,7 @@ const SPECIALTIES = [
 
 /**
  * Cadastro do perfil PROFISSIONAL (cardiologista/clínico/enfermagem/nutrição).
- * O acesso ao painel fica pendente de aprovação — a tela deixa isso claro
- * antes e depois de enviar (docs/CONTRATO-DE-CODIGO.md).
+ * O acesso ao painel é liberado ao concluir o cadastro.
  */
 export default function ProOnboardingPage() {
   const { user, loading, signOut } = useAuth();
@@ -99,10 +98,9 @@ export default function ProOnboardingPage() {
             <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-success-bg text-success mx-auto">
               <Check className="h-8 w-8" />
             </div>
-            <h1 className="font-display text-2xl font-medium tracking-tight text-foreground">Cadastro enviado!</h1>
+            <h1 className="font-display text-2xl font-medium tracking-tight text-foreground">Cadastro concluído!</h1>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Assim que a nossa equipe aprovar seu cadastro, você recebe acesso ao painel de pacientes.
-              Isso costuma levar pouco tempo.
+              Seu painel já está disponível. Gere um código de convite para vincular seu primeiro paciente.
             </p>
             <Button size="xl" className="w-full h-[56px] rounded-2xl" onClick={() => navigate("/pro/dashboard")}>
               Ir para o painel
@@ -253,7 +251,7 @@ export default function ProOnboardingPage() {
             </div>
 
             <div className="rounded-2xl bg-secondary/60 p-4 text-sm text-muted-foreground leading-relaxed">
-              Seu cadastro passa por análise da nossa equipe antes de liberar o acesso ao painel.
+              Ao concluir, você poderá acessar o painel e convidar seus pacientes.
             </div>
 
             <Button
@@ -262,7 +260,7 @@ export default function ProOnboardingPage() {
               onClick={handleFinish}
               disabled={salvar.isPending}
             >
-              {salvar.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : "Enviar para aprovação"}
+              {salvar.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : "Concluir cadastro"}
             </Button>
           </div>
         </div>
