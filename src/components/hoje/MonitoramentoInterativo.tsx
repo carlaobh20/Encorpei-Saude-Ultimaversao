@@ -31,7 +31,7 @@ export function MonitoramentoInterativo({ patientId, onRegistrar }: { patientId?
     <div role="group" aria-label="Origem das medidas" className="flex flex-wrap gap-2">
       {[["todos", "Todos"], ["device", "Aparelhos"], ["manual", "Manuais"]].map(([valor, nome]) => <button key={valor} aria-pressed={origem === valor} onClick={() => setOrigem(valor)} className={`min-h-[48px] rounded-xl border px-4 ${origem === valor ? "bg-primary text-primary-foreground" : "bg-card"}`}>{nome}</button>)}
     </div>
-    {origem === "device" && <p className="text-sm text-muted-foreground">Recursos da LOKMAT H59MAX: batimentos, oxigenação, sono, passos e pressão estimada. Aqui aparecem leituras recebidas ou importadas; nenhum valor é gerado sem registro. HRV e estresse do QWatch Pro ainda não têm sincronização validada neste modelo.</p>}
+    {origem === "device" && <p className="text-sm text-muted-foreground">Leituras recebidas de aparelhos ou importadas de plataformas de saúde, com a origem identificada. A disponibilidade depende do aparelho e da integração. Nenhum valor é gerado sem registro.</p>}
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
       {grupos.filter(grupo => origem !== "device" || metricaDisponivelH59(grupo.tipo)).map(grupo => {
         const linhas: Linha[] = grupo.linhas.filter(l => origem === "todos" || (origem === "device" ? origemDeAparelho(l.leitura.source_type) : l.leitura.source_type === origem));
