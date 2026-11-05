@@ -148,6 +148,7 @@ const aoMinuto = (iso: string) => (iso ? iso.slice(0, 16) : "");
 export interface DadosDoDispositivo {
   /** Nome que o próprio aparelho anunciou por Bluetooth. Nunca um modelo presumido. */
   deviceName: string;
+  category?: "h59" | "apple_health" | "health_connect";
   firmware?: string | null;
   protocolo: "ble" | "import";
   /** Identificador do Web Bluetooth, quando houver. */
@@ -199,7 +200,7 @@ export function useWearableSync(patientUserId?: string) {
         .from("registered_devices")
         .select("id, firmware, vital_types")
         .eq("patient_user_id", uid)
-        .eq("category", "h59")
+        .eq("category", info.category ?? "h59")
         .eq("display_name", nome)
         .limit(1)
         .maybeSingle();
@@ -226,7 +227,7 @@ export function useWearableSync(patientUserId?: string) {
           // não de manual (docs §4). Não afirmamos modelo que não confirmamos.
           model: null,
           manufacturer: null,
-          category: "h59",
+          category: info.category ?? "h59",
           protocol: info.protocolo,
           vital_types: vitais,
           firmware: info.firmware ?? null,
@@ -526,7 +527,10 @@ export function useWearableSync(patientUserId?: string) {
 
       // O aparelho precisa existir ANTES das leituras: `source_device_id` é
       // chave estrangeira para `registered_devices`.
-      const deviceId = await registrarDispositivo({ ...info, protocolo: "import" });
+      const deviceId = await registrarDispositivo({ ...info, protocolo: "import" }).catch(error => {
+        setProgresso({ fase: null, feitos: 0, total: 0 });
+        throw error;
+      });
 
       const leituras = linhasParaLeituras(linhas, {
         patientUserId: uid,
