@@ -1,33 +1,65 @@
-# Integrações de saúde
+# Integrações de saúde — estado da implementação
 
-## Entrega web
+## O que funciona na web
 
-`/integracoes` no app do paciente, acessível em Preferências. Importação explícita de `export.xml` do Apple Saúde, incluindo origens Apple Watch e apps que gravem no Saúde. Prévia local; seleção de uma origem e período; confirmação antes de persistir. Limite 25 MB / 100 mil registros. ZIP deve ser descompactado. Dados não vão para localStorage.
+`/integracoes`, em Preferências e Pulseira: importação de `export.xml` do Apple Saúde, com prévia, seleção de uma origem, período e confirmação. Até 25 MB e 100 mil registros; ZIP precisa ser descompactado. Importação JSON `encorpei.health.v1` é contrato Encorpei, NÃO backup oficial do Health Connect.
 
-Reutiliza `useWearableSync` com sessão autenticada, tabelas clínicas existentes, vínculo `source_device_id` e categorias `apple_health` / `health_connect`. Não altera RLS nem permite escolher outro paciente. Não equivale a autorização HealthKit. Nenhum selo de conexão automática é exibido.
+Batimentos, SpO2, passos, calorias ativas e sono. Tipos desconhecidos não geram registros; dados não ficam em localStorage. Importador antigo preservado: estimativas e proveniência, deduplicação de leituras pontuais; dias de atividade existentes não são substituídos. Não soma celular e relógio, não presume repouso. Sono usa união de intervalos; atividade só importa dias encerrados (UTC).
 
-Suporte: frequência cardíaca (bpm), SpO2 (%), passos, calorias ativas (kcal/kJ), sono (união de intervalos dormindo). Tipos desconhecidos, unidades inválidas, futuro e valores fora das faixas são descartados. Sono acordado/no leito não é duração dormida. Estágios sobrepostos não são somados. Atividade só em dias encerrados, sem sobreposição e sem cruzar meia-noite. O limite de dia encerrado usa UTC; registros próximos à meia-noite podem esperar a próxima importação. Todos entram como estimated. Não importa ECG, HRV, pressão, glicose ou peso por este adaptador.
+## Implementado nesta etapa, dependente de ativação
 
-Deduplicação e persistência usam o importador existente: medidas pontuais por minuto/valor; atividade e sono com granularidade diária. Não é motor de atualização incremental: dias de atividade existentes não são substituídos. Falhas parciais são reportadas. O painel do médico usa as mesmas tabelas; acesso depende do vínculo e das políticas existentes.
+- Capacitor 8.6.0 + `@capgo/capacitor-health` 8.11.14, versões fixadas e lockfile.
+- Leitura nativa HealthKit/Health Connect, somente 5 permissões de leitura, nenhum envio para a plataforma de saúde. Solicitação iniciada pelo paciente após consentimento no Encorpei.
+- Leitura dos últimos 7 dias, recorte recursivo de páginas lotadas, erro explícito se não puder garantir cobertura. Sem falsa indicação de leitura autorizada no iOS (HealthKit não revela necessariamente permissões de leitura negadas).
+- Identidade da amostra inclui origem, ID nativo, tipo e instante (uma série de FC no Android pode conter várias amostras com o mesmo ID de registro). Correções com a mesma identidade fazem upsert.
+- Depois de autorizar, tenta sincronizar a cada 15 minutos **somente enquanto o app nativo estiver aberto/visível**. Ao retomar ou voltar a internet, tenta novamente respeitando intervalo. Exclusão/recriação e mudanças de timestamp na origem ainda exigem fluxo nativo de changes/anchors.
+- RPC transacional `health_sync_batch`, 500 operações/lote, revisão otimista, idempotência com ID/hash, upsert, exclusões explícitas, validação e rollback integral de lote inválido. Retry mantém ID e conteúdo. Cursor avança apenas com commit. Lotes anteriores sobrevivem à falha de um lote posterior.
+- Tabelas `health_connections`, `health_samples`, `health_sync_batches`, todas com RLS. Paciente escreve apenas seus dados; médico vinculado só lê conexões/amostras. Sem service-role no cliente, sem SECURITY DEFINER. Registro por lote contém contagens/hash, sem cópia do conteúdo clínico. Não representa auditoria imutável, pois dados do próprio paciente são editáveis sob RLS.
+- Pausa de novos envios no servidor. Histórico permanece. Revogar permissão do sistema é outra ação, nas configurações de saúde do telefone.
+- Painel nativo em `/integracoes` e na ficha do paciente do médico: última recepção, atraso >24h, amostras por origem. Atualiza a consulta a cada 60 segundos enquanto aberto. Exibe até 100 amostras recentes, com aviso de limite. Não soma intervalos nem fontes, não classifica clinicamente, não alimenta alertas ou médias existentes. A importação XML continua alimentando o histórico existente.
+- Novas tabelas incluídas no manifesto de exportação/exclusão LGPD. A exclusão do usuário também remove via cascata.
 
-## Contrato para futuro adaptador Android
+## Ativar no ambiente correto
 
-Entrada JSON de integração, NÃO é formato de backup/exportação oficial do Health Connect:
+Projeto de produção: **rmodoqflmabzfsqieiln**. As conexões Supabase disponíveis nesta execução não possuem acesso a ele. NÃO aplicar em `lcwtiswemmslcibjitny` (NewEncorpeiSaude): é outro projeto.
 
-```json
-{"schema":"encorpei.health.v1","platform":"health_connect","samples":[{"type":"heart_rate","source":"Aplicativo do relógio","start":"2026-01-01T10:00:00-03:00","end":"2026-01-01T10:00:00-03:00","value":72,"unit":"bpm"}]}
+1. Conectar a conta com acesso ao projeto correto, conferir estrutura e aplicar SOMENTE `supabase/migrations/20261105144003_health_sync_incremental.sql` por migração. Não executar todas as migrações antigas sem conferir o histórico.
+2. Rodar advisors e verificar RLS com contas de teste: titular, outro paciente e médico vinculado. O frontend detecta tabela ausente e mostra aguardando ativação; não acusa conectado.
+3. Republicar as Edge Functions `exportar-meus-dados` e `excluir-minha-conta` para incluir as novas tabelas na portabilidade/exclusão. Não armazenar dados reais antes disso.
+4. Compilar e instalar o aplicativo nativo; conceder permissões no próprio celular.
+
+## Gerar Android/iOS
+
+Node >=22, `npm ci`, depois:
+
+```sh
+npm run native:android
+# abrir android/ no Android Studio; compilar/assinar/instalar
+npm run native:ios
+# abrir ios/App/App.xcodeproj no Xcode; configurar Team e assinatura
 ```
 
-Tipos/unidades: heart_rate/bpm, spo2/%, steps/count, active_calories/kcal, sleep/asleep (value 1). Datas com fuso obrigatórias. Nenhum ID de usuário fornecido no arquivo é utilizado. Esse contrato prepara o recebimento; não existe app Android nativo nem endpoint de sincronização automática nesta entrega.
+O gerador cria projetos locais reproduzíveis, copia o build web, sincroniza o plugin, configura privacidade e entitlement HealthKit, e remove do manifest Android permissões de saúde extras trazidas pela dependência (inclusive todas as de escrita). Não usa uma URL remota na WebView. Reexecutar após alterar a web. App ID inicial `com.encorpei.cardio`: registrar nas contas Apple/Google antes de distribuir.
 
-## Próxima etapa necessária para automático
+**Geração/sync não equivalem a compilação nativa ou aplicativo distribuído.** Nesta execução foram geradas/sincronizadas ambas as plataformas; não há APK/IPA assinado, TestFlight ou Play Store.
 
-- iOS: aplicativo nativo com HealthKit, permissões por tipo, consultas ancoradas, observer/background delivery e envio autenticado ao backend. Não garante tempo real.
-- Android: aplicativo nativo com Health Connect, permissões por tipo e para leitura em segundo plano quando disponível; trabalho periódico e envio autenticado. Depende de o app do fabricante gravar no Health Connect. QWatch Pro/H59MAX ainda não confirmado.
-- Backend incremental: IDs estáveis por origem/amostra, upsert, exclusões e revogação, cursor, retentativas idempotentes, auditoria e estado de última sincronização. Não reutilizar totais diários atuais como se fossem incrementais.
-- Serviços cloud: avaliar APIs oficiais e credenciais/aprovação do fabricante, incluindo Google Health API quando aplicável. Não criar integração nova com Google Fit legado.
-- Testar em dispositivos físicos, com consentimento, Android/iOS em segundo plano, desconexões e revogação. Não há garantia de suporte a qualquer smartwatch.
+## Ainda falta para o objetivo de não abrir o aplicativo
 
-Referências oficiais: https://developer.android.com/health-and-fitness/health-connect/read-data ; https://developer.apple.com/documentation/healthkit/executing-observer-queries ; https://support.apple.com/en-ie/guide/iphone/iph5ede58c3d/ios ; https://developer.android.com/health-and-fitness/health-connect/migration/fit
+- Serviço nativo de segundo plano: WorkManager + permissão background no Android; HealthKit observer/anchored queries no iOS. O plugin selecionado não entrega, por si, um uploader background. Não fingir que timer web funciona com app fechado.
+- Persistência cifrada de fila e tokens no Keystore/Keychain, refresh de sessão fora da WebView, retry/backoff e cancelamento/revogação. O fluxo atual mantém amostras em memória e releitura de 7 dias, sem prometer recuperação de interrupções maiores.
+- Changes tokens/anchors para capturar exclusões, alterações e histórico além da janela; RPC já recebe exclusões, mas o leitor atual não as descobre sozinho.
+- Armazenamento normalizado não é agregação clínica: integrar séries nativas às médias/gráficos existentes com regras por tipo/origem e sem contar novamente dados previamente importados.
+- Testes físicos de permissões parciais, tela bloqueada, processo encerrado, bateria, offline, troca de conta, revogação e exclusões. Aprovações e formulários das lojas.
+- Confirmar QWatch Pro -> Health Connect no Android. Nenhuma API pública/integrabilidade H59MAX foi comprovada. O sistema não consegue buscar um dado que o app fabricante não disponibiliza.
+- APIs cloud de outros fabricantes exigem integração oficial/credenciais; nenhuma autorização Fitbit/Garmin/Google Health API foi configurada. Google Fit legado não é base nova.
 
-Validação desta entrega: testes unitários de adaptação/normalização, TypeScript e build. Não validada com exportação real do usuário, aparelho físico ou escrita na conta de produção.
+## Verificação
+
+25 testes TypeScript (importação, unidades, origem, paginação e sono); 4 testes PostgreSQL via PGlite (transações, replays, revisão, validação, RLS titular/outro/médico/anon e revogação); TypeScript e build Vite. PGlite testa migração real sobre auth/vínculo mínimos de teste: não substitui advisors ou verificação no Supabase de produção.
+
+Referências oficiais:
+- https://developer.android.com/health-and-fitness/health-connect/read-data
+- https://developer.apple.com/documentation/healthkit/executing-observer-queries
+- https://capgo.app/docs/plugins/health/
+- https://capacitorjs.com/docs/getting-started/environment-setup
+- https://supabase.com/docs/guides/database/functions

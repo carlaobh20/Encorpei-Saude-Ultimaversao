@@ -1,3 +1,4 @@
+import { HealthPlatformsPanel } from "@/components/hoje/HealthPlatformsPanel";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Heart, Smartphone, Watch } from "lucide-react";
@@ -44,16 +45,17 @@ export default function IntegracoesPage() {
   }
   return <TelaPaciente>
     <PageHeader title="Aparelhos e plataformas" subtitle="Seus dados de saúde, com a origem identificada" backLink="/configuracoes" />
-    <div className="grid gap-3 sm:grid-cols-3">
+    <HealthPlatformsPanel />
+    <div className="grid gap-3 sm:grid-cols-3 mt-5">
       {[{icon:Heart,title:"Apple Saúde e Watch",text:"Importe registros exportados pelo Apple Saúde. Sincronização automática requer integração nativa no iPhone."},
-        {icon:Smartphone,title:"Health Connect · Android",text:"Ponte automática ainda não disponível. Depende da autorização no Android e de o app do relógio compartilhar os dados."},
+        {icon:Smartphone,title:"Health Connect · Android",text:"Leitura preparada para a versão nativa, após ativação no servidor. O app do relógio precisa compartilhar os dados com o Health Connect."},
         {icon:Watch,title:"Outros aparelhos",text:"A compatibilidade depende dos dados que o fabricante disponibiliza. Um relógio conectado não garante acesso a todas as medidas."}].map(({icon:Icon,title,text})=><SurfaceCard key={title} className="p-4"><Icon className="h-5 w-5 text-primary mb-3" aria-hidden/><h2 className="text-base font-semibold">{title}</h2><p className="text-sm text-muted-foreground mt-2">{text}</p></SurfaceCard>)}
     </div>
     <SurfaceCard className="p-5 space-y-4 mt-5">
       <h2 className="text-lg font-semibold">Importar meus dados</h2>
       <p className="text-sm text-muted-foreground">Nesta versão: batimentos, oxigenação, passos, calorias ativas e duração do sono, quando presentes no arquivo. Nenhuma medida ausente é inventada. Importar um arquivo não ativa sincronização automática.</p>
       <label className="block text-sm font-medium">Origem do arquivo<select className="mt-2 w-full rounded-xl border border-input bg-background p-3" value={platform} disabled={busy} onChange={e=>{setPlatform(e.target.value as Plataforma);setPreview(null);setMessage("");setConsent(false);}}><option value="apple_health">Apple Saúde · export.xml</option><option value="health_connect">Integração Android · JSON padronizado</option></select></label>
-      <p className="text-sm text-muted-foreground">{platform==="apple_health"?"No iPhone: Saúde → foto do perfil → Exportar Todos os Dados de Saúde. Descompacte o arquivo e selecione export.xml. Limite: 25 MB e 100 mil registros." : "Entrada destinada a um adaptador Android que gere o formato Encorpei. Não aceita o backup comum do Health Connect. O adaptador automático ainda precisa ser desenvolvido e instalado."}</p>
+      <p className="text-sm text-muted-foreground">{platform==="apple_health"?"No iPhone: Saúde → foto do perfil → Exportar Todos os Dados de Saúde. Descompacte o arquivo e selecione export.xml. Limite: 25 MB e 100 mil registros." : "Entrada destinada a um adaptador Android que gere o formato Encorpei. Não aceita o backup comum do Health Connect. A leitura nativa requer instalação e ativação do servidor; envio com o app fechado ainda não está disponível."}</p>
       <label className="block text-sm font-medium">Escolher arquivo<input key={platform} type="file" accept={platform==="apple_health"?".xml":".json"} disabled={busy} onChange={e=>void ler(e.target.files?.[0])} className="block w-full mt-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-secondary file:px-3 file:py-3 file:text-foreground" /></label>
       {preview && <div className="space-y-4 border-t border-border pt-4">
         <label className="block text-sm font-medium">Aparelho ou aplicativo de origem<select className="w-full mt-2 rounded-xl border border-input bg-background p-3" value={source} disabled={busy} onChange={e=>{setSource(e.target.value);setConsent(false);}}><option value="">Selecione uma origem</option>{preview.sources.map(s=><option key={s}>{s}</option>)}</select></label>

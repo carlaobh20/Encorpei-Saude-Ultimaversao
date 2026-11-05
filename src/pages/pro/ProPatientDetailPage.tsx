@@ -1,3 +1,4 @@
+import { HealthPlatformsPanel } from "@/components/hoje/HealthPlatformsPanel";
 import { MonitoramentoInterativo } from "@/components/hoje/MonitoramentoInterativo";
 /**
  * DETALHE DO PACIENTE — "a tela que economiza a consulta" (docs §2.7, §5).
@@ -354,6 +355,7 @@ export default function ProPatientDetailPage() {
           </div>
 
           {patientId && <MonitoramentoInterativo patientId={patientId} />}
+          {patientId && <HealthPlatformsPanel patientId={patientId} />}
 
           {/* Gráficos */}
           <div>

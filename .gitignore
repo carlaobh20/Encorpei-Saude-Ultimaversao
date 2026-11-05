@@ -11,3 +11,6 @@ dist-ssr
 *.zip
 .npm-cache-layout/
 artifacts/layout-mobile/
+# Projetos nativos gerados de forma reproduzível por scripts/prepare-native.mjs
+/android/
+/ios/
