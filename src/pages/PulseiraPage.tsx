@@ -12,10 +12,9 @@
  *    paciente via o número pulsar e concluía que estava tudo certo. Agora o
  *    número grande da tela é a ÚLTIMA SINCRONIZAÇÃO BEM-SUCEDIDA, que só avança
  *    depois de uma gravação confirmada no banco (`useWearableSync`).
- * 2. **Nada de modelo presumido.** A ficha do aparelho veio de anúncio, não de
- *    manual (docs §4). A tela diz "o aparelho que você conectou" e mostra o nome
- *    que o próprio aparelho anunciou por Bluetooth. Nome de modelo e nome de app
- *    de fabricante não aparecem para o paciente.
+ * 2. O modelo de referência foi identificado pela embalagem: LOKMAT H59MAX.
+ *    O nome Bluetooth continua separado; capacidade e integração não se confundem.
+ *
  * 3. **Diagnóstico é ajuda, não tela principal.** Serviço GATT, UUID e firmware
  *    interessam a quem está depurando o primeiro aparelho, não a um senhor de 70
  *    anos às 8h da manhã. Foram para "Ajuda e detalhes do aparelho", recolhido.
@@ -23,6 +22,7 @@
  * Regra do §6 que atravessa o arquivo: nenhuma frase aqui prescreve conduta, e
  * a pressão vinda da pulseira é sempre rotulada estimativa.
  */
+import { H59_RECURSOS } from "@/lib/wearable/h59Capabilities";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -305,7 +305,7 @@ export default function PulseiraPage() {
           firmware: con.firmware,
           protocolo: "ble",
           externalId: con.deviceId,
-          vitalTypes: ["heart_rate", "hrv"],
+          vitalTypes: ["heart_rate"],
         });
       } catch {
         idDoAparelhoRef.current = null;
@@ -461,7 +461,7 @@ export default function PulseiraPage() {
     // do app: a coluna com teto de largura, títulos de seção na mesma voz, e
     // o piso de 12px sobre os `text-[10.5px]` que sobraram por aqui.
     <TelaPaciente>
-      <PageHeader title="Pulseira" subtitle="O aparelho que você usa no pulso" />
+      <PageHeader title="Pulseira" subtitle="Compatibilidade: LOKMAT H59MAX · C4001B" />
 
       {/* ══ Tela principal: estado, última sincronização, uma ação ══ */}
       <div className="mb-6">
@@ -579,7 +579,7 @@ export default function PulseiraPage() {
                 <span className="truncate">Importar arquivo</span>
               </Button>
               <p className="text-xs text-muted-foreground mt-2">
-                Use o arquivo que o aplicativo do seu aparelho exporta. Você confere tudo antes de salvar.
+                Aceita CSV compatível, caso você tenha esse arquivo. A exportação pelo QWatch Pro ainda não foi confirmada. Conectar a pulseira não importa automaticamente todos os dados.
               </p>
             </>
           ) : previa.precisaConfirmacao ? (
@@ -737,33 +737,21 @@ export default function PulseiraPage() {
         </SurfaceCard>
       </div>
 
-      {/* ══ O que mede, o que estima ═════════════════════════════════ */}
       <div className="mb-6">
-        <TituloSecao titulo="O que este aparelho mede — e o que ele estima" icone={Info} />
-        <div className="space-y-3">
-          <SurfaceCard className="bg-success-bg border-0">
-            <p className="text-xs font-bold uppercase tracking-wide text-success mb-1.5">Mede de verdade</p>
-            <p className="text-sm text-foreground leading-relaxed">
-              O sensor de luz no pulso mede seus batimentos e a oxigenação do sangue. O sensor de movimento conta
-              passos, distância e o seu sono, pelo jeito que você se mexe na cama.
-            </p>
-          </SurfaceCard>
-          <SurfaceCard className="bg-warning-bg border-0">
-            <p className="text-xs font-bold uppercase tracking-wide text-warning mb-1.5">Estima — não usar para decisão clínica</p>
-            <p className="text-sm text-foreground leading-relaxed">
-              A "pressão" que o aparelho mostra é um cálculo feito pelo mesmo sensor de luz do pulso, sem manguito e
-              sem validação médica. O app marca essa leitura como estimativa: ela nunca entra na sua média de
-              pressão nem dispara aviso. Para pressão de verdade, use sempre o aparelho de braço.
-            </p>
-          </SurfaceCard>
-          <SurfaceCard className="bg-muted/50 border-0">
-            <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1.5">Este aparelho não tem</p>
-            <p className="text-sm text-foreground leading-relaxed">
-              Eletrocardiograma (ECG), temperatura do corpo e glicemia. Se você viu esses termos no anúncio, saiba
-              que este aparelho não faz essas medidas.
-            </p>
-          </SurfaceCard>
-        </div>
+        <TituloSecao titulo="Recursos da H59MAX no Encorpei" icone={Info} />
+        <SurfaceCard>
+          <p className="text-sm text-muted-foreground mb-4">Modelo identificado pela embalagem. O QWatch Pro é o aplicativo companheiro; a compatibilidade de transmissão precisa ser testada na sua unidade.</p>
+          <ul className="space-y-3">
+            {H59_RECURSOS.map(recurso => <li key={recurso.nome} className="border-b border-border pb-3 last:border-0">
+              <p className="text-sm font-semibold">{recurso.nome}</p>
+              <p className="text-sm text-muted-foreground">{recurso.envio}</p>
+            </li>)}
+          </ul>
+          <p className="text-sm text-muted-foreground mt-4">HRV, estresse, distância e registros esportivos são anunciados para o modelo, mas ainda não têm importação validada neste app. Não exibimos números calculados para substituir esses dados.</p>
+          <p className="text-sm text-muted-foreground mt-3">Alarmes, notificações, lembrete de movimento, localizar pulseira, câmera remota e atualização de firmware ficam no QWatch Pro. O GPS dos exercícios depende do celular.</p>
+          <p className="text-sm text-warning-forte mt-3">As leituras da pulseira são estimativas de bem-estar. Pressão sem manguito não substitui a medida com aparelho de braço.</p>
+          <p className="text-sm text-muted-foreground mt-3">Não habilitados para esta pulseira: peso, glicemia, ECG, temperatura e diagnóstico de arritmia. Não há suporte comprovado para essas funções no modelo identificado.</p>
+        </SurfaceCard>
       </div>
 
       {/* ══ Ajuda e detalhes do aparelho (recolhido) ═════════════════ */}
@@ -781,8 +769,7 @@ export default function PulseiraPage() {
           {ajudaAberta && (
             <div className="mt-4">
               <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
-                Cada aparelho desses vem de um lote diferente e nem todos falam a mesma língua. Este teste conecta
-                uma vez e diz o que o seu, especificamente, consegue enviar para o app.
+                Cada aparelho desses vem de um lote diferente e nem todos falam a mesma língua. Este teste identifica os serviços Bluetooth disponíveis. Isso não comprova que todos os dados possam ser importados.
               </p>
 
               <Button size="lg" variant="outline" className="w-full gap-2 px-4" onClick={testarPulseira} disabled={diagnosticando}>
