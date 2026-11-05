@@ -132,6 +132,7 @@ export default function ConfiguracoesPage() {
   return (
     <TelaPaciente>
       <PageHeader title="Preferências" subtitle="Aparência, leitura e avisos do app" />
+      <SurfaceCard className="p-4 mb-4"><button className="text-left w-full text-primary font-semibold" onClick={() => navigate("/integracoes")}>Aparelhos e plataformas →<span className="block text-sm text-muted-foreground font-normal mt-1">Apple Saúde, Health Connect e importação de dados</span></button></SurfaceCard>
 
       <section>
         <TituloSecao titulo="Avisos e lembretes" />
