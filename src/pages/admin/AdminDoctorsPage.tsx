@@ -225,7 +225,7 @@ function DoctorCard({ item, metrics }: { item: ProfessionalProfileFull; metrics?
 }
 
 export default function AdminDoctorsPage() {
-  const [statusFilter, setStatusFilter] = useState<ProfessionalApprovalStatus | "all">("pending");
+  const [statusFilter, setStatusFilter] = useState<ProfessionalApprovalStatus | "all">("all");
   const { data: items = [], isLoading, isError, error } = useAdminProfessionals(statusFilter);
   const { data: metricsByProfessional } = useAdminProfessionalMetrics();
 
