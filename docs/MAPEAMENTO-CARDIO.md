@@ -201,7 +201,11 @@ laudos de USG obstétrico, "posso comer", mala de maternidade.
 
 ---
 
-## 4. Pulseira H59 Max — ficha confirmada e limites reais
+## 4. Pulseira H59 Max — ficha histórica do fornecedor
+
+> Revisão de 05/11/2026: esta ficha histórica não comprova sensores, validação
+> clínica nem integração do lote. Para implementação, prevalece
+> [H59MAX-COMPATIBILIDADE.md](H59MAX-COMPATIBILIDADE.md).
 
 Atualizado em 10/09/2026 com a ficha do anúncio do fornecedor (o modelo comprado é o
 **H59 Max**, não o H59 comum).
