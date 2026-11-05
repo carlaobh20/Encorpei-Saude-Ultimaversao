@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useBloodPressure, useHeartRate, useWeight, useSpo2, useSleep, useActivity, useGlucose } from "@/hooks/useCardioReadings";
 import type { ClinicalReadingBase } from "@/types/cardio";
 import { rotuloProveniencia } from "@/lib/wearable/normalize";
+import { metricaDisponivelH59, origemDeAparelho } from "@/lib/wearable/h59Capabilities";
 import { numero, quandoLegivel } from "@/lib/formato";
 
 type Linha = { leitura: ClinicalReadingBase; valor: string; data?: string };
@@ -11,13 +12,13 @@ export function MonitoramentoInterativo({ patientId, onRegistrar }: { patientId?
   const bp = useBloodPressure(patientId), hr = useHeartRate(patientId), peso = useWeight(patientId);
   const spo = useSpo2(patientId), sono = useSleep(patientId), atividade = useActivity(patientId), glicose = useGlucose(patientId);
   const grupos = [
-    { nome: "Pressão", rota: "/pressao", query: bp, linhas: bp.readings.map(leitura => ({ leitura, valor: `${leitura.systolic}/${leitura.diastolic} mmHg` })) },
-    { nome: "Batimentos", rota: "/pressao", query: hr, linhas: hr.readings.map(leitura => ({ leitura, valor: `${leitura.bpm} bpm` })) },
-    { nome: "Peso", rota: "/peso", query: peso, linhas: peso.readings.map(leitura => ({ leitura, valor: `${numero(Number(leitura.value), 1)} kg` })) },
-    { nome: "Oxigenação", rota: "/pulseira", query: spo, linhas: spo.readings.map(leitura => ({ leitura, valor: `${leitura.value}%` })) },
-    { nome: "Sono", rota: "/sono", query: sono, linhas: sono.records.map(leitura => ({ leitura, valor: `${Math.floor(leitura.total_minutes / 60)}h ${leitura.total_minutes % 60}min`, data: leitura.sleep_date })) },
-    { nome: "Passos", rota: "/atividade", query: atividade, linhas: atividade.records.map(leitura => ({ leitura, valor: leitura.steps == null ? "Não informado" : `${numero(leitura.steps, 0)} passos`, data: leitura.activity_date })) },
-    { nome: "Glicemia", rota: "/glicemia", query: glicose, linhas: glicose.readings.map(leitura => ({ leitura, valor: `${leitura.value} mg/dL` })) },
+    { tipo: "blood_pressure", nome: "Pressão", rota: "/pressao", query: bp, linhas: bp.readings.map(leitura => ({ leitura, valor: `${leitura.systolic}/${leitura.diastolic} mmHg` })) },
+    { tipo: "heart_rate", nome: "Batimentos", rota: "/pressao", query: hr, linhas: hr.readings.map(leitura => ({ leitura, valor: `${leitura.bpm} bpm` })) },
+    { tipo: "weight", nome: "Peso", rota: "/peso", query: peso, linhas: peso.readings.map(leitura => ({ leitura, valor: `${numero(Number(leitura.value), 1)} kg` })) },
+    { tipo: "spo2", nome: "Oxigenação", rota: "/pulseira", query: spo, linhas: spo.readings.map(leitura => ({ leitura, valor: `${leitura.value}%` })) },
+    { tipo: "sleep", nome: "Sono", rota: "/sono", query: sono, linhas: sono.records.map(leitura => ({ leitura, valor: `${Math.floor(leitura.total_minutes / 60)}h ${leitura.total_minutes % 60}min`, data: leitura.sleep_date })) },
+    { tipo: "activity", nome: "Passos", rota: "/atividade", query: atividade, linhas: atividade.records.map(leitura => ({ leitura, valor: leitura.steps == null ? "Não informado" : `${numero(leitura.steps, 0)} passos`, data: leitura.activity_date })) },
+    { tipo: "glucose", nome: "Glicemia", rota: "/glicemia", query: glicose, linhas: glicose.readings.map(leitura => ({ leitura, valor: `${leitura.value} mg/dL` })) },
   ];
   const data = (linha: Linha) => linha.data ? linha.data.split("-").reverse().join("/") : quandoLegivel(linha.leitura.recorded_at);
   const fonte = (linha: Linha) => rotuloProveniencia(linha.leitura.source_type, linha.leitura.validation_status, linha.leitura.source_device_name).label;
@@ -30,13 +31,14 @@ export function MonitoramentoInterativo({ patientId, onRegistrar }: { patientId?
     <div role="group" aria-label="Origem das medidas" className="flex flex-wrap gap-2">
       {[["todos", "Todos"], ["device", "Aparelhos"], ["manual", "Manuais"]].map(([valor, nome]) => <button key={valor} aria-pressed={origem === valor} onClick={() => setOrigem(valor)} className={`min-h-[48px] rounded-xl border px-4 ${origem === valor ? "bg-primary text-primary-foreground" : "bg-card"}`}>{nome}</button>)}
     </div>
+    {origem === "device" && <p className="text-sm text-muted-foreground">Recursos da LOKMAT H59MAX: batimentos, oxigenação, sono, passos e pressão estimada. Aqui aparecem leituras recebidas ou importadas; nenhum valor é gerado sem registro. HRV e estresse do QWatch Pro ainda não têm sincronização validada neste modelo.</p>}
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
-      {grupos.map(grupo => {
-        const linhas: Linha[] = grupo.linhas.filter(l => origem === "todos" || l.leitura.source_type === origem);
+      {grupos.filter(grupo => origem !== "device" || metricaDisponivelH59(grupo.tipo)).map(grupo => {
+        const linhas: Linha[] = grupo.linhas.filter(l => origem === "todos" || (origem === "device" ? origemDeAparelho(l.leitura.source_type) : l.leitura.source_type === origem));
         const ultima = linhas[0];
         return <details key={grupo.nome} className="rounded-xl border bg-card p-4 group">
           <summary className="cursor-pointer min-h-[48px] rounded-lg focus-visible:outline focus-visible:outline-2">
-            <span className="font-medium">{grupo.nome}</span>
+            <span className="font-medium">{origem === "device" && grupo.tipo === "blood_pressure" ? "Pressão estimada" : grupo.nome}</span>
             <strong className="block text-2xl mt-1 tabular-nums">{grupo.query.isLoading ? "Carregando…" : grupo.query.isError ? "Falha ao carregar" : ultima?.valor ?? "Sem registro"}</strong>
             {!grupo.query.isError && ultima && <span className="block text-sm text-muted-foreground mt-1">{data(ultima)} · {fonte(ultima)}</span>}
             <span className="block text-sm mt-2 underline group-open:hidden">Ver registros</span>
