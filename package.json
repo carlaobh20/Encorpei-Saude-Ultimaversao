@@ -14,9 +14,16 @@
     "check": "tsc -p tsconfig.app.json --noEmit && eslint . --max-warnings 400",
     "typecheck:raw": "tsc -p tsconfig.app.json --noEmit",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
-    "test": "node --experimental-strip-types --test src/lib/wearable/sono.test.ts src/lib/wearable/h59Capabilities.test.ts src/lib/health/import.test.ts"
+    "test": "node --experimental-strip-types --test src/lib/wearable/sono.test.ts src/lib/wearable/h59Capabilities.test.ts src/lib/health/import.test.ts src/lib/health/nativeAdapter.test.ts",
+    "native:android": "npm run build && node scripts/prepare-native.mjs android",
+    "native:ios": "npm run build && node scripts/prepare-native.mjs ios",
+    "test:health-db": "node --test scripts/health-db.test.mjs"
   },
   "dependencies": {
+    "@capacitor/android": "8.6.0",
+    "@capacitor/core": "8.6.0",
+    "@capacitor/ios": "8.6.0",
+    "@capgo/capacitor-health": "8.11.14",
     "@radix-ui/react-alert-dialog": "^1.1.14",
     "@radix-ui/react-dialog": "^1.1.14",
     "@radix-ui/react-label": "^2.1.7",
@@ -44,6 +51,8 @@
     "vite-plugin-pwa": "^1.2.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "8.6.0",
+    "@electric-sql/pglite": "0.3.14",
     "@eslint/js": "^9.32.0",
     "@types/node": "^22.16.5",
     "@types/react": "^18.3.23",

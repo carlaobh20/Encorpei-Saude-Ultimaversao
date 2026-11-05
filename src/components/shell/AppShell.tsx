@@ -1,3 +1,4 @@
+import { useNativeHealthAutoSync } from "@/hooks/useNativeHealthAutoSync";
 import {
   useCallback, useEffect, useMemo, useRef, useState,
   type CSSProperties, type ReactNode,
@@ -904,6 +905,7 @@ function MarcaNoTopo() {
 const ESTILO_SHELL = { "--barra-inferior": "calc(4rem + env(safe-area-inset-bottom, 0px))" } as CSSProperties;
 
 export function AppShell() {
+  useNativeHealthAutoSync();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [registroAberto, setRegistroAberto] = useState(false);
   const location = useLocation();

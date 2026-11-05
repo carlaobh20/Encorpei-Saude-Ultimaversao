@@ -23,6 +23,9 @@ export const cors = {
 
 /** Tabelas com dado clínico do paciente, chaveadas por `patient_user_id`. */
 export const TABELAS_PACIENTE = [
+  "health_sync_batches",
+  "health_samples",
+  "health_connections",
   "professional_patient_links",
   "cardio_targets",
   "registered_devices",
