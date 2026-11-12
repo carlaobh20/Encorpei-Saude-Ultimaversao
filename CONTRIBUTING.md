@@ -39,3 +39,5 @@ Versão `vX.Y.Z`:
 - Z é correção mínima (bugfix).
 - Y é um ajuste um pouco maior, como a interface (HUD) ou uma função nova.
 - X só muda quando o usuário pedir. Não suba X por conta própria.
+
+Mudança no site abre um pull request para aprovação. Mudança no app (Android ou iOS) pode ir direto para a main.
