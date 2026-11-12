@@ -29,3 +29,13 @@ Etapas: `install → lint → typecheck → test → build`
 - Usa `bun install --frozen-lockfile` para instalação determinística
 - Cancela runs anteriores do mesmo branch (concurrency)
 - Timeout de 10 minutos
+
+## Releases
+
+Toda alteração decente que chega no cliente vira uma Release nova no GitHub. Vale para o app Android e iOS. Não vale para rascunho, teste quebrado ou mudança que não chega no cliente.
+
+Versão `vX.Y.Z`:
+
+- Z é correção mínima (bugfix).
+- Y é um ajuste um pouco maior, como a interface (HUD) ou uma função nova.
+- X só muda quando o usuário pedir. Não suba X por conta própria.
