@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="fundo">#F4F1EA</color>
+    <color name="tinta">#1C2430</color>
+    <color name="secundaria">#3E4A59</color>
+    <color name="bpm">#0F6E56</color>
+    <color name="aviso">#6B3E12</color>
+    <color name="cartao">#FFFCF7</color>
+</resources>
