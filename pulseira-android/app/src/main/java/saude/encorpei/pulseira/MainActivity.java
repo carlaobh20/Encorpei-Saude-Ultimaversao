@@ -8,17 +8,22 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.location.LocationManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.TextView;
+import android.widget.ViewFlipper;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
@@ -78,6 +83,28 @@ public final class MainActivity extends android.app.Activity {
     private LinearLayout mapa;
     private Button confirmarArquivo;
     private Button cancelarArquivo;
+    private ViewFlipper abas;
+    private LinearLayout barra;
+    private boolean casaPedida;
+    private boolean abaEscolhida;
+    private String tipoRegistro = "bp";
+    private TextView hojeTitulo;
+    private TextView hojeCorpo;
+    private TextView evolucaoCorpo;
+    private TextView medicoNome;
+    private TextView medicoClinica;
+    private TextView medicoMsgs;
+    private TextView medicoErro;
+    private TextView regPlano;
+    private TextView regAjuda;
+    private TextView regErro;
+    private EditText medicoCampo;
+    private EditText regA;
+    private EditText regB;
+    private EditText regC;
+    private EditText regNota;
+    private View regForm;
+    private View emergencia;
     private static final int PEDIDO_ARQUIVO = 2;
     private final Runnable contaMudou = () -> runOnUiThread(this::redesenhar);
 
@@ -101,6 +128,7 @@ public final class MainActivity extends android.app.Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        montarAbas();
         nome = findViewById(R.id.nome);
         selo = findViewById(R.id.selo);
         frase = findViewById(R.id.frase);
@@ -198,6 +226,203 @@ public final class MainActivity extends android.app.Activity {
             servico = null;
         }
         super.onStop();
+    }
+
+    private void montarAbas() {
+        ScrollView pulseira = (ScrollView) ((ViewGroup) findViewById(android.R.id.content)).getChildAt(0);
+        LinearLayout miolo = (LinearLayout) pulseira.getChildAt(0);
+        View cabecalho = miolo.getChildAt(0);
+        miolo.removeViewAt(0);
+        ((ViewGroup) pulseira.getParent()).removeView(pulseira);
+
+        abas = new ViewFlipper(this);
+        abas.addView(getLayoutInflater().inflate(R.layout.painel_hoje, null), cheia());
+        abas.addView(getLayoutInflater().inflate(R.layout.painel_evolucao, null), cheia());
+        abas.addView(getLayoutInflater().inflate(R.layout.painel_registrar, null), cheia());
+        abas.addView(getLayoutInflater().inflate(R.layout.painel_medico, null), cheia());
+        abas.addView(pulseira, cheia());
+
+        barra = new LinearLayout(this);
+        barra.setOrientation(LinearLayout.HORIZONTAL);
+        barra.setBackgroundColor(getColor(R.color.cartao));
+        String[] nomes = {"Hoje", "Evolução", "Registrar", "Meu médico", "Pulseira"};
+        for (int i = 0; i < nomes.length; i++) {
+            TextView t = new TextView(this);
+            t.setText(nomes[i]);
+            t.setGravity(Gravity.CENTER);
+            t.setTextSize(12);
+            t.setMinHeight(dp(56));
+            t.setPadding(dp(2), dp(8), dp(2), dp(8));
+            final int indice = i;
+            t.setOnClickListener(v -> {
+                abaEscolhida = true;
+                if (indice != 4) casaPedida = false;
+                mostrarAba(indice);
+                if (conta != null && conta.temSessao()) redesenhar();
+            });
+            barra.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        }
+
+        LinearLayout coluna = new LinearLayout(this);
+        coluna.setOrientation(LinearLayout.VERTICAL);
+        coluna.setBackgroundColor(getColor(R.color.fundo));
+        coluna.addView(cabecalho, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        coluna.addView(abas, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        coluna.addView(barra, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        setContentView(coluna);
+        ligarCasa();
+    }
+
+    private ViewGroup.LayoutParams cheia() {
+        return new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+    }
+
+    private int dp(int v) {
+        return Math.round(v * getResources().getDisplayMetrics().density);
+    }
+
+    private void mostrarAba(int indice) {
+        if (abas == null) return;
+        abas.setDisplayedChild(indice);
+        for (int i = 0; i < barra.getChildCount(); i++) {
+            TextView t = (TextView) barra.getChildAt(i);
+            boolean ativo = i == indice;
+            t.setTextColor(getColor(ativo ? R.color.tinta : R.color.secundaria));
+            t.setTypeface(null, ativo ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
+        }
+    }
+
+    private void ligarCasa() {
+        hojeTitulo = findViewById(R.id.hoje_titulo);
+        hojeCorpo = findViewById(R.id.hoje_corpo);
+        evolucaoCorpo = findViewById(R.id.evolucao_corpo);
+        medicoNome = findViewById(R.id.medico_nome);
+        medicoClinica = findViewById(R.id.medico_clinica);
+        medicoMsgs = findViewById(R.id.medico_msgs);
+        medicoErro = findViewById(R.id.medico_erro);
+        medicoCampo = findViewById(R.id.medico_campo);
+        regPlano = findViewById(R.id.reg_plano);
+        regAjuda = findViewById(R.id.reg_ajuda);
+        regErro = findViewById(R.id.reg_erro);
+        regA = findViewById(R.id.reg_a);
+        regB = findViewById(R.id.reg_b);
+        regC = findViewById(R.id.reg_c);
+        regNota = findViewById(R.id.reg_nota);
+        regForm = findViewById(R.id.reg_form);
+        emergencia = findViewById(R.id.medico_emergencia);
+        findViewById(R.id.hoje_registrar).setOnClickListener(v -> {
+            abaEscolhida = true;
+            mostrarAba(2);
+        });
+        findViewById(R.id.reg_bp).setOnClickListener(v -> abrirRegistro("bp"));
+        findViewById(R.id.reg_peso).setOnClickListener(v -> abrirRegistro("weight"));
+        findViewById(R.id.reg_sente).setOnClickListener(v -> abrirRegistro("wellbeing"));
+        findViewById(R.id.reg_fc).setOnClickListener(v -> abrirRegistro("hr"));
+        findViewById(R.id.reg_spo2).setOnClickListener(v -> abrirRegistro("spo2"));
+        findViewById(R.id.reg_glicose).setOnClickListener(v -> abrirRegistro("glucose"));
+        findViewById(R.id.reg_salvar).setOnClickListener(v -> salvarRegistro());
+        findViewById(R.id.medico_aviso).setOnClickListener(v ->
+                emergencia.setVisibility(emergencia.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE));
+        findViewById(R.id.medico_ligar).setOnClickListener(v ->
+                startActivity(new Intent(Intent.ACTION_DIAL, Uri.parse("tel:192"))));
+        findViewById(R.id.medico_enviar).setOnClickListener(v -> {
+            String texto = medicoCampo.getText().toString();
+            rede.execute(() -> {
+                String erro = conta.enviarMensagem(texto);
+                runOnUiThread(() -> {
+                    if (erro == null) {
+                        medicoCampo.setText("");
+                        medicoErro.setText("");
+                        casaPedida = false;
+                        redesenhar();
+                    } else medicoErro.setText(erro);
+                });
+            });
+        });
+    }
+
+    private void abrirRegistro(String tipo) {
+        tipoRegistro = tipo;
+        regForm.setVisibility(View.VISIBLE);
+        regErro.setText("");
+        regA.setText("");
+        regB.setText("");
+        regC.setText("");
+        regNota.setText("");
+        boolean bp = "bp".equals(tipo);
+        boolean bem = "wellbeing".equals(tipo);
+        regA.setVisibility(bem ? View.GONE : View.VISIBLE);
+        findViewById(R.id.reg_rotulo_a).setVisibility(bem ? View.GONE : View.VISIBLE);
+        findViewById(R.id.reg_rotulo_b).setVisibility(bp ? View.VISIBLE : View.GONE);
+        regB.setVisibility(bp ? View.VISIBLE : View.GONE);
+        findViewById(R.id.reg_rotulo_c).setVisibility(bp ? View.VISIBLE : View.GONE);
+        regC.setVisibility(bp ? View.VISIBLE : View.GONE);
+        findViewById(R.id.reg_nota_rotulo).setVisibility(bem ? View.VISIBLE : View.GONE);
+        findViewById(R.id.reg_nota_ajuda).setVisibility(bem ? View.VISIBLE : View.GONE);
+        regNota.setVisibility(bem ? View.VISIBLE : View.GONE);
+        if ("bp".equals(tipo)) {
+            ((TextView) findViewById(R.id.reg_rotulo_a)).setText("Número maior");
+            regA.setHint("120");
+            regAjuda.setText("Sente-se, apoie o braço na mesa e espere cinco minutos parado antes de medir.");
+        } else if ("weight".equals(tipo)) {
+            ((TextView) findViewById(R.id.reg_rotulo_a)).setText("Peso de hoje");
+            regA.setHint("78,5");
+            regAjuda.setText("De manhã, depois de ir ao banheiro e antes de comer — sempre do mesmo jeito. É a comparação entre os dias que interessa ao seu médico.");
+        } else if ("hr".equals(tipo)) {
+            ((TextView) findViewById(R.id.reg_rotulo_a)).setText("Batimentos em repouso");
+            regA.setHint("68");
+            regAjuda.setText("");
+        } else if ("spo2".equals(tipo)) {
+            ((TextView) findViewById(R.id.reg_rotulo_a)).setText("Oxigenação no dedo");
+            regA.setHint("97");
+            regAjuda.setText("");
+        } else if ("glucose".equals(tipo)) {
+            ((TextView) findViewById(R.id.reg_rotulo_a)).setText("Glicemia");
+            regA.setHint("98");
+            regAjuda.setText("");
+        } else {
+            regAjuda.setText("");
+        }
+    }
+
+    private void salvarRegistro() {
+        String a = regA.getText().toString();
+        String b = regB.getText().toString();
+        String c = regC.getText().toString();
+        Integer nota = null;
+        if ("wellbeing".equals(tipoRegistro)) {
+            try { nota = Integer.parseInt(regNota.getText().toString().trim()); }
+            catch (Exception ex) { nota = null; }
+        }
+        String tipo = tipoRegistro;
+        Integer notaFinal = nota;
+        findViewById(R.id.reg_salvar).setEnabled(false);
+        ((Button) findViewById(R.id.reg_salvar)).setText("Salvando…");
+        rede.execute(() -> {
+            String erro = conta.registrarMedida(tipo, a, b, c, notaFinal);
+            runOnUiThread(() -> {
+                findViewById(R.id.reg_salvar).setEnabled(true);
+                ((Button) findViewById(R.id.reg_salvar)).setText("Salvar");
+                if (erro == null) {
+                    regErro.setText("Registrado.");
+                    casaPedida = false;
+                    redesenhar();
+                } else regErro.setText(erro);
+            });
+        });
+    }
+
+    private void pintarCasa() {
+        if (hojeTitulo == null || conta == null) return;
+        hojeTitulo.setText(conta.nomePessoa.isEmpty() ? "Hoje" : conta.nomePessoa);
+        hojeCorpo.setText(conta.textoHoje.isEmpty() ? "Carregando…" : conta.textoHoje);
+        evolucaoCorpo.setText(conta.textoMeta.isEmpty() ? "Carregando…" : conta.textoMeta);
+        medicoNome.setText(conta.nomeMedico);
+        medicoClinica.setText(conta.clinicaMedico);
+        medicoMsgs.setText(conta.textoMensagens.isEmpty()
+                ? "Nenhuma mensagem ainda. Escreva para o seu médico abaixo."
+                : conta.textoMensagens);
+        regPlano.setText(conta.textoHoje.isEmpty() ? "" : conta.textoHoje);
     }
 
     private void pedirConexao() {
@@ -519,14 +744,33 @@ public final class MainActivity extends android.app.Activity {
         login.setVisibility(logado ? View.GONE : View.VISIBLE);
         conteudo.setVisibility(logado ? View.VISIBLE : View.GONE);
         sair.setVisibility(logado ? View.VISIBLE : View.GONE);
-        if (!logado) return;
+        if (barra != null) barra.setVisibility(logado ? View.VISIBLE : View.GONE);
+        if (!logado) {
+            casaPedida = false;
+            abaEscolhida = false;
+            if (abas != null) mostrarAba(4);
+            return;
+        }
+        if (!abaEscolhida) {
+            abaEscolhida = true;
+            mostrarAba(0);
+        }
+        pintarCasa();
+        if (!casaPedida) {
+            casaPedida = true;
+            rede.execute(() -> conta.carregarCasa());
+        }
         if (sairDepois && (e == null || "parada".equals(e.fase)) && (servico == null || !servico.salvando)) {
             sairDepois = false;
             conta.sair();
             painelPara = -2;
+            casaPedida = false;
+            abaEscolhida = false;
             login.setVisibility(View.VISIBLE);
             conteudo.setVisibility(View.GONE);
             sair.setVisibility(View.GONE);
+            if (barra != null) barra.setVisibility(View.GONE);
+            mostrarAba(4);
             return;
         }
         if (conta.gravadas != painelPara) {

@@ -1,12 +1,12 @@
-# Encorpei Pulseira 0.3.0
+# Encorpei Pulseira 0.4.0
 
 O Android instala pelo arquivo desta release. O iPhone não tem arquivo pronto: quem tem um Mac assina o projeto e instala no aparelho.
 
-O app é outra entrada da mesma conta do site. Dá para criar a conta, confirmar o e-mail, entrar, recuperar a senha, gravar os batimentos da pulseira e importar um CSV com sono, oxigenação, passos, calorias e pressão. Sono, oxigenação, passos e pressão não chegam por Bluetooth: entram pelo arquivo.
+O app é outra entrada da mesma conta do site. Depois de entrar, a barra de baixo abre Hoje, Evolução, Registrar, Meu médico e Pulseira. Dá para criar a conta, confirmar o e-mail, entrar, recuperar a senha, registrar pressão, peso, como se sente, batimentos, oxigenação e glicemia, escrever para o médico, gravar os batimentos da pulseira e importar um CSV com sono, oxigenação, passos, calorias e pressão. Sono, oxigenação, passos e pressão da pulseira não chegam por Bluetooth: entram pelo arquivo.
 
 ## Android
 
-O arquivo `pulseira-android-v0.3.0-debug.apk` é um APK de depuração. A assinatura é a chave de debug, porque ainda não existe chave de release. O celular precisa de Android 8 ou mais novo, com Bluetooth de baixa energia.
+O arquivo `pulseira-android-v0.4.0-debug.apk` é um APK de depuração. A assinatura é a chave de debug, porque ainda não existe chave de release. O celular precisa de Android 8 ou mais novo, com Bluetooth de baixa energia.
 
 1. Baixe o APK desta release no celular, ou passe o arquivo para ele.
 2. Abra o APK. Se o sistema pedir permissão para instalar apps desconhecidos, permita só para o app que baixou o arquivo (Chrome, Arquivos ou o gerenciador que você usou).

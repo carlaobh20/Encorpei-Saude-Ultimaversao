@@ -21,6 +21,7 @@ struct ContentView: View {
     @State private var textoArquivo = ""
     @State private var previa: Importacao.Resultado?
     @State private var mapas: [String: Int] = [:]
+    @State private var aba = "hoje"
 
     var body: some View {
         ScrollView {
@@ -45,6 +46,11 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
                 .background(cartao)
 
+                Group {
+                if conta.logada && !conta.aguardandoSenha && aba != "pulseira" {
+                    CasaTelas(aba: $aba, conta: conta)
+                        .padding(16)
+                } else {
                 VStack(alignment: .leading, spacing: 0) {
                 Text("Pulseira")
                     .font(.system(size: 28, weight: .bold))
@@ -272,21 +278,35 @@ struct ContentView: View {
                 }
                 }
                 .padding(16)
+                }
+                }
             }
         }
         .background(fundo)
+        .safeAreaInset(edge: .bottom) {
+            if conta.logada && !conta.aguardandoSenha {
+                BarraAbas(aba: $aba)
+            }
+        }
         .onChange(of: scenePhase) { _, fase in
             sessao.cenaMudou(ativa: fase == .active)
         }
         .onAppear {
             sessao.ligar(conta)
-            if conta.logada { conta.carregarPainel() }
+            if conta.logada {
+                conta.carregarPainel()
+                conta.carregarCasa()
+            }
         }
         .onChange(of: conta.gravadas) { _, _ in
             if conta.logada { conta.carregarPainel() }
         }
         .onChange(of: conta.logada) { _, logada in
-            if logada { conta.carregarPainel() }
+            if logada {
+                aba = "hoje"
+                conta.carregarPainel()
+                conta.carregarCasa()
+            }
         }
         .onChange(of: conta.aguardandoSenha) { _, espera in
             if espera { modo = "senha" }

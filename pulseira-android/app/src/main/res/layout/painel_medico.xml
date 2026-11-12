@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/fundo"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/medico_nome"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:letterSpacing="-0.03"
+            android:text="Meu médico"
+            android:textColor="@color/tinta"
+            android:textSize="28sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/medico_clinica"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="@color/secundaria"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/medico_aviso"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/destaque"
+            android:padding="16dp"
+            android:text="Este chat não é para emergência. Se não estiver bem, toque aqui para ver o que fazer."
+            android:textColor="@color/aviso"
+            android:textSize="16sp" />
+
+        <LinearLayout
+            android:id="@+id/medico_emergencia"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/cartao"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Emergência"
+                android:textColor="@color/tinta"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Se você não está bem, ligue agora."
+                android:textColor="@color/tinta"
+                android:textSize="16sp" />
+
+            <Button
+                android:id="@+id/medico_ligar"
+                style="@style/BotaoPrimario"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="Ligar 192" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="SAMU — atendimento de urgência"
+                android:textColor="@color/secundaria"
+                android:textSize="14sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Quando ligar"
+                android:textColor="@color/tinta"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:lineSpacingExtra="4dp"
+                android:text="Dor no peito que não passa\nFalta de ar que começou de repente\nDesmaio\nFala enrolada ou fraqueza de um lado do corpo"
+                android:textColor="@color/tinta"
+                android:textSize="16sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Enquanto espera"
+                android:textColor="@color/tinta"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:lineSpacingExtra="4dp"
+                android:text="Sente-se ou deite-se em um lugar confortável.\nNão dirija até o hospital — peça para alguém te levar, ou aguarde a ambulância.\nAvise alguém perto de você para ficar junto enquanto espera.\n\nDepois de procurar atendimento, avise seu médico assim que puder."
+                android:textColor="@color/tinta"
+                android:textSize="16sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/medico_msgs"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/cartao"
+            android:lineSpacingExtra="4dp"
+            android:padding="16dp"
+            android:text="Nenhuma mensagem ainda. Escreva para o seu médico abaixo."
+            android:textColor="@color/tinta"
+            android:textSize="16sp" />
+
+        <EditText
+            android:id="@+id/medico_campo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/campo"
+            android:hint="Escreva uma mensagem..."
+            android:inputType="textCapSentences|textMultiLine"
+            android:minHeight="56dp"
+            android:padding="12dp"
+            android:textColor="@color/tinta"
+            android:textColorHint="@color/secundaria"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/medico_erro"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textColor="@color/aviso"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/medico_enviar"
+            style="@style/BotaoPrimario"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Enviar" />
+    </LinearLayout>
+</ScrollView>

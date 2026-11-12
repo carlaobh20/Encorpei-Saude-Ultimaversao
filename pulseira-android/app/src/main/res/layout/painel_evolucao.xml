@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/fundo"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:letterSpacing="-0.03"
+            android:text="Minha evolução"
+            android:textColor="@color/tinta"
+            android:textSize="28sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="A prova de que o esforço está funcionando"
+            android:textColor="@color/secundaria"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/evolucao_corpo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/cartao"
+            android:lineSpacingExtra="4dp"
+            android:padding="16dp"
+            android:text="Carregando…"
+            android:textColor="@color/tinta"
+            android:textSize="16sp" />
+    </LinearLayout>
+</ScrollView>

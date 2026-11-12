@@ -21,6 +21,12 @@ final class Conta: ObservableObject {
     @Published var passos = 0
     @Published var sono = 0
     @Published var aguardandoSenha = false
+    @Published var nomePessoa = ""
+    @Published var textoHoje = ""
+    @Published var textoMeta = ""
+    @Published var nomeMedico = "Meu médico"
+    @Published var clinicaMedico = ""
+    @Published var textoMensagens = ""
 
     static let linkAuth = "encorpei://auth"
     static let linkSenha = "encorpei://reset-password"
@@ -32,7 +38,7 @@ final class Conta: ObservableObject {
     private var anterior: TimeInterval = 0
     private var deviceId: String?
     private var deviceNome: String?
-    private let fila = DispatchQueue(label: "encorpei.conta")
+    let fila = DispatchQueue(label: "encorpei.conta")
 
     init() {
         logada = sessao("access") != nil && sessao("uid") != nil
@@ -431,7 +437,7 @@ final class Conta: ObservableObject {
         return nil
     }
 
-    private func tokenValido() throws -> String {
+    func tokenValido() throws -> String {
         guard let access = sessao("access") else { throw URLError(.userAuthenticationRequired) }
         if Date().timeIntervalSince1970 + 60 < UserDefaults.standard.double(forKey: "encorpei_exp") { return access }
         return try renovar()
@@ -743,7 +749,7 @@ final class Conta: ObservableObject {
         return (try? JSONSerialization.data(withJSONObject: rows)) ?? Data()
     }
 
-    private func sessao(_ chave: String) -> String? {
+    func sessao(_ chave: String) -> String? {
         UserDefaults.standard.string(forKey: "encorpei_" + chave)
     }
 
@@ -751,7 +757,7 @@ final class Conta: ObservableObject {
         UserDefaults.standard.set(valor, forKey: "encorpei_" + chave)
     }
 
-    private func enc(_ s: String) -> String {
+    func enc(_ s: String) -> String {
         var permitido = CharacterSet.urlQueryAllowed
         permitido.remove(charactersIn: ":#[]@!$&'()*+,;=")
         return s.addingPercentEncoding(withAllowedCharacters: permitido) ?? s
@@ -763,7 +769,7 @@ final class Conta: ObservableObject {
         return f.string(from: data)
     }
 
-    private func texto(_ dados: Data) -> String {
+    func texto(_ dados: Data) -> String {
         if let json = try? JSONSerialization.jsonObject(with: dados) as? [String: Any] {
             if let s = json["error_description"] as? String { return s }
             if let s = json["msg"] as? String { return s }
@@ -807,13 +813,13 @@ final class Conta: ObservableObject {
         return (try? JSONSerialization.data(withJSONObject: o)) ?? Data()
     }
 
-    private struct Http {
+    struct Http {
         let codigo: Int
         let dados: Data
         let faixa: String?
     }
 
-    private func pedir(metodo: String, url: String, corpo: Data?, token: String?, prefer: String?, faixa: String?) throws -> Http {
+    func pedir(metodo: String, url: String, corpo: Data?, token: String?, prefer: String?, faixa: String?) throws -> Http {
         var req = URLRequest(url: URL(string: url)!)
         req.httpMethod = metodo
         req.timeoutInterval = 12
