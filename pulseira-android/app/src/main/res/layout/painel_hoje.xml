@@ -15,9 +15,10 @@
             android:id="@+id/hoje_titulo"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:letterSpacing="-0.03"
+            android:fontFamily="@font/sora"
+            android:letterSpacing="-0.04"
             android:textColor="@color/tinta"
-            android:textSize="28sp"
+            android:textSize="27sp"
             android:textStyle="bold" />
 
         <TextView
@@ -25,11 +26,12 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:background="@drawable/cartao"
+            android:background="@drawable/cuidado"
+            android:fontFamily="@font/inter"
             android:lineSpacingExtra="4dp"
             android:padding="16dp"
             android:text="Carregando…"
-            android:textColor="@color/tinta"
+            android:textColor="@color/branco"
             android:textSize="16sp" />
 
         <Button

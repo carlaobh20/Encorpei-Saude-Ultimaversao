@@ -1,18 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="fundo">#F9FAFB</color>
-    <color name="tinta">#1C1F26</color>
-    <color name="secundaria">#606976</color>
-    <color name="mudo">#EEF0F2</color>
-    <color name="borda">#DFE2E7</color>
-    <color name="destaque">#F2F2F2</color>
+    <color name="fundo">#F5F9FE</color>
+    <color name="tinta">#101E43</color>
+    <color name="secundaria">#536B91</color>
+    <color name="mudo">#E8F0FA</color>
+    <color name="borda">#E0E8F2</color>
+    <color name="destaque">#EEF6FF</color>
     <color name="cartao">#FFFFFF</color>
     <color name="branco">#FFFFFF</color>
+    <color name="marca">#125DB0</color>
+    <color name="marca_botao">#1263B8</color>
     <color name="sucesso">#4CAE4F</color>
     <color name="sucesso_bg">#EBF5EC</color>
     <color name="aviso">#7D490D</color>
     <color name="aviso_bg">#FEF3E2</color>
     <color name="info">#4E72A2</color>
     <color name="info_bg">#ECF1F9</color>
-    <color name="borda_forte">#D2D2D4</color>
+    <color name="borda_forte">#C5D4E6</color>
 </resources>

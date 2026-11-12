@@ -931,7 +931,7 @@ final class MaisTelas {
         t.setText(s);
         t.setTextSize(sp);
         t.setTextColor(activity.getColor(R.color.tinta));
-        if (negrito) t.setTypeface(null, android.graphics.Typeface.BOLD);
+        t.setTypeface(activity.getResources().getFont(negrito ? R.font.sora : R.font.inter), negrito ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
         return t;
     }
 

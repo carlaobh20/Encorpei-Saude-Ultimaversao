@@ -13,14 +13,21 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@color/cartao"
+            android:background="@color/fundo"
             android:gravity="center_vertical"
-            android:minHeight="64dp"
+            android:minHeight="88dp"
             android:orientation="horizontal"
-            android:paddingStart="16dp"
-            android:paddingTop="8dp"
-            android:paddingEnd="16dp"
-            android:paddingBottom="8dp">
+            android:paddingStart="20dp"
+            android:paddingTop="18dp"
+            android:paddingEnd="20dp"
+            android:paddingBottom="14dp">
+
+            <ImageView
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:layout_marginEnd="8dp"
+                android:contentDescription="@string/marca_nome"
+                android:src="@drawable/logo_symbol" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -31,18 +38,20 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:letterSpacing="-0.02"
+                    android:fontFamily="@font/sora"
+                    android:letterSpacing="-0.04"
                     android:text="@string/marca_nome"
-                    android:textColor="@color/tinta"
-                    android:textSize="16sp"
+                    android:textColor="@color/marca"
+                    android:textSize="27sp"
                     android:textStyle="bold" />
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:fontFamily="@font/inter"
                     android:text="@string/marca_frase"
                     android:textColor="@color/secundaria"
-                    android:textSize="13sp" />
+                    android:textSize="14sp" />
             </LinearLayout>
 
             <Button
@@ -72,10 +81,11 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:letterSpacing="-0.045"
+                android:fontFamily="@font/sora"
+                android:letterSpacing="-0.04"
                 android:text="@string/titulo"
                 android:textColor="@color/tinta"
-                android:textSize="28sp"
+                android:textSize="27sp"
                 android:textStyle="bold" />
 
             <TextView

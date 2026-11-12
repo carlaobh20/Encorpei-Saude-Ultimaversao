@@ -19,6 +19,7 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Spinner;
@@ -106,6 +107,9 @@ public final class MainActivity extends android.app.Activity {
     private View regForm;
     private View emergencia;
     private MaisTelas mais;
+    private final TextView[] rotulosBarra = new TextView[5];
+    private final ImageView[] iconesBarra = new ImageView[5];
+    private final View[] marcasBarra = new View[5];
     private static final int PEDIDO_ARQUIVO = 2;
     private final Runnable contaMudou = () -> runOnUiThread(this::redesenhar);
 
@@ -251,23 +255,60 @@ public final class MainActivity extends android.app.Activity {
 
         barra = new LinearLayout(this);
         barra.setOrientation(LinearLayout.HORIZONTAL);
-        barra.setBackgroundColor(getColor(R.color.cartao));
+        barra.setBackgroundResource(R.drawable.barra_fundo);
+        barra.setElevation(dp(2));
         String[] nomes = {"Hoje", "Evolução", "Registrar", "Meu médico", "Pulseira"};
+        int[] icones = {R.drawable.ic_hoje, R.drawable.ic_evolucao, 0, R.drawable.ic_medico, R.drawable.ic_pulseira};
         for (int i = 0; i < nomes.length; i++) {
+            LinearLayout celula = new LinearLayout(this);
+            celula.setOrientation(LinearLayout.VERTICAL);
+            celula.setGravity(Gravity.CENTER);
+            celula.setMinimumHeight(dp(68));
+            celula.setPadding(dp(2), dp(6), dp(2), dp(4));
+            if (i == 2) {
+                TextView maisBtn = new TextView(this);
+                maisBtn.setText("+");
+                maisBtn.setGravity(Gravity.CENTER);
+                maisBtn.setTextColor(getColor(R.color.branco));
+                maisBtn.setTextSize(22);
+                maisBtn.setTypeface(getResources().getFont(R.font.sora), android.graphics.Typeface.BOLD);
+                android.graphics.drawable.GradientDrawable circulo = new android.graphics.drawable.GradientDrawable();
+                circulo.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+                circulo.setColor(getColor(R.color.marca_botao));
+                maisBtn.setBackground(circulo);
+                celula.addView(maisBtn, new LinearLayout.LayoutParams(dp(38), dp(38)));
+            } else {
+                ImageView icone = new ImageView(this);
+                icone.setImageResource(icones[i]);
+                icone.setColorFilter(getColor(R.color.secundaria));
+                celula.addView(icone, new LinearLayout.LayoutParams(dp(22), dp(22)));
+                iconesBarra[i] = icone;
+            }
             TextView t = new TextView(this);
             t.setText(nomes[i]);
             t.setGravity(Gravity.CENTER);
-            t.setTextSize(12);
-            t.setMinHeight(dp(56));
-            t.setPadding(dp(2), dp(8), dp(2), dp(8));
+            t.setTextSize(11);
+            t.setTypeface(getResources().getFont(R.font.inter));
+            t.setTextColor(getColor(i == 2 ? R.color.tinta : R.color.secundaria));
+            LinearLayout.LayoutParams rotulo = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            rotulo.topMargin = dp(2);
+            celula.addView(t, rotulo);
+            rotulosBarra[i] = t;
+            View marca = new View(this);
+            marca.setBackgroundColor(getColor(R.color.marca));
+            marca.setVisibility(View.GONE);
+            LinearLayout.LayoutParams traco = new LinearLayout.LayoutParams(dp(18), dp(2));
+            traco.topMargin = dp(3);
+            celula.addView(marca, traco);
+            marcasBarra[i] = marca;
             final int indice = i;
-            t.setOnClickListener(v -> {
+            celula.setOnClickListener(v -> {
                 abaEscolhida = true;
                 if (indice != 4) casaPedida = false;
                 mostrarAba(indice);
                 if (conta != null && conta.temSessao()) redesenhar();
             });
-            barra.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+            barra.addView(celula, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         }
 
         LinearLayout coluna = new LinearLayout(this);
@@ -291,11 +332,13 @@ public final class MainActivity extends android.app.Activity {
     private void mostrarAba(int indice) {
         if (abas == null) return;
         abas.setDisplayedChild(indice);
-        for (int i = 0; i < barra.getChildCount(); i++) {
-            TextView t = (TextView) barra.getChildAt(i);
+        for (int i = 0; i < rotulosBarra.length; i++) {
+            if (rotulosBarra[i] == null) continue;
             boolean ativo = i == indice;
-            t.setTextColor(getColor(ativo ? R.color.tinta : R.color.secundaria));
-            t.setTypeface(null, ativo ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
+            rotulosBarra[i].setTextColor(getColor(ativo ? R.color.marca : (i == 2 ? R.color.tinta : R.color.secundaria)));
+            rotulosBarra[i].setTypeface(getResources().getFont(R.font.inter), ativo ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
+            if (iconesBarra[i] != null) iconesBarra[i].setColorFilter(getColor(ativo ? R.color.marca : R.color.secundaria));
+            if (marcasBarra[i] != null) marcasBarra[i].setVisibility(ativo && i != 2 ? View.VISIBLE : View.GONE);
         }
     }
 
