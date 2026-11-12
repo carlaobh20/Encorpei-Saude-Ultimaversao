@@ -15,6 +15,7 @@
 		0E0000000000000000000029 /* Importacao.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E000000000000000000001A /* Importacao.swift */; };
 		0E000000000000000000002A /* Casa.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E000000000000000000001B /* Casa.swift */; };
 		0E000000000000000000002B /* Telas.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E000000000000000000001C /* Telas.swift */; };
+		0E000000000000000000002C /* Mais.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E000000000000000000001D /* Mais.swift */; };
 		0E0000000000000000000026 /* ProtocoloTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E0000000000000000000016 /* ProtocoloTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -37,6 +38,7 @@
 		0E000000000000000000001A /* Importacao.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Importacao.swift; sourceTree = "<group>"; };
 		0E000000000000000000001B /* Casa.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Casa.swift; sourceTree = "<group>"; };
 		0E000000000000000000001C /* Telas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Telas.swift; sourceTree = "<group>"; };
+		0E000000000000000000001D /* Mais.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mais.swift; sourceTree = "<group>"; };
 		0E0000000000000000000015 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		0E0000000000000000000016 /* ProtocoloTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtocoloTests.swift; sourceTree = "<group>"; };
 		0E0000000000000000000017 /* Pulseira.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Pulseira.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -81,6 +83,7 @@
 				0E000000000000000000001A /* Importacao.swift */,
 				0E000000000000000000001B /* Casa.swift */,
 				0E000000000000000000001C /* Telas.swift */,
+				0E000000000000000000001D /* Mais.swift */,
 				0E0000000000000000000015 /* Info.plist */,
 			);
 			path = Pulseira;
@@ -201,6 +204,7 @@
 				0E0000000000000000000029 /* Importacao.swift in Sources */,
 				0E000000000000000000002A /* Casa.swift in Sources */,
 				0E000000000000000000002B /* Telas.swift in Sources */,
+				0E000000000000000000002C /* Mais.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -260,14 +264,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = "";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Pulseira/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.4.0;
+				MARKETING_VERSION = 0.5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = saude.encorpei.pulseira;
 				PRODUCT_NAME = Pulseira;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -281,14 +285,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = "";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Pulseira/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.4.0;
+				MARKETING_VERSION = 0.5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = saude.encorpei.pulseira;
 				PRODUCT_NAME = Pulseira;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -302,9 +306,9 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 0.4.0;
+				MARKETING_VERSION = 0.5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = saude.encorpei.pulseira.tests;
 				PRODUCT_NAME = PulseiraTests;
 				SWIFT_VERSION = 5.0;
@@ -318,9 +322,9 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 0.4.0;
+				MARKETING_VERSION = 0.5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = saude.encorpei.pulseira.tests;
 				PRODUCT_NAME = PulseiraTests;
 				SWIFT_VERSION = 5.0;

@@ -892,7 +892,7 @@ public final class Conta {
         for (Runnable r : ouvintes) r.run();
     }
 
-    private static String enc(String s) {
+    static String enc(String s) {
         return URLEncoder.encode(s, StandardCharsets.UTF_8).replace("+", "%20");
     }
 
@@ -928,7 +928,7 @@ public final class Conta {
             boolean prescrito = plano.length() > 0;
             if (!prescrito) {
                 plano = new JSONArray()
-                        .put(item("bp", 2)).put(item("weight", 1)).put(item("wellbeing", 1));
+                        .put(item("bp", 2)).put(item("weight", 1)).put(item("medication", 1)).put(item("wellbeing", 1));
             }
             StringBuilder hoje = new StringBuilder();
             int total = 0;
@@ -942,12 +942,13 @@ public final class Conta {
                 if (dias <= 0) continue;
                 String metric = item.optString("metric");
                 int vezes = Math.max(1, item.optInt("times_per_day", 1));
-                int esperados = "twice_daily".equals(freq) ? Math.max(2, vezes) : "daily".equals(freq) ? Math.max(1, vezes) : 1;
-                int feitos = feitosHoje(token, uid, metric, dias);
-                if (feitos < 0) {
+                int[] conta = pendencia(token, uid, metric, freq, vezes, dias);
+                if (conta == null) {
                     fora++;
                     continue;
                 }
+                int feitos = conta[0];
+                int esperados = conta[1];
                 total++;
                 if (feitos >= esperados) concluidas++;
                 itens.append(rotuloMetrica(metric)).append(feitos >= esperados ? " — feito" : " — falta").append('\n');
@@ -1086,6 +1087,35 @@ public final class Conta {
         return 1;
     }
 
+    private int[] pendencia(String token, String uid, String metric, String freq, int vezes, int dias) throws Exception {
+        if ("medication".equals(metric)) return dosesDoPlano(token, uid, freq, dias);
+        int feitos = feitosHoje(token, uid, metric, dias);
+        if (feitos < 0) return null;
+        int esperados = "twice_daily".equals(freq) ? Math.max(2, vezes) : "daily".equals(freq) ? Math.max(1, vezes) : 1;
+        return new int[] { feitos, esperados };
+    }
+
+    /** null quando não há dose para cobrar, como na tela de remédios. */
+    private int[] dosesDoPlano(String token, String uid, String freq, int dias) throws Exception {
+        JSONArray meds = buscarLista(token, "cardio_medications?patient_user_id=eq." + enc(uid) + "&status=eq.active&select=schedule");
+        int doses = 0;
+        for (int i = 0; i < meds.length(); i++) {
+            JSONArray horas = meds.getJSONObject(i).optJSONArray("schedule");
+            if (horas != null) doses += horas.length();
+        }
+        if (doses == 0) return null;
+        if (dias <= 1) {
+            String hoje = java.time.LocalDate.now(java.time.ZoneOffset.UTC).toString();
+            JSONArray tomou = buscarLista(token, "medication_intakes?patient_user_id=eq." + enc(uid)
+                    + "&intake_date=eq." + hoje + "&taken=eq.true&select=id&limit=40");
+            return new int[] { tomou.length(), doses };
+        }
+        java.time.LocalDate desde = java.time.LocalDate.now().minusDays(Math.max(0, dias - 1));
+        JSONArray lista = buscarLista(token, "medication_intakes?patient_user_id=eq." + enc(uid)
+                + "&intake_date=gte." + desde + "&taken=eq.true&select=id&limit=40");
+        return new int[] { lista.length() > 0 ? 1 : 0, 1 };
+    }
+
     private int feitosHoje(String token, String uid, String metric, int dias) throws Exception {
         String tabela;
         String campo;
@@ -1097,9 +1127,12 @@ public final class Conta {
         else if ("wellbeing".equals(metric)) { tabela = "wellbeing_checkins"; campo = "ocorrido_em"; }
         else if ("sleep".equals(metric)) { tabela = "sleep_records"; campo = "sleep_date"; }
         else if ("steps".equals(metric)) { tabela = "activity_records"; campo = "activity_date"; }
+        else if ("symptoms".equals(metric)) { tabela = "symptom_reports"; campo = "occurred_at"; }
+        else if ("sodium".equals(metric)) { tabela = "sodium_entries"; campo = "dia"; }
+        else if ("walk".equals(metric)) { tabela = "walk_sessions"; campo = "iniciada_em"; }
         else return -1;
         java.time.LocalDate desde = java.time.LocalDate.now().minusDays(Math.max(0, dias - 1));
-        boolean porData = "sleep".equals(metric) || "steps".equals(metric);
+        boolean porData = "sleep".equals(metric) || "steps".equals(metric) || "sodium".equals(metric);
         String corte = porData ? desde.toString() : desde.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toString();
         JSONArray lista = buscarLista(token, tabela + "?patient_user_id=eq." + enc(uid) + "&" + campo + "=gte." + enc(corte) + "&select=id&limit=40");
         return lista.length();
@@ -1293,6 +1326,32 @@ public final class Conta {
         return lista.length() == 0 ? null : lista.getJSONObject(0);
     }
 
+    String uidAtual() {
+        return prefs.getString("uid", null);
+    }
+
+    JSONArray lista(String caminho) throws Exception {
+        return buscarLista(tokenValido(), caminho);
+    }
+
+    /** null se gravou. */
+    String gravar(String metodo, String caminho, String json, boolean representacao) throws Exception {
+        String prefer = representacao ? "return=representation" : "return=minimal";
+        if ("POST".equals(metodo) && caminho.contains("on_conflict")) {
+            prefer = "resolution=merge-duplicates,return=representation";
+        }
+        Http r = pedir(metodo, URL_BASE + "/rest/v1/" + caminho, json, tokenValido(), prefer, null);
+        if (r.codigo < 200 || r.codigo >= 300) {
+            String cru = texto(r.corpo);
+            return cru.isEmpty() ? "Não consegui gravar agora." : cru;
+        }
+        if (prefer.contains("representation")) {
+            String corpo = r.corpo == null || r.corpo.isEmpty() ? "[]" : r.corpo;
+            if (new JSONArray(corpo).length() == 0) return "Não consegui gravar agora.";
+        }
+        return null;
+    }
+
     private JSONArray buscarLista(String token, String caminho) throws Exception {
         Http r = pedir("GET", URL_BASE + "/rest/v1/" + caminho, null, token, null, null);
         if (r.codigo < 200 || r.codigo >= 300) throw new Exception("lista");
@@ -1318,6 +1377,10 @@ public final class Conta {
             case "steps": return "Passos";
             case "sleep": return "Sono";
             case "wellbeing": return "Como me sinto";
+            case "medication": return "Remédios";
+            case "symptoms": return "Sintomas";
+            case "sodium": return "Sal do dia";
+            case "walk": return "Caminhada";
             default: return metric;
         }
     }

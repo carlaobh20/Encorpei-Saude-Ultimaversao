@@ -73,6 +73,41 @@
             android:layout_height="wrap_content"
             android:text="Glicemia" />
 
+        <Button
+            android:id="@+id/reg_remedios"
+            style="@style/BotaoContorno"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Remédios" />
+
+        <Button
+            android:id="@+id/reg_sintomas"
+            style="@style/BotaoContorno"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Sintoma" />
+
+        <Button
+            android:id="@+id/reg_caminhada"
+            style="@style/BotaoContorno"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Caminhada" />
+
+        <Button
+            android:id="@+id/reg_alimentacao"
+            style="@style/BotaoContorno"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Alimentação" />
+
+        <Button
+            android:id="@+id/reg_sono"
+            style="@style/BotaoContorno"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Sono" />
+
         <LinearLayout
             android:id="@+id/reg_form"
             android:layout_width="match_parent"

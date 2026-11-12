@@ -20,6 +20,7 @@ extension Conta {
                     plano = [
                         ["metric": "bp", "times_per_day": 2, "frequency": "daily"],
                         ["metric": "weight", "times_per_day": 1, "frequency": "daily"],
+                        ["metric": "medication", "times_per_day": 1, "frequency": "daily"],
                         ["metric": "wellbeing", "times_per_day": 1, "frequency": "daily"],
                     ]
                 }
@@ -33,9 +34,20 @@ extension Conta {
                     if dias <= 0 { continue }
                     let metric = item["metric"] as? String ?? ""
                     let vezes = max(1, (item["times_per_day"] as? NSNumber)?.intValue ?? 1)
-                    let esperados = freq == "twice_daily" ? max(2, vezes) : freq == "daily" ? max(1, vezes) : 1
-                    let feitos = self.feitosHoje(token, uid, metric, dias)
-                    if feitos < 0 { fora += 1; continue }
+                    let par: (Int, Int)?
+                    if metric == "medication" {
+                        par = self.dosesDoPlano(token, uid, dias)
+                    } else {
+                        let feitos = self.feitosHoje(token, uid, metric, dias)
+                        if feitos < 0 { par = nil }
+                        else {
+                            let esperados = freq == "twice_daily" ? max(2, vezes) : freq == "daily" ? max(1, vezes) : 1
+                            par = (feitos, esperados)
+                        }
+                    }
+                    guard let par else { fora += 1; continue }
+                    let feitos = par.0
+                    let esperados = par.1
                     total += 1
                     if feitos >= esperados { concluidas += 1 }
                     itens += Self.rotulo(metric) + (feitos >= esperados ? " — feito\n" : " — falta\n")
@@ -169,10 +181,13 @@ extension Conta {
         case "wellbeing": tabela = "wellbeing_checkins"; campo = "ocorrido_em"
         case "sleep": tabela = "sleep_records"; campo = "sleep_date"
         case "steps": tabela = "activity_records"; campo = "activity_date"
+        case "symptoms": tabela = "symptom_reports"; campo = "occurred_at"
+        case "sodium": tabela = "sodium_entries"; campo = "dia"
+        case "walk": tabela = "walk_sessions"; campo = "iniciada_em"
         default: return -1
         }
         let desde = Calendar.current.date(byAdding: .day, value: -(max(0, dias - 1)), to: Date()) ?? Date()
-        let porData = metric == "sleep" || metric == "steps"
+        let porData = metric == "sleep" || metric == "steps" || metric == "sodium"
         let corte: String
         if porData {
             let f = DateFormatter()
@@ -186,6 +201,30 @@ extension Conta {
             corte = ISO8601DateFormatter().string(from: inicio)
         }
         return lista(token, "\(tabela)?patient_user_id=eq.\(enc(uid))&\(campo)=gte.\(enc(corte))&select=id&limit=40").count
+    }
+
+    /// nil quando não há dose para cobrar, como na tela de remédios.
+    private func dosesDoPlano(_ token: String, _ uid: String, _ dias: Int) -> (Int, Int)? {
+        let meds = lista(token, "cardio_medications?patient_user_id=eq.\(enc(uid))&status=eq.active&select=schedule")
+        var doses = 0
+        for med in meds {
+            doses += (med["schedule"] as? [String])?.count ?? (med["schedule"] as? [Any])?.count ?? 0
+        }
+        if doses == 0 { return nil }
+        if dias <= 1 {
+            let hoje = Self.hojeUtc()
+            let tomou = lista(token, "medication_intakes?patient_user_id=eq.\(enc(uid))&intake_date=eq.\(hoje)&taken=eq.true&select=id&limit=40")
+            return (tomou.count, doses)
+        }
+        let desde = Calendar.current.date(byAdding: .day, value: -(max(0, dias - 1)), to: Date()) ?? Date()
+        let f = DateFormatter()
+        f.calendar = Calendar(identifier: .gregorian)
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = TimeZone.current
+        f.dateFormat = "yyyy-MM-dd"
+        let corte = f.string(from: desde)
+        let lista = self.lista(token, "medication_intakes?patient_user_id=eq.\(enc(uid))&intake_date=gte.\(corte)&taken=eq.true&select=id&limit=40")
+        return (lista.isEmpty ? 0 : 1, 1)
     }
 
     private func ultimas(_ token: String, _ uid: String) -> String {
@@ -356,6 +395,10 @@ extension Conta {
         case "glucose": return "Glicemia"
         case "steps": return "Passos"
         case "sleep": return "Sono"
+        case "symptoms": return "Sintomas"
+        case "medication": return "Remédios"
+        case "sodium": return "Sal do dia"
+        case "walk": return "Caminhada"
         case "wellbeing": return "Como me sinto"
         default: return metric
         }

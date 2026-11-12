@@ -3,12 +3,18 @@ import SwiftUI
 struct CasaTelas: View {
     @Binding var aba: String
     @ObservedObject var conta: Conta
+    var bpm: Int? = nil
 
     var body: some View {
         switch aba {
         case "evolucao": EvolucaoTela(conta: conta)
-        case "registrar": RegistrarTela(conta: conta)
+        case "registrar": RegistrarTela(conta: conta, abrir: { aba = $0 })
         case "medico": MedicoTela(conta: conta)
+        case "remedios": RemediosTela(conta: conta, voltar: { aba = "registrar" })
+        case "sintomas": SintomasTela(conta: conta, voltar: { aba = "registrar" })
+        case "caminhada": CaminhadaTela(conta: conta, bpm: bpm, voltar: { aba = "registrar" })
+        case "alimentacao": AlimentacaoTela(conta: conta, voltar: { aba = "registrar" })
+        case "sono": SonoTela(conta: conta, voltar: { aba = "registrar" })
         default: HojeTela(conta: conta, abrirRegistro: { aba = "registrar" })
         }
     }
@@ -87,6 +93,7 @@ private struct EvolucaoTela: View {
 
 private struct RegistrarTela: View {
     @ObservedObject var conta: Conta
+    var abrir: (String) -> Void = { _ in }
     @State private var tipo = ""
     @State private var a = ""
     @State private var b = ""
@@ -109,6 +116,10 @@ private struct RegistrarTela: View {
                 .background(destaque)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             ForEach([("bp", "Pressão"), ("weight", "Peso"), ("wellbeing", "Como me sinto"), ("hr", "Batimentos"), ("spo2", "Oxigenação"), ("glucose", "Glicemia")], id: \.0) { item in
+                Button(item.1) { abrirFormulario(item.0) }
+                    .buttonStyle(BotaoContorno())
+            }
+            ForEach([("remedios", "Remédios"), ("sintomas", "Sintoma"), ("caminhada", "Caminhada"), ("alimentacao", "Alimentação"), ("sono", "Sono")], id: \.0) { item in
                 Button(item.1) { abrir(item.0) }
                     .buttonStyle(BotaoContorno())
             }
@@ -180,7 +191,7 @@ private struct RegistrarTela: View {
         default: return "98"
         }
     }
-    private func abrir(_ novo: String) {
+    private func abrirFormulario(_ novo: String) {
         tipo = novo
         a = ""; b = ""; c = ""; nota = nil; erro = ""
     }

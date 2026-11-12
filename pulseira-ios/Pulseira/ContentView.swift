@@ -48,7 +48,7 @@ struct ContentView: View {
 
                 Group {
                 if conta.logada && !conta.aguardandoSenha && aba != "pulseira" {
-                    CasaTelas(aba: $aba, conta: conta)
+                    CasaTelas(aba: $aba, conta: conta, bpm: sessao.bpm)
                         .padding(16)
                 } else {
                 VStack(alignment: .leading, spacing: 0) {

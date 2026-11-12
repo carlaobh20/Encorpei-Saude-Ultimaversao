@@ -105,6 +105,7 @@ public final class MainActivity extends android.app.Activity {
     private EditText regNota;
     private View regForm;
     private View emergencia;
+    private MaisTelas mais;
     private static final int PEDIDO_ARQUIVO = 2;
     private final Runnable contaMudou = () -> runOnUiThread(this::redesenhar);
 
@@ -164,6 +165,10 @@ public final class MainActivity extends android.app.Activity {
         findViewById(R.id.desligar).setVisibility(View.GONE);
         conta = Conta.obter(this);
         rede = Executors.newSingleThreadExecutor();
+        mais.ligar(conta, rede, () -> {
+            abaEscolhida = true;
+            mostrarAba(2);
+        }, () -> servico == null || servico.estado() == null ? null : servico.estado().bpm);
         conta.ouvir(contaMudou);
         findViewById(R.id.ajuda).setOnClickListener(v ->
                 ajudaCorpo.setVisibility(ajudaCorpo.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE));
@@ -241,6 +246,8 @@ public final class MainActivity extends android.app.Activity {
         abas.addView(getLayoutInflater().inflate(R.layout.painel_registrar, null), cheia());
         abas.addView(getLayoutInflater().inflate(R.layout.painel_medico, null), cheia());
         abas.addView(pulseira, cheia());
+        mais = new MaisTelas(this);
+        abas.addView(mais.view(), cheia());
 
         barra = new LinearLayout(this);
         barra.setOrientation(LinearLayout.HORIZONTAL);
@@ -320,6 +327,11 @@ public final class MainActivity extends android.app.Activity {
         findViewById(R.id.reg_fc).setOnClickListener(v -> abrirRegistro("hr"));
         findViewById(R.id.reg_spo2).setOnClickListener(v -> abrirRegistro("spo2"));
         findViewById(R.id.reg_glicose).setOnClickListener(v -> abrirRegistro("glucose"));
+        findViewById(R.id.reg_remedios).setOnClickListener(v -> abrirMais("remedios"));
+        findViewById(R.id.reg_sintomas).setOnClickListener(v -> abrirMais("sintomas"));
+        findViewById(R.id.reg_caminhada).setOnClickListener(v -> abrirMais("caminhada"));
+        findViewById(R.id.reg_alimentacao).setOnClickListener(v -> abrirMais("alimentacao"));
+        findViewById(R.id.reg_sono).setOnClickListener(v -> abrirMais("sono"));
         findViewById(R.id.reg_salvar).setOnClickListener(v -> salvarRegistro());
         findViewById(R.id.medico_aviso).setOnClickListener(v ->
                 emergencia.setVisibility(emergencia.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE));
@@ -339,6 +351,12 @@ public final class MainActivity extends android.app.Activity {
                 });
             });
         });
+    }
+
+    private void abrirMais(String tela) {
+        abaEscolhida = true;
+        mais.abrir(tela);
+        mostrarAba(5);
     }
 
     private void abrirRegistro(String tipo) {
