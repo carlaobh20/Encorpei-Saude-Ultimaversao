@@ -854,7 +854,7 @@ final class MaisTelas {
 
     private void titulo(String s) {
         ui(() -> {
-            TextView t = novo(s, 28, true);
+            TextView t = novo(s, 26, true);
             t.setPadding(0, 0, 0, dp(4));
             corpo.addView(t);
         });

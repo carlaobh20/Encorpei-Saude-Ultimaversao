@@ -31,46 +31,43 @@ struct BarraAbas: View {
                     VStack(spacing: 2) {
                         if item.0 == "registrar" {
                             Text("+")
-                                .font(.custom("Sora", size: 22).weight(.bold))
+                                .font(.custom("Inter", size: 18).weight(.bold))
                                 .foregroundStyle(.white)
-                                .frame(width: 38, height: 38)
-                                .background(Circle().fill(marcaBotao))
+                                .frame(width: 32, height: 32)
+                                .background(RoundedRectangle(cornerRadius: 10).fill(tinta))
                         } else {
                             Image(systemName: simbolo(item.0))
                                 .font(.system(size: 18, weight: aba == item.0 ? .semibold : .regular))
-                                .foregroundStyle(aba == item.0 ? marca : secundaria)
+                                .foregroundStyle(aba == item.0 ? tinta : secundaria)
                         }
                         Text(item.1)
                             .font(.custom("Inter", size: 11).weight(aba == item.0 ? .bold : .regular))
-                            .foregroundStyle(aba == item.0 ? marca : (item.0 == "registrar" ? tinta : secundaria))
+                            .foregroundStyle(aba == item.0 ? tinta : secundaria)
                         Capsule()
-                            .fill(aba == item.0 && item.0 != "registrar" ? marca : Color.clear)
+                            .fill(aba == item.0 && item.0 != "registrar" ? tinta : Color.clear)
                             .frame(width: 18, height: 2)
                     }
-                    .frame(maxWidth: .infinity, minHeight: 68)
+                    .frame(maxWidth: .infinity, minHeight: 64)
                 }
                 .buttonStyle(.plain)
             }
         }
         .background(Color.white)
         .overlay(Rectangle().frame(height: 1).foregroundStyle(borda), alignment: .top)
-        .shadow(color: Color(red: 0.106, green: 0.255, blue: 0.396).opacity(0.04), radius: 5, y: -2)
     }
 
     private func simbolo(_ id: String) -> String {
         switch id {
-        case "hoje": return "house.fill"
-        case "evolucao": return "heart.fill"
+        case "hoje": return "house"
+        case "evolucao": return "heart"
         case "medico": return "stethoscope"
         default: return "applewatch"
         }
     }
 
-    private var tinta: Color { Color(red: 0.063, green: 0.118, blue: 0.263) }
-    private var secundaria: Color { Color(red: 0.325, green: 0.420, blue: 0.569) }
-    private var marca: Color { Color(red: 0.071, green: 0.365, blue: 0.690) }
-    private var marcaBotao: Color { Color(red: 0.071, green: 0.388, blue: 0.722) }
-    private var borda: Color { Color(red: 0.878, green: 0.910, blue: 0.949) }
+    private var tinta: Color { Color(red: 0.110, green: 0.122, blue: 0.149) }
+    private var secundaria: Color { Color(red: 0.376, green: 0.412, blue: 0.463) }
+    private var borda: Color { Color(red: 0.875, green: 0.886, blue: 0.906) }
 }
 
 private struct HojeTela: View {
@@ -80,20 +77,17 @@ private struct HojeTela: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(conta.nomePessoa.isEmpty ? "Hoje" : conta.nomePessoa)
-                .font(.custom("Sora", size: 27).weight(.bold))
-                .tracking(-1)
+                .font(.custom("Sora", size: 26).weight(.semibold))
+                .tracking(-1.17)
                 .foregroundStyle(tinta)
             Text(conta.textoHoje.isEmpty ? "Carregando…" : conta.textoHoje)
                 .font(.custom("Inter", size: 16))
-                .foregroundStyle(.white)
+                .foregroundStyle(tinta)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(16)
-                .background(LinearGradient(colors: [
-                    Color(red: 0.071, green: 0.388, blue: 0.722),
-                    Color(red: 0.098, green: 0.416, blue: 0.741),
-                    Color(red: 0.078, green: 0.337, blue: 0.604),
-                ], startPoint: .leading, endPoint: .trailing))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .background(Color.white)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(borda, lineWidth: 1))
             Button("Registrar", action: abrirRegistro)
                 .buttonStyle(BotaoCheio())
         }
@@ -106,7 +100,7 @@ private struct EvolucaoTela: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Minha evolução")
-                .font(.custom("Sora", size: 27).weight(.bold))
+                .font(.custom("Sora", size: 26).weight(.semibold))
                 .tracking(-1.2)
                 .foregroundStyle(tinta)
             Text("A prova de que o esforço está funcionando")
@@ -139,7 +133,7 @@ private struct RegistrarTela: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Registrar")
-                .font(.custom("Sora", size: 27).weight(.bold))
+                .font(.custom("Sora", size: 26).weight(.semibold))
                 .tracking(-1.2)
                 .foregroundStyle(tinta)
             Text(conta.textoHoje)
@@ -148,7 +142,7 @@ private struct RegistrarTela: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(12)
                 .background(destaque)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .clipShape(RoundedRectangle(cornerRadius: 14))
             ForEach([("bp", "Pressão"), ("weight", "Peso"), ("wellbeing", "Como me sinto"), ("hr", "Batimentos"), ("spo2", "Oxigenação"), ("glucose", "Glicemia")], id: \.0) { item in
                 Button(item.1) { abrirFormulario(item.0) }
                     .buttonStyle(BotaoContorno())
@@ -256,7 +250,7 @@ private struct MedicoTela: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(conta.nomeMedico)
-                .font(.custom("Sora", size: 27).weight(.bold))
+                .font(.custom("Sora", size: 26).weight(.semibold))
                 .tracking(-1.2)
                 .foregroundStyle(tinta)
             if !conta.clinicaMedico.isEmpty {
@@ -329,7 +323,7 @@ private struct BotaoCheio: ButtonStyle {
             .font(.system(size: 16, weight: .semibold))
             .foregroundStyle(Color.white)
             .frame(maxWidth: .infinity, minHeight: 56)
-            .background(Color(red: 0.071, green: 0.388, blue: 0.722).opacity(configuration.isPressed ? 0.82 : 1))
+            .background(Color(red: 0.110, green: 0.122, blue: 0.149).opacity(configuration.isPressed ? 0.82 : 1))
             .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 }
@@ -338,17 +332,17 @@ private struct BotaoContorno: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 16, weight: .semibold))
-            .foregroundStyle(Color(red: 0.063, green: 0.118, blue: 0.263))
+            .foregroundStyle(Color(red: 0.110, green: 0.122, blue: 0.149))
             .frame(maxWidth: .infinity, minHeight: 48)
             .background(Color.white)
             .clipShape(RoundedRectangle(cornerRadius: 10))
-            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color(red: 0.878, green: 0.910, blue: 0.949), lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color(red: 0.875, green: 0.886, blue: 0.906), lineWidth: 1))
     }
 }
 
-private var tinta: Color { Color(red: 0.063, green: 0.118, blue: 0.263) }
-private var secundaria: Color { Color(red: 0.325, green: 0.420, blue: 0.569) }
+private var tinta: Color { Color(red: 0.110, green: 0.122, blue: 0.149) }
+private var secundaria: Color { Color(red: 0.376, green: 0.412, blue: 0.463) }
 private var aviso: Color { Color(red: 0.490, green: 0.286, blue: 0.051) }
 private var avisoBg: Color { Color(red: 0.996, green: 0.953, blue: 0.886) }
-private var borda: Color { Color(red: 0.878, green: 0.910, blue: 0.949) }
-private var destaque: Color { Color(red: 0.933, green: 0.965, blue: 1.0) }
+private var borda: Color { Color(red: 0.875, green: 0.886, blue: 0.906) }
+private var destaque: Color { Color(red: 0.949, green: 0.949, blue: 0.949) }

@@ -256,27 +256,26 @@ public final class MainActivity extends android.app.Activity {
         barra = new LinearLayout(this);
         barra.setOrientation(LinearLayout.HORIZONTAL);
         barra.setBackgroundResource(R.drawable.barra_fundo);
-        barra.setElevation(dp(2));
         String[] nomes = {"Hoje", "Evolução", "Registrar", "Meu médico", "Pulseira"};
         int[] icones = {R.drawable.ic_hoje, R.drawable.ic_evolucao, 0, R.drawable.ic_medico, R.drawable.ic_pulseira};
         for (int i = 0; i < nomes.length; i++) {
             LinearLayout celula = new LinearLayout(this);
             celula.setOrientation(LinearLayout.VERTICAL);
             celula.setGravity(Gravity.CENTER);
-            celula.setMinimumHeight(dp(68));
-            celula.setPadding(dp(2), dp(6), dp(2), dp(4));
+            celula.setMinimumHeight(dp(64));
+            celula.setPadding(dp(2), dp(4), dp(2), dp(4));
             if (i == 2) {
                 TextView maisBtn = new TextView(this);
                 maisBtn.setText("+");
                 maisBtn.setGravity(Gravity.CENTER);
                 maisBtn.setTextColor(getColor(R.color.branco));
-                maisBtn.setTextSize(22);
-                maisBtn.setTypeface(getResources().getFont(R.font.sora), android.graphics.Typeface.BOLD);
-                android.graphics.drawable.GradientDrawable circulo = new android.graphics.drawable.GradientDrawable();
-                circulo.setShape(android.graphics.drawable.GradientDrawable.OVAL);
-                circulo.setColor(getColor(R.color.marca_botao));
-                maisBtn.setBackground(circulo);
-                celula.addView(maisBtn, new LinearLayout.LayoutParams(dp(38), dp(38)));
+                maisBtn.setTextSize(18);
+                maisBtn.setTypeface(getResources().getFont(R.font.inter), android.graphics.Typeface.BOLD);
+                android.graphics.drawable.GradientDrawable marca = new android.graphics.drawable.GradientDrawable();
+                marca.setCornerRadius(dp(10));
+                marca.setColor(getColor(R.color.tinta));
+                maisBtn.setBackground(marca);
+                celula.addView(maisBtn, new LinearLayout.LayoutParams(dp(32), dp(32)));
             } else {
                 ImageView icone = new ImageView(this);
                 icone.setImageResource(icones[i]);
@@ -289,13 +288,13 @@ public final class MainActivity extends android.app.Activity {
             t.setGravity(Gravity.CENTER);
             t.setTextSize(11);
             t.setTypeface(getResources().getFont(R.font.inter));
-            t.setTextColor(getColor(i == 2 ? R.color.tinta : R.color.secundaria));
+            t.setTextColor(getColor(R.color.secundaria));
             LinearLayout.LayoutParams rotulo = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             rotulo.topMargin = dp(2);
             celula.addView(t, rotulo);
             rotulosBarra[i] = t;
             View marca = new View(this);
-            marca.setBackgroundColor(getColor(R.color.marca));
+            marca.setBackgroundColor(getColor(R.color.tinta));
             marca.setVisibility(View.GONE);
             LinearLayout.LayoutParams traco = new LinearLayout.LayoutParams(dp(18), dp(2));
             traco.topMargin = dp(3);
@@ -335,9 +334,9 @@ public final class MainActivity extends android.app.Activity {
         for (int i = 0; i < rotulosBarra.length; i++) {
             if (rotulosBarra[i] == null) continue;
             boolean ativo = i == indice;
-            rotulosBarra[i].setTextColor(getColor(ativo ? R.color.marca : (i == 2 ? R.color.tinta : R.color.secundaria)));
+            rotulosBarra[i].setTextColor(getColor(ativo ? R.color.tinta : R.color.secundaria));
             rotulosBarra[i].setTypeface(getResources().getFont(R.font.inter), ativo ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
-            if (iconesBarra[i] != null) iconesBarra[i].setColorFilter(getColor(ativo ? R.color.marca : R.color.secundaria));
+            if (iconesBarra[i] != null) iconesBarra[i].setColorFilter(getColor(ativo ? R.color.tinta : R.color.secundaria));
             if (marcasBarra[i] != null) marcasBarra[i].setVisibility(ativo && i != 2 ? View.VISIBLE : View.GONE);
         }
     }

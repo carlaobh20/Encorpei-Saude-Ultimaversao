@@ -3,7 +3,7 @@
     <style name="Tema" parent="@android:style/Theme.DeviceDefault.Light.NoActionBar">
         <item name="android:fontFamily">@font/inter</item>
         <item name="android:windowBackground">@color/fundo</item>
-        <item name="android:colorAccent">@color/marca</item>
+        <item name="android:colorAccent">@color/tinta</item>
     </style>
     <style name="BotaoPrimario" parent="@android:style/Widget.DeviceDefault.Button">
         <item name="android:background">@drawable/botao</item>

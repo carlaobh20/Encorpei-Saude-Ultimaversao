@@ -48,7 +48,7 @@ struct RemediosTela: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Remédios").font(.custom("Sora", size: 27).weight(.bold)).foregroundStyle(tintaMais)
+            Text("Remédios").font(.custom("Sora", size: 26).weight(.semibold)).foregroundStyle(tintaMais)
             Text("Suas doses de hoje").foregroundStyle(secundariaMais)
             Text(texto).font(.system(size: 16)).foregroundStyle(tintaMais)
             ForEach(Array(doses.enumerated()), id: \.offset) { _, d in
@@ -178,7 +178,7 @@ struct SintomasTela: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if emergencia {
-                Text("Emergência").font(.custom("Sora", size: 27).weight(.bold))
+                Text("Emergência").font(.custom("Sora", size: 26).weight(.semibold))
                 Text("Se você não está bem, ligue agora.")
                 Link("Ligar 192", destination: URL(string: "tel:192")!).font(.system(size: 22, weight: .bold))
                 Text("SAMU — atendimento de urgência").foregroundStyle(secundariaMais)
@@ -187,7 +187,7 @@ struct SintomasTela: View {
                 if !aviso.isEmpty { Text(aviso).foregroundStyle(avisoMais) }
                 Button("Voltar", action: voltar).buttonStyle(BotaoContornoMais())
             } else if tipo.isEmpty {
-                Text("Sintomas").font(.custom("Sora", size: 27).weight(.bold)).foregroundStyle(tintaMais)
+                Text("Sintomas").font(.custom("Sora", size: 26).weight(.semibold)).foregroundStyle(tintaMais)
                 Text("O que você está sentindo?").foregroundStyle(secundariaMais)
                 ForEach(lista, id: \.0) { item in
                     Button(item.1) {
@@ -199,7 +199,7 @@ struct SintomasTela: View {
                 }
                 Button("Voltar", action: voltar).buttonStyle(BotaoContornoMais())
             } else {
-                Text(lista.first { $0.0 == tipo }?.1 ?? "").font(.custom("Sora", size: 27).weight(.bold)).foregroundStyle(tintaMais)
+                Text(lista.first { $0.0 == tipo }?.1 ?? "").font(.custom("Sora", size: 26).weight(.semibold)).foregroundStyle(tintaMais)
                 formulario
                 if !aviso.isEmpty { Text(aviso).foregroundStyle(avisoMais) }
                 Button("Voltar") { tipo = "" }.buttonStyle(BotaoContornoMais())
@@ -302,7 +302,7 @@ struct SonoTela: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Sono").font(.custom("Sora", size: 27).weight(.bold)).foregroundStyle(tintaMais)
+            Text("Sono").font(.custom("Sora", size: 26).weight(.semibold)).foregroundStyle(tintaMais)
             Text("O que a pulseira registrou à noite").foregroundStyle(secundariaMais)
             Text(texto).font(.system(size: 16))
             Button("Voltar", action: voltar).buttonStyle(BotaoContornoMais())
@@ -356,7 +356,7 @@ struct AlimentacaoTela: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Alimentação").font(.custom("Sora", size: 27).weight(.bold)).foregroundStyle(tintaMais)
+            Text("Alimentação").font(.custom("Sora", size: 26).weight(.semibold)).foregroundStyle(tintaMais)
             Text("Uma pergunta por refeição — sem tabela, sem contagem de calorias").foregroundStyle(secundariaMais)
             Text(texto).font(.system(size: 16))
             Text("O que você comeu hoje?").font(.system(size: 18, weight: .semibold))
@@ -419,7 +419,7 @@ struct CaminhadaTela: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Caminhada").font(.custom("Sora", size: 27).weight(.bold)).foregroundStyle(tintaMais)
+            Text("Caminhada").font(.custom("Sora", size: 26).weight(.semibold)).foregroundStyle(tintaMais)
             Text("Sessão guiada e testes de capacidade").foregroundStyle(secundariaMais)
             if let zonaMin, let zonaMax {
                 Text("Faixa definida pelo seu médico: \(zonaMin) a \(zonaMax) batimentos por minuto.")
@@ -551,18 +551,18 @@ private struct BotaoCheioMais: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label.font(.custom("Inter", size: 16).weight(.semibold)).foregroundStyle(.white)
             .frame(maxWidth: .infinity, minHeight: 56)
-            .background(Color(red: 0.071, green: 0.388, blue: 0.722))
+            .background(Color(red: 0.110, green: 0.122, blue: 0.149))
             .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 }
 private struct BotaoContornoMais: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.font(.custom("Inter", size: 16).weight(.semibold)).foregroundStyle(Color(red: 0.063, green: 0.118, blue: 0.263))
+        configuration.label.font(.custom("Inter", size: 16).weight(.semibold)).foregroundStyle(Color(red: 0.110, green: 0.122, blue: 0.149))
             .frame(maxWidth: .infinity, minHeight: 48).background(.white)
             .clipShape(RoundedRectangle(cornerRadius: 10))
-            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color(red: 0.878, green: 0.910, blue: 0.949), lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color(red: 0.875, green: 0.886, blue: 0.906), lineWidth: 1))
     }
 }
-private let tintaMais = Color(red: 0.063, green: 0.118, blue: 0.263)
-private let secundariaMais = Color(red: 0.325, green: 0.420, blue: 0.569)
+private let tintaMais = Color(red: 0.110, green: 0.122, blue: 0.149)
+private let secundariaMais = Color(red: 0.376, green: 0.412, blue: 0.463)
 private let avisoMais = Color(red: 0.490, green: 0.286, blue: 0.051)

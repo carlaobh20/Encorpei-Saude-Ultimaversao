@@ -13,19 +13,19 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@color/fundo"
+            android:background="@color/cartao"
             android:gravity="center_vertical"
-            android:minHeight="88dp"
+            android:minHeight="64dp"
             android:orientation="horizontal"
-            android:paddingStart="20dp"
-            android:paddingTop="18dp"
-            android:paddingEnd="20dp"
-            android:paddingBottom="14dp">
+            android:paddingStart="16dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="8dp">
 
             <ImageView
-                android:layout_width="42dp"
-                android:layout_height="42dp"
-                android:layout_marginEnd="8dp"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_marginEnd="10dp"
                 android:contentDescription="@string/marca_nome"
                 android:src="@drawable/logo_symbol" />
 
@@ -38,11 +38,11 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/sora"
-                    android:letterSpacing="-0.04"
+                    android:fontFamily="@font/inter"
+                    android:letterSpacing="-0.02"
                     android:text="@string/marca_nome"
-                    android:textColor="@color/marca"
-                    android:textSize="27sp"
+                    android:textColor="@color/tinta"
+                    android:textSize="17sp"
                     android:textStyle="bold" />
 
                 <TextView
@@ -51,7 +51,7 @@
                     android:fontFamily="@font/inter"
                     android:text="@string/marca_frase"
                     android:textColor="@color/secundaria"
-                    android:textSize="14sp" />
+                    android:textSize="13sp" />
             </LinearLayout>
 
             <Button
@@ -82,10 +82,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/sora"
-                android:letterSpacing="-0.04"
+                android:letterSpacing="-0.045"
                 android:text="@string/titulo"
                 android:textColor="@color/tinta"
-                android:textSize="27sp"
+                android:textSize="26sp"
                 android:textStyle="bold" />
 
             <TextView
@@ -276,13 +276,14 @@
                         android:gravity="center_vertical"
                         android:orientation="horizontal">
 
-                        <TextView
+                        <ImageView
                             android:layout_width="44dp"
                             android:layout_height="44dp"
                             android:background="@drawable/destaque"
-                            android:gravity="center"
-                            android:text="⌚"
-                            android:textSize="20sp" />
+                            android:contentDescription="@string/titulo"
+                            android:padding="10dp"
+                            android:src="@drawable/ic_pulseira"
+                            android:tint="@color/tinta" />
 
                         <LinearLayout
                             android:layout_width="0dp"

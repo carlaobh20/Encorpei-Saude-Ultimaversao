@@ -16,9 +16,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:fontFamily="@font/sora"
-            android:letterSpacing="-0.04"
+            android:letterSpacing="-0.045"
             android:textColor="@color/tinta"
-            android:textSize="27sp"
+            android:textSize="26sp"
             android:textStyle="bold" />
 
         <TextView
@@ -26,12 +26,12 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:background="@drawable/cuidado"
+            android:background="@drawable/cartao"
             android:fontFamily="@font/inter"
             android:lineSpacingExtra="4dp"
             android:padding="16dp"
             android:text="Carregando…"
-            android:textColor="@color/branco"
+            android:textColor="@color/tinta"
             android:textSize="16sp" />
 
         <Button

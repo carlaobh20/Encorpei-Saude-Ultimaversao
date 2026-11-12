@@ -16,10 +16,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:fontFamily="@font/sora"
-            android:letterSpacing="-0.04"
+            android:letterSpacing="-0.045"
             android:text="Meu médico"
             android:textColor="@color/tinta"
-            android:textSize="27sp"
+            android:textSize="26sp"
             android:textStyle="bold" />
 
         <TextView

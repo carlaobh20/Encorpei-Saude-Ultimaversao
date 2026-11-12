@@ -27,17 +27,17 @@ struct ContentView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                HStack(alignment: .center, spacing: 8) {
+                HStack(alignment: .center, spacing: 10) {
                     Image(uiImage: UIImage(named: "logo-symbol") ?? UIImage())
                         .resizable()
-                        .frame(width: 42, height: 42)
+                        .frame(width: 36, height: 36)
                     VStack(alignment: .leading, spacing: 0) {
                         Text("Encorpei Cardio")
-                            .font(.custom("Sora", size: 27).weight(.bold))
-                            .tracking(-1)
-                            .foregroundStyle(marca)
+                            .font(.custom("Inter", size: 17).weight(.semibold))
+                            .tracking(-0.3)
+                            .foregroundStyle(tinta)
                         Text("Seu cuidado, todos os dias")
-                            .font(.custom("Inter", size: 14))
+                            .font(.custom("Inter", size: 13))
                             .foregroundStyle(secundaria)
                     }
                     Spacer()
@@ -46,11 +46,11 @@ struct ContentView: View {
                             .buttonStyle(BotaoContorno(largo: false))
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 18)
-                .padding(.bottom, 14)
-                .frame(maxWidth: .infinity, minHeight: 88, alignment: .leading)
-                .background(fundo)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+                .background(cartao)
+                .overlay(Rectangle().frame(height: 1).foregroundStyle(borda), alignment: .bottom)
 
                 Group {
                 if conta.logada && !conta.aguardandoSenha && aba != "pulseira" {
@@ -77,8 +77,9 @@ struct ContentView: View {
                 } else {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(alignment: .top, spacing: 12) {
-                        Text("⌚")
-                            .font(.system(size: 20))
+                        Image(systemName: "applewatch")
+                            .font(.system(size: 20, weight: .regular))
+                            .foregroundStyle(tinta)
                             .frame(width: 44, height: 44)
                             .background(destaque)
                             .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -642,10 +643,9 @@ struct ContentView: View {
         }
     }
 
-    private var fundo: Color { Color(red: 0.961, green: 0.976, blue: 0.996) }
-    private var tinta: Color { Color(red: 0.063, green: 0.118, blue: 0.263) }
-    private var secundaria: Color { Color(red: 0.325, green: 0.420, blue: 0.569) }
-    private var marca: Color { Color(red: 0.071, green: 0.365, blue: 0.690) }
+    private var fundo: Color { Color(red: 0.976, green: 0.980, blue: 0.984) }
+    private var tinta: Color { Color(red: 0.110, green: 0.122, blue: 0.149) }
+    private var secundaria: Color { Color(red: 0.376, green: 0.412, blue: 0.463) }
     private var aviso: Color { Color(red: 0.490, green: 0.286, blue: 0.051) }
     private var avisoBg: Color { Color(red: 0.996, green: 0.953, blue: 0.886) }
     private var sucesso: Color { Color(red: 0.298, green: 0.682, blue: 0.310) }
@@ -653,10 +653,10 @@ struct ContentView: View {
     private var info: Color { Color(red: 0.306, green: 0.447, blue: 0.635) }
     private var infoBg: Color { Color(red: 0.925, green: 0.945, blue: 0.976) }
     private var cartao: Color { .white }
-    private var mudo: Color { Color(red: 0.910, green: 0.941, blue: 0.980) }
-    private var destaque: Color { Color(red: 0.933, green: 0.965, blue: 1.0) }
-    private var borda: Color { Color(red: 0.878, green: 0.910, blue: 0.949) }
-    private var bordaForte: Color { Color(red: 0.773, green: 0.831, blue: 0.902) }
+    private var mudo: Color { Color(red: 0.933, green: 0.941, blue: 0.949) }
+    private var destaque: Color { Color(red: 0.949, green: 0.949, blue: 0.949) }
+    private var borda: Color { Color(red: 0.875, green: 0.886, blue: 0.906) }
+    private var bordaForte: Color { Color(red: 0.824, green: 0.824, blue: 0.831) }
 }
 
 private struct BotaoCheio: ButtonStyle {
@@ -665,7 +665,7 @@ private struct BotaoCheio: ButtonStyle {
             .font(.system(size: 16, weight: .semibold))
             .foregroundStyle(Color.white)
             .frame(maxWidth: .infinity, minHeight: 56)
-            .background(Color(red: 0.071, green: 0.388, blue: 0.722).opacity(configuration.isPressed ? 0.82 : 1))
+            .background(Color(red: 0.110, green: 0.122, blue: 0.149).opacity(configuration.isPressed ? 0.82 : 1))
             .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 }
@@ -675,11 +675,11 @@ private struct BotaoContorno: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 16, weight: .semibold))
-            .foregroundStyle(Color(red: 0.063, green: 0.118, blue: 0.263))
+            .foregroundStyle(Color(red: 0.110, green: 0.122, blue: 0.149))
             .padding(.horizontal, largo ? 0 : 16)
             .frame(maxWidth: largo ? .infinity : nil, minHeight: 48)
             .background(Color.white.opacity(configuration.isPressed ? 0.9 : 1))
             .clipShape(RoundedRectangle(cornerRadius: 10))
-            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color(red: 0.878, green: 0.910, blue: 0.949), lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color(red: 0.875, green: 0.886, blue: 0.906), lineWidth: 1))
     }
 }
