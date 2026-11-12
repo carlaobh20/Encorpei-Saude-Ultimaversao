@@ -541,24 +541,24 @@ public final class MainActivity extends android.app.Activity {
         if (e != null && e.nome != null && !e.nome.isEmpty()) nome.setText(e.nome);
         else nome.setText(R.string.nome_generico);
         if (procurando) {
-            selo.setText(R.string.selo_conectando);
+            pintarSelo(R.string.selo_conectando, R.drawable.selo_info, R.color.info);
             frase.setText(R.string.frase_conectando);
         } else if (encerrando) {
-            selo.setText(R.string.selo_sincronizando);
+            pintarSelo(R.string.selo_sincronizando, R.drawable.selo_info, R.color.info);
             frase.setText(R.string.frase_sincronizando);
         } else if (falhou) {
-            selo.setText(R.string.selo_falhou);
+            pintarSelo(R.string.selo_falhou, R.drawable.selo_aviso, R.color.aviso);
             frase.setText(R.string.frase_falhou);
         } else if (conectada && conta.gravadas > 0) {
             seloAtualizada();
         } else if (conectada) {
-            selo.setText(R.string.selo_sincronizando);
+            pintarSelo(R.string.selo_sincronizando, R.drawable.selo_info, R.color.info);
             frase.setText(R.string.frase_sincronizando);
         } else if (conta.ultimaIso == null) {
-            selo.setText(R.string.selo_nao);
+            pintarSelo(R.string.selo_nao, R.drawable.selo_normal, R.color.secundaria);
             frase.setText(R.string.frase_nao);
         } else if (diasDesde(conta.ultimaIso) > 3) {
-            selo.setText(R.string.selo_atrasada);
+            pintarSelo(R.string.selo_atrasada, R.drawable.selo_aviso, R.color.aviso);
             frase.setText(R.string.frase_atrasada);
         } else {
             seloAtualizada();
@@ -600,8 +600,14 @@ public final class MainActivity extends android.app.Activity {
         else mensagem.setText("");
     }
 
+    private void pintarSelo(int texto, int fundo, int tinta) {
+        selo.setText(texto);
+        selo.setBackgroundResource(fundo);
+        selo.setTextColor(getColor(tinta));
+    }
+
     private void seloAtualizada() {
-        selo.setText(R.string.selo_atualizada);
+        pintarSelo(R.string.selo_atualizada, R.drawable.selo_ok, R.color.sucesso);
         frase.setText(conta.medicoConhecido && conta.temMedico
                 ? R.string.frase_atualizada_medico
                 : R.string.frase_atualizada);

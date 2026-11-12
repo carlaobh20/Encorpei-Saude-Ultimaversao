@@ -22,146 +22,162 @@ struct ContentView: View {
     @State private var previa: Importacao.Resultado?
     @State private var mapas: [String: Int] = [:]
 
-    private let recursosLista = """
-    Batimentos. Leitura Bluetooth implementada; depende da compatibilidade do firmware e do navegador.
-
-    Oxigenação (SpO₂). Importação de arquivo compatível. Leitura Bluetooth ainda não implementada.
-
-    Sono. Importação de duração e estágios quando presentes no arquivo. Sem busca automática do histórico da pulseira.
-
-    Passos e calorias. Importação de arquivo compatível. São estimativas de atividade.
-
-    Pressão estimada. Importação de arquivo compatível. Não entra na média de pressão nem nos alertas clínicos.
-    """
-
-    private let recursosFim = """
-    HRV, estresse, distância e registros esportivos são anunciados para o modelo, mas ainda não têm importação validada neste app. Não exibimos números calculados para substituir esses dados.
-
-    Alarmes, notificações, lembrete de movimento, localizar pulseira, câmera remota e atualização de firmware ficam no QWatch Pro. O GPS dos exercícios depende do celular.
-
-    As leituras da pulseira são estimativas de bem-estar. Pressão sem manguito não substitui a medida com aparelho de braço.
-
-    Não habilitados para esta pulseira: peso, glicemia, ECG, temperatura e diagnóstico de arritmia. Não há suporte comprovado para essas funções no modelo identificado.
-    """
-
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
+                HStack(alignment: .center, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("Encorpei Cardio")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(tinta)
+                        Text("Seu cuidado, todos os dias")
+                            .font(.system(size: 13))
+                            .foregroundStyle(secundaria)
+                    }
+                    Spacer()
+                    if conta.logada && !conta.aguardandoSenha {
+                        Button("Sair") { pedirSaida() }
+                            .buttonStyle(BotaoContorno(largo: false))
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+                .background(cartao)
+
+                VStack(alignment: .leading, spacing: 0) {
                 Text("Pulseira")
                     .font(.system(size: 28, weight: .bold))
+                    .tracking(-1.2)
                     .foregroundStyle(tinta)
                 Text("Compatibilidade: LOKMAT H59MAX · C4001B")
-                    .font(.system(size: 14))
+                    .font(.system(size: 16))
                     .foregroundStyle(secundaria)
                     .padding(.top, 4)
-                Text("Apple Saúde, Health Connect e outras plataformas ficam na tela de integrações do site.")
-                    .font(.system(size: 15))
-                    .foregroundStyle(verde)
-                    .padding(.top, 12)
+                Text("Apple Saúde, Health Connect e outras plataformas →")
+                    .font(.system(size: 16))
+                    .underline()
+                    .foregroundStyle(tinta)
+                    .padding(.top, 16)
 
                 if !conta.logada || conta.aguardandoSenha {
                     formularioConta
                 } else {
-                Button("Sair") { pedirSaida() }
-                    .buttonStyle(.bordered)
-                    .padding(.top, 8)
-
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(nomeVisivel)
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(tinta)
-                    Text(selo)
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(verde)
-                        .padding(.top, 8)
-                    Text(frase)
-                        .font(.system(size: 15))
-                        .foregroundStyle(secundaria)
-                        .padding(.top, 4)
-                    Text("ÚLTIMA VEZ QUE SEUS DADOS FORAM SALVOS")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(secundaria)
-                        .padding(.top, 16)
-                    Text(conta.ultimaIso.map(formatar) ?? "Ainda não recebi nada")
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundStyle(tinta)
-                        .padding(.top, 4)
+                    HStack(alignment: .top, spacing: 12) {
+                        Text("⌚")
+                            .font(.system(size: 20))
+                            .frame(width: 44, height: 44)
+                            .background(destaque)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(nomeVisivel)
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(tinta)
+                            Text(frase)
+                                .font(.system(size: 13))
+                                .foregroundStyle(secundaria)
+                        }
+                        Spacer(minLength: 8)
+                        Text(selo)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(seloTinta)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 2)
+                            .background(seloFundo)
+                            .clipShape(Capsule())
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("ÚLTIMA VEZ QUE SEUS DADOS FORAM SALVOS")
+                            .font(.system(size: 12, weight: .bold))
+                            .tracking(0.4)
+                            .foregroundStyle(secundaria)
+                        Text(conta.ultimaIso.map(formatar) ?? "Ainda não recebi nada")
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundStyle(tinta)
+                    }
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(destaque)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .padding(.top, 16)
                     Text("O QUE CHEGOU NOS ÚLTIMOS 7 DIAS")
                         .font(.system(size: 12, weight: .bold))
+                        .tracking(0.4)
                         .foregroundStyle(secundaria)
                         .padding(.top, 16)
                     Text(textoChegou)
-                        .font(.system(size: 15))
-                        .foregroundStyle(secundaria)
-                        .padding(.top, 4)
+                        .font(.system(size: 16))
+                        .foregroundStyle(tinta)
+                        .padding(.top, 6)
+
+                    if sessao.fase == "conectada" || sessao.salvando {
+                        VStack(spacing: 4) {
+                            Text(sessao.bpm.map(String.init) ?? "—")
+                                .font(.system(size: 36, weight: .bold))
+                                .foregroundStyle(tinta)
+                                .accessibilityLabel(sessao.bpm.map { "\($0) batimentos por minuto" } ?? "Sem batimento")
+                            Text("batimentos por minuto, agora")
+                                .font(.system(size: 13))
+                                .foregroundStyle(secundaria)
+                            if let contato = sessao.contato {
+                                Text(contato ? "Contato com a pele." : "Sem contato com a pele.")
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(secundaria)
+                            }
+                            if let canal = sessao.canal, !canal.isEmpty {
+                                Text(canal)
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(secundaria)
+                            }
+                            Text(textoSessao)
+                                .font(.system(size: 13))
+                                .foregroundStyle(secundaria)
+                                .padding(.top, 4)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(16)
+                        .background(mudo)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                        .padding(.top, 16)
+                    }
+
+                    if let erro = conta.erroEnvio {
+                        Text(erro)
+                            .font(.system(size: 16))
+                            .foregroundStyle(aviso)
+                            .padding(.top, 12)
+                    } else if sessao.fase == "erro" && !sessao.mensagem.isEmpty {
+                        Text(sessao.mensagem)
+                            .font(.system(size: 16))
+                            .foregroundStyle(aviso)
+                            .padding(.top, 12)
+                    }
+
+                    Button(rotuloBotao) { acaoBotao() }
+                        .buttonStyle(BotaoCheio())
+                        .padding(.top, 16)
+                        .disabled(sessao.salvando || sessao.fase == "procurando" || sessao.fase == "conectando")
                 }
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(cartao)
-                .padding(.top, 16)
-
-                Text("batimentos por minuto, agora")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(tinta)
-                    .padding(.top, 20)
-
-                if sessao.fase == "conectada" || sessao.salvando {
-                    VStack(spacing: 4) {
-                        Text(sessao.bpm.map(String.init) ?? "—")
-                            .font(.system(size: 48, weight: .bold))
-                            .foregroundStyle(verde)
-                            .accessibilityLabel(sessao.bpm.map { "\($0) batimentos por minuto" } ?? "Sem batimento")
-                        if let contato = sessao.contato {
-                            Text(contato ? "Contato com a pele." : "Sem contato com a pele.")
-                                .font(.system(size: 14))
-                                .foregroundStyle(secundaria)
-                        }
-                        if let canal = sessao.canal, !canal.isEmpty {
-                            Text(canal)
-                                .font(.system(size: 14))
-                                .foregroundStyle(secundaria)
-                        }
-                        Text(textoSessao)
-                            .font(.system(size: 13))
-                            .foregroundStyle(secundaria)
-                            .padding(.top, 4)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(16)
-                    .background(cartao)
-                    .padding(.top, 8)
-                }
-
-                if let erro = conta.erroEnvio {
-                    Text(erro)
-                        .font(.system(size: 15))
-                        .foregroundStyle(aviso)
-                        .padding(.top, 12)
-                } else if sessao.fase == "erro" && !sessao.mensagem.isEmpty {
-                    Text(sessao.mensagem)
-                        .font(.system(size: 15))
-                        .foregroundStyle(aviso)
-                        .padding(.top, 12)
-                }
-
-                Button(rotuloBotao) { acaoBotao() }
-                    .buttonStyle(.borderedProminent)
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 12)
-                    .disabled(sessao.salvando || sessao.fase == "procurando" || sessao.fase == "conectando")
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(bordaForte, lineWidth: 2))
+                .padding(.top, 24)
 
                 Text("Importar arquivo")
-                    .font(.system(size: 18, weight: .bold))
+                    .font(.system(size: 22, weight: .semibold))
+                    .tracking(-0.4)
                     .foregroundStyle(tinta)
-                    .padding(.top, 28)
+                    .padding(.top, 24)
                 Text("funciona no iPhone também")
-                    .font(.system(size: 14))
+                    .font(.system(size: 16))
                     .foregroundStyle(secundaria)
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Button("Escolher arquivo") { escolhendoArquivo = true }
-                        .buttonStyle(.bordered)
-                        .frame(maxWidth: .infinity)
+                    Button("Importar arquivo") { escolhendoArquivo = true }
+                        .buttonStyle(BotaoContorno())
                     Text("Aceita CSV compatível, caso você tenha esse arquivo. A exportação pelo QWatch Pro ainda não foi confirmada. Conectar a pulseira não importa automaticamente todos os dados.")
                         .font(.system(size: 13))
                         .foregroundStyle(secundaria)
@@ -188,12 +204,10 @@ struct ContentView: View {
                         }
                         if previa.precisaConfirmacao || !previa.linhas.isEmpty {
                             Button(previa.precisaConfirmacao ? "Conferir colunas" : "Salvar no histórico") { confirmarArquivo() }
-                                .buttonStyle(.borderedProminent)
-                                .frame(maxWidth: .infinity)
+                                .buttonStyle(BotaoCheio())
                         }
                         Button("Cancelar") { limparArquivo() }
-                            .buttonStyle(.bordered)
-                            .frame(maxWidth: .infinity)
+                            .buttonStyle(BotaoContorno())
                     }
                     if !avisoImportacao.isEmpty {
                         Text(avisoImportacao)
@@ -204,44 +218,61 @@ struct ContentView: View {
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(cartao)
-                .padding(.top, 8)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(borda, lineWidth: 1))
+                .padding(.top, 12)
 
                 Text("Recursos da H59MAX no Encorpei")
-                    .font(.system(size: 18, weight: .bold))
+                    .font(.system(size: 22, weight: .semibold))
+                    .tracking(-0.4)
                     .foregroundStyle(tinta)
-                    .padding(.top, 28)
+                    .padding(.top, 24)
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Modelo identificado pela embalagem. O QWatch Pro é o aplicativo companheiro; a compatibilidade de transmissão precisa ser testada na sua unidade.")
-                        .font(.system(size: 15))
+                        .font(.system(size: 16))
                         .foregroundStyle(secundaria)
-                    Text(recursosLista)
-                        .font(.system(size: 15))
-                        .foregroundStyle(tinta)
-                    Text(recursosFim)
-                        .font(.system(size: 15))
+                    recurso("Batimentos", "Leitura Bluetooth implementada; depende da compatibilidade do firmware e do navegador.")
+                    recurso("Oxigenação (SpO₂)", "Importação de arquivo compatível. Leitura Bluetooth ainda não implementada.")
+                    recurso("Sono", "Importação de duração e estágios quando presentes no arquivo. Sem busca automática do histórico da pulseira.")
+                    recurso("Passos e calorias", "Importação de arquivo compatível. São estimativas de atividade.")
+                    recurso("Pressão estimada", "Importação de arquivo compatível. Não entra na média de pressão nem nos alertas clínicos.")
+                    Text("HRV, estresse, distância e registros esportivos são anunciados para o modelo, mas ainda não têm importação validada neste app. Não exibimos números calculados para substituir esses dados.\n\nAlarmes, notificações, lembrete de movimento, localizar pulseira, câmera remota e atualização de firmware ficam no QWatch Pro. O GPS dos exercícios depende do celular.")
+                        .font(.system(size: 16))
+                        .foregroundStyle(secundaria)
+                    Text("As leituras da pulseira são estimativas de bem-estar. Pressão sem manguito não substitui a medida com aparelho de braço.")
+                        .font(.system(size: 16))
+                        .foregroundStyle(aviso)
+                    Text("Não habilitados para esta pulseira: peso, glicemia, ECG, temperatura e diagnóstico de arritmia. Não há suporte comprovado para essas funções no modelo identificado.")
+                        .font(.system(size: 16))
                         .foregroundStyle(secundaria)
                 }
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(cartao)
-                .padding(.top, 8)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(borda, lineWidth: 1))
+                .padding(.top, 12)
 
-                Button("Ajuda e detalhes do aparelho") { ajudaAberta.toggle() }
-                    .buttonStyle(.bordered)
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 20)
-                if ajudaAberta {
-                    Text("Cada aparelho desses vem de um lote diferente e nem todos falam a mesma língua. Este teste identifica os serviços Bluetooth disponíveis. Isso não comprova que todos os dados possam ser importados.\n\nO teste que lista todos os serviços continua na tela do site. Aqui a seção de conexão só mantém o batimento ao vivo.")
-                        .font(.system(size: 15))
-                        .foregroundStyle(tinta)
-                        .padding(16)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(cartao)
-                        .padding(.top, 8)
+                VStack(alignment: .leading, spacing: 0) {
+                    Button("Ajuda e detalhes do aparelho") { ajudaAberta.toggle() }
+                        .buttonStyle(BotaoContorno())
+                    if ajudaAberta {
+                        Text("Cada aparelho desses vem de um lote diferente e nem todos falam a mesma língua. Este teste identifica os serviços Bluetooth disponíveis. Isso não comprova que todos os dados possam ser importados.\n\nO teste que lista todos os serviços continua na tela do site. Aqui a seção de conexão só mantém o batimento ao vivo.")
+                            .font(.system(size: 16))
+                            .foregroundStyle(secundaria)
+                            .padding(.top, 16)
+                    }
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(cartao)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(borda, lineWidth: 1))
+                .padding(.top, 24)
                 }
                 }
+                .padding(16)
             }
-            .padding(20)
         }
         .background(fundo)
         .onChange(of: scenePhase) { _, fase in
@@ -318,34 +349,35 @@ struct ContentView: View {
                     .foregroundStyle(tinta)
             }
             Button(rotuloConta) { entrar() }
-                .buttonStyle(.borderedProminent)
-                .frame(maxWidth: .infinity)
+                .buttonStyle(BotaoCheio())
                 .disabled(entrando)
             if modoEfetivo == "entrar" {
                 Button("Criar minha conta") { modo = "criar"; loginMsg = "" }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(BotaoContorno())
                 Button("Esqueci a senha") { modo = "esqueci"; loginMsg = "" }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(BotaoContorno())
                 Text("Se o e-mail não abrir o app, cole o link aqui e toque em Entrar.")
                     .font(.system(size: 13))
                     .foregroundStyle(secundaria)
             } else if modoEfetivo == "criar" {
                 Button("Reenviar e-mail") { reenviar() }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(BotaoContorno())
                 Button("Já tenho conta") { modo = "entrar"; loginMsg = "" }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(BotaoContorno())
             } else if modoEfetivo != "senha" {
                 Button("Já tenho conta") { modo = "entrar"; loginMsg = "" }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(BotaoContorno())
             }
             if !loginMsg.isEmpty {
                 Text(loginMsg).font(.system(size: 15)).foregroundStyle(aviso)
             }
         }
-        .padding(16)
+        .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cartao)
-        .padding(.top, 16)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(borda, lineWidth: 1))
+        .padding(.top, 20)
     }
 
     private var tituloConta: String {
@@ -554,10 +586,72 @@ struct ContentView: View {
         return Date().timeIntervalSince(data) / 86_400
     }
 
-    private var fundo: Color { Color(red: 0.957, green: 0.945, blue: 0.918) }
-    private var tinta: Color { Color(red: 0.110, green: 0.141, blue: 0.188) }
-    private var secundaria: Color { Color(red: 0.243, green: 0.290, blue: 0.349) }
-    private var verde: Color { Color(red: 0.059, green: 0.431, blue: 0.337) }
-    private var aviso: Color { Color(red: 0.420, green: 0.243, blue: 0.071) }
-    private var cartao: Color { Color(red: 1, green: 0.988, blue: 0.969) }
+    private func recurso(_ nome: String, _ envio: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(nome)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(tinta)
+            Text(envio)
+                .font(.system(size: 16))
+                .foregroundStyle(secundaria)
+        }
+    }
+
+    private var seloFundo: Color {
+        switch selo {
+        case "Atualizada": return sucessoBg
+        case "Não deu certo", "Dados atrasados": return avisoBg
+        case "Conectando", "Sincronizando": return infoBg
+        default: return mudo
+        }
+    }
+
+    private var seloTinta: Color {
+        switch selo {
+        case "Atualizada": return sucesso
+        case "Não deu certo", "Dados atrasados": return aviso
+        case "Conectando", "Sincronizando": return info
+        default: return secundaria
+        }
+    }
+
+    private var fundo: Color { Color(red: 0.976, green: 0.980, blue: 0.984) }
+    private var tinta: Color { Color(red: 0.110, green: 0.122, blue: 0.149) }
+    private var secundaria: Color { Color(red: 0.376, green: 0.412, blue: 0.463) }
+    private var aviso: Color { Color(red: 0.490, green: 0.286, blue: 0.051) }
+    private var avisoBg: Color { Color(red: 0.996, green: 0.953, blue: 0.886) }
+    private var sucesso: Color { Color(red: 0.298, green: 0.682, blue: 0.310) }
+    private var sucessoBg: Color { Color(red: 0.922, green: 0.961, blue: 0.925) }
+    private var info: Color { Color(red: 0.306, green: 0.447, blue: 0.635) }
+    private var infoBg: Color { Color(red: 0.925, green: 0.945, blue: 0.976) }
+    private var cartao: Color { .white }
+    private var mudo: Color { Color(red: 0.933, green: 0.941, blue: 0.949) }
+    private var destaque: Color { Color(red: 0.949, green: 0.949, blue: 0.949) }
+    private var borda: Color { Color(red: 0.875, green: 0.886, blue: 0.906) }
+    private var bordaForte: Color { Color(red: 0.824, green: 0.824, blue: 0.831) }
+}
+
+private struct BotaoCheio: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(Color.white)
+            .frame(maxWidth: .infinity, minHeight: 56)
+            .background(Color(red: 0.110, green: 0.122, blue: 0.149).opacity(configuration.isPressed ? 0.82 : 1))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+}
+
+private struct BotaoContorno: ButtonStyle {
+    var largo = true
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(Color(red: 0.110, green: 0.122, blue: 0.149))
+            .padding(.horizontal, largo ? 0 : 16)
+            .frame(maxWidth: largo ? .infinity : nil, minHeight: 48)
+            .background(Color.white.opacity(configuration.isPressed ? 0.9 : 1))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color(red: 0.875, green: 0.886, blue: 0.906), lineWidth: 1))
+    }
 }

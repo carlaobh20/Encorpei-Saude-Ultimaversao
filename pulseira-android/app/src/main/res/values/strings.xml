@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Encorpei Pulseira</string>
+    <string name="marca_nome">Encorpei Cardio</string>
+    <string name="marca_frase">Seu cuidado, todos os dias</string>
     <string name="titulo">Pulseira</string>
     <string name="subtitulo">Compatibilidade: LOKMAT H59MAX · C4001B</string>
-    <string name="integracoes">Apple Saúde, Health Connect e outras plataformas ficam na tela de integrações do site.</string>
+    <string name="integracoes"><u>Apple Saúde, Health Connect e outras plataformas →</u></string>
     <string name="nome_generico">O aparelho que você conectou</string>
     <string name="selo_nao">Não conectada</string>
     <string name="frase_nao">O app ainda não recebeu nada deste aparelho.</string>
@@ -55,8 +57,19 @@
     <string name="importar_texto">Aceita CSV compatível, caso você tenha esse arquivo. A exportação pelo QWatch Pro ainda não foi confirmada. Conectar a pulseira não importa automaticamente todos os dados.</string>
     <string name="recursos_titulo">Recursos da H59MAX no Encorpei</string>
     <string name="recursos_intro">Modelo identificado pela embalagem. O QWatch Pro é o aplicativo companheiro; a compatibilidade de transmissão precisa ser testada na sua unidade.</string>
-    <string name="recursos_lista">Batimentos. Leitura Bluetooth implementada; depende da compatibilidade do firmware e do navegador.\n\nOxigenação (SpO₂). Importação de arquivo compatível. Leitura Bluetooth ainda não implementada.\n\nSono. Importação de duração e estágios quando presentes no arquivo. Sem busca automática do histórico da pulseira.\n\nPassos e calorias. Importação de arquivo compatível. São estimativas de atividade.\n\nPressão estimada. Importação de arquivo compatível. Não entra na média de pressão nem nos alertas clínicos.</string>
-    <string name="recursos_fim">HRV, estresse, distância e registros esportivos são anunciados para o modelo, mas ainda não têm importação validada neste app. Não exibimos números calculados para substituir esses dados.\n\nAlarmes, notificações, lembrete de movimento, localizar pulseira, câmera remota e atualização de firmware ficam no QWatch Pro. O GPS dos exercícios depende do celular.\n\nAs leituras da pulseira são estimativas de bem-estar. Pressão sem manguito não substitui a medida com aparelho de braço.\n\nNão habilitados para esta pulseira: peso, glicemia, ECG, temperatura e diagnóstico de arritmia. Não há suporte comprovado para essas funções no modelo identificado.</string>
+    <string name="recurso_batimentos">Batimentos</string>
+    <string name="recurso_batimentos_envio">Leitura Bluetooth implementada; depende da compatibilidade do firmware e do navegador.</string>
+    <string name="recurso_spo2">Oxigenação (SpO₂)</string>
+    <string name="recurso_spo2_envio">Importação de arquivo compatível. Leitura Bluetooth ainda não implementada.</string>
+    <string name="recurso_sono">Sono</string>
+    <string name="recurso_sono_envio">Importação de duração e estágios quando presentes no arquivo. Sem busca automática do histórico da pulseira.</string>
+    <string name="recurso_passos">Passos e calorias</string>
+    <string name="recurso_passos_envio">Importação de arquivo compatível. São estimativas de atividade.</string>
+    <string name="recurso_pressao">Pressão estimada</string>
+    <string name="recurso_pressao_envio">Importação de arquivo compatível. Não entra na média de pressão nem nos alertas clínicos.</string>
+    <string name="recursos_extra">HRV, estresse, distância e registros esportivos são anunciados para o modelo, mas ainda não têm importação validada neste app. Não exibimos números calculados para substituir esses dados.\n\nAlarmes, notificações, lembrete de movimento, localizar pulseira, câmera remota e atualização de firmware ficam no QWatch Pro. O GPS dos exercícios depende do celular.</string>
+    <string name="recursos_aviso">As leituras da pulseira são estimativas de bem-estar. Pressão sem manguito não substitui a medida com aparelho de braço.</string>
+    <string name="recursos_fora">Não habilitados para esta pulseira: peso, glicemia, ECG, temperatura e diagnóstico de arritmia. Não há suporte comprovado para essas funções no modelo identificado.</string>
     <string name="ajuda_titulo">Ajuda e detalhes do aparelho</string>
     <string name="ajuda_texto">Cada aparelho desses vem de um lote diferente e nem todos falam a mesma língua. Este teste identifica os serviços Bluetooth disponíveis. Isso não comprova que todos os dados possam ser importados.\n\nO teste que lista todos os serviços continua na tela do site. Aqui a seção de conexão só mantém o batimento ao vivo.</string>
     <string name="ociosa">A pulseira não está conectada.</string>
