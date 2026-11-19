@@ -369,6 +369,11 @@ public final class MainActivity extends android.app.Activity {
         findViewById(R.id.reg_fc).setOnClickListener(v -> abrirRegistro("hr"));
         findViewById(R.id.reg_spo2).setOnClickListener(v -> abrirRegistro("spo2"));
         findViewById(R.id.reg_glicose).setOnClickListener(v -> abrirRegistro("glucose"));
+        findViewById(R.id.reg_voltar).setOnClickListener(v -> fecharRegistro());
+        aoFocar(regA);
+        aoFocar(regB);
+        aoFocar(regC);
+        aoFocar(regNota);
         findViewById(R.id.reg_remedios).setOnClickListener(v -> abrirMais("remedios"));
         findViewById(R.id.reg_sintomas).setOnClickListener(v -> abrirMais("sintomas"));
         findViewById(R.id.reg_caminhada).setOnClickListener(v -> abrirMais("caminhada"));
@@ -401,8 +406,41 @@ public final class MainActivity extends android.app.Activity {
         mostrarAba(5);
     }
 
+    private void fecharRegistro() {
+        regForm.setVisibility(View.GONE);
+        findViewById(R.id.reg_lista).setVisibility(View.VISIBLE);
+        regPlano.setVisibility(View.VISIBLE);
+        View foco = getCurrentFocus();
+        if (foco != null) foco.clearFocus();
+    }
+
+    private void aoFocar(View campo) {
+        campo.setOnFocusChangeListener((v, tem) -> {
+            if (tem) {
+                v.postDelayed(() -> rolarPara(v), 120);
+                v.postDelayed(() -> rolarPara(v), 320);
+            }
+        });
+    }
+
+    private void rolarPara(View alvo) {
+        ScrollView scroll = findViewById(R.id.reg_scroll);
+        if (scroll == null) return;
+        int y = 0;
+        View v = alvo;
+        while (v != null && v != scroll) {
+            y += v.getTop();
+            if (!(v.getParent() instanceof View)) break;
+            v = (View) v.getParent();
+        }
+        int destino = Math.max(0, y - scroll.getHeight() / 4);
+        scroll.smoothScrollTo(0, destino);
+    }
+
     private void abrirRegistro(String tipo) {
         tipoRegistro = tipo;
+        findViewById(R.id.reg_lista).setVisibility(View.GONE);
+        regPlano.setVisibility(View.GONE);
         regForm.setVisibility(View.VISIBLE);
         regErro.setText("");
         regA.setText("");
@@ -443,6 +481,7 @@ public final class MainActivity extends android.app.Activity {
         } else {
             regAjuda.setText("");
         }
+        regForm.post(() -> rolarPara(bem ? regNota : regA));
     }
 
     private void salvarRegistro() {

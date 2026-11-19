@@ -1,4 +1,4 @@
-# Encorpei Pulseira 0.7.0
+# Encorpei Pulseira 0.8.0
 
 O Android instala pelo arquivo desta release. O iPhone não tem arquivo pronto: quem tem um Mac assina o projeto e instala no aparelho.
 
@@ -6,7 +6,7 @@ O app é outra entrada da mesma conta do site, com a casca do paciente no celula
 
 ## Android
 
-O arquivo `pulseira-android-v0.7.0-debug.apk` é um APK de depuração. A assinatura é a chave de debug, porque ainda não existe chave de release. O celular precisa de Android 8 ou mais novo, com Bluetooth de baixa energia.
+O arquivo `pulseira-android-v0.8.0-debug.apk` é um APK de depuração. Em Registrar, o formulário abre no lugar da lista e o teclado não cobre o campo: a tela encolhe e a barra de baixo continua alcançável. A assinatura é a chave de debug, porque ainda não existe chave de release. O celular precisa de Android 8 ou mais novo, com Bluetooth de baixa energia.
 
 1. Baixe o APK desta release no celular, ou passe o arquivo para ele.
 2. Abra o APK. Se o sistema pedir permissão para instalar apps desconhecidos, permita só para o app que baixou o arquivo (Chrome, Arquivos ou o gerenciador que você usou).

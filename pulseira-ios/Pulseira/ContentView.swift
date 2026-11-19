@@ -290,8 +290,17 @@ struct ContentView: View {
             }
         }
         .font(.custom("Inter", size: 17))
+        .scrollDismissesKeyboard(.interactively)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Pronto") {
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                }
+            }
+        }
         .background(fundo)
-        .safeAreaInset(edge: .bottom) {
+        .safeAreaInset(edge: .bottom, spacing: 0) {
             if conta.logada && !conta.aguardandoSenha {
                 BarraAbas(aba: $aba)
             }

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/reg_scroll"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/fundo"
@@ -31,12 +32,18 @@
             android:textColor="@color/tinta"
             android:textSize="14sp" />
 
+        <LinearLayout
+            android:id="@+id/reg_lista"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
         <Button
             android:id="@+id/reg_bp"
             style="@style/BotaoContorno"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="16dp"
             android:text="Pressão" />
 
         <Button
@@ -44,6 +51,7 @@
             style="@style/BotaoContorno"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
             android:text="Peso" />
 
         <Button
@@ -51,6 +59,7 @@
             style="@style/BotaoContorno"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
             android:text="Como me sinto" />
 
         <Button
@@ -58,6 +67,7 @@
             style="@style/BotaoContorno"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
             android:text="Batimentos" />
 
         <Button
@@ -65,6 +75,7 @@
             style="@style/BotaoContorno"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
             android:text="Oxigenação" />
 
         <Button
@@ -72,6 +83,7 @@
             style="@style/BotaoContorno"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
             android:text="Glicemia" />
 
         <Button
@@ -79,6 +91,7 @@
             style="@style/BotaoContorno"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
             android:text="Remédios" />
 
         <Button
@@ -86,6 +99,7 @@
             style="@style/BotaoContorno"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
             android:text="Sintoma" />
 
         <Button
@@ -93,6 +107,7 @@
             style="@style/BotaoContorno"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
             android:text="Caminhada" />
 
         <Button
@@ -100,6 +115,7 @@
             style="@style/BotaoContorno"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
             android:text="Alimentação" />
 
         <Button
@@ -107,7 +123,10 @@
             style="@style/BotaoContorno"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
             android:text="Sono" />
+
+        </LinearLayout>
 
         <LinearLayout
             android:id="@+id/reg_form"
@@ -119,10 +138,19 @@
             android:padding="16dp"
             android:visibility="gone">
 
+            <Button
+                android:id="@+id/reg_voltar"
+                style="@style/BotaoContorno"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Escolher outro" />
+
             <TextView
                 android:id="@+id/reg_ajuda"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:fontFamily="@font/inter"
                 android:textColor="@color/secundaria"
                 android:textSize="14sp" />
 
@@ -130,7 +158,8 @@
                 android:id="@+id/reg_rotulo_a"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="16dp"
+                android:fontFamily="@font/inter"
                 android:textColor="@color/tinta"
                 android:textSize="16sp" />
 
@@ -150,7 +179,8 @@
                 android:id="@+id/reg_rotulo_b"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="16dp"
+                android:fontFamily="@font/inter"
                 android:text="Número menor"
                 android:textColor="@color/tinta"
                 android:textSize="16sp" />
@@ -171,7 +201,8 @@
                 android:id="@+id/reg_rotulo_c"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="16dp"
+                android:fontFamily="@font/inter"
                 android:text="Batimentos (se o aparelho mostrar)"
                 android:textColor="@color/tinta"
                 android:textSize="16sp" />
@@ -193,7 +224,8 @@
                 android:id="@+id/reg_nota_rotulo"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="16dp"
+                android:fontFamily="@font/inter"
                 android:text="De 0 a 10, como você está hoje?"
                 android:textColor="@color/tinta"
                 android:textSize="16sp"

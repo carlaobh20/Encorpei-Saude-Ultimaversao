@@ -130,39 +130,48 @@ private struct RegistrarTela: View {
     @State private var erro = ""
     @State private var salvando = false
 
+    @FocusState private var foco: Campo?
+    private enum Campo: Hashable { case a, b, c }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Registrar")
                 .font(.custom("Sora", size: 26).weight(.semibold))
-                .tracking(-1.2)
+                .tracking(-1.17)
                 .foregroundStyle(tinta)
-            Text(conta.textoHoje)
-                .font(.system(size: 14))
-                .foregroundStyle(tinta)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(12)
-                .background(destaque)
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-            ForEach([("bp", "Pressão"), ("weight", "Peso"), ("wellbeing", "Como me sinto"), ("hr", "Batimentos"), ("spo2", "Oxigenação"), ("glucose", "Glicemia")], id: \.0) { item in
-                Button(item.1) { abrirFormulario(item.0) }
+            if tipo.isEmpty {
+                Text(conta.textoHoje)
+                    .font(.custom("Inter", size: 14))
+                    .foregroundStyle(tinta)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(destaque)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                ForEach([("bp", "Pressão"), ("weight", "Peso"), ("wellbeing", "Como me sinto"), ("hr", "Batimentos"), ("spo2", "Oxigenação"), ("glucose", "Glicemia")], id: \.0) { item in
+                    Button(item.1) { abrirFormulario(item.0) }
+                        .buttonStyle(BotaoContorno())
+                }
+                ForEach([("remedios", "Remédios"), ("sintomas", "Sintoma"), ("caminhada", "Caminhada"), ("alimentacao", "Alimentação"), ("sono", "Sono")], id: \.0) { item in
+                    Button(item.1) { abrir(item.0) }
+                        .buttonStyle(BotaoContorno())
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 16) {
+                    Button("Escolher outro") {
+                        tipo = ""
+                        foco = nil
+                    }
                     .buttonStyle(BotaoContorno())
-            }
-            ForEach([("remedios", "Remédios"), ("sintomas", "Sintoma"), ("caminhada", "Caminhada"), ("alimentacao", "Alimentação"), ("sono", "Sono")], id: \.0) { item in
-                Button(item.1) { abrir(item.0) }
-                    .buttonStyle(BotaoContorno())
-            }
-            if !tipo.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
                     if !ajuda.isEmpty {
-                        Text(ajuda).font(.system(size: 14)).foregroundStyle(secundaria)
+                        Text(ajuda).font(.custom("Inter", size: 14)).foregroundStyle(secundaria)
                     }
                     if tipo == "wellbeing" {
-                        Text("De 0 a 10, como você está hoje?").font(.system(size: 16, weight: .medium))
-                        Text("0 é o pior dia que você já teve; 10 é o melhor.").font(.system(size: 14)).foregroundStyle(secundaria)
+                        Text("De 0 a 10, como você está hoje?").font(.custom("Inter", size: 16).weight(.medium))
+                        Text("0 é o pior dia que você já teve; 10 é o melhor.").font(.custom("Inter", size: 14)).foregroundStyle(secundaria)
                         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 6), spacing: 8) {
                             ForEach(0..<11, id: \.self) { n in
                                 Button(String(n)) { nota = n }
-                                    .font(.system(size: 16, weight: .semibold))
+                                    .font(.custom("Inter", size: 16).weight(.semibold))
                                     .frame(maxWidth: .infinity, minHeight: 48)
                                     .foregroundStyle(nota == n ? Color.white : tinta)
                                     .background(nota == n ? tinta : Color.white)
@@ -171,16 +180,13 @@ private struct RegistrarTela: View {
                             }
                         }
                     } else {
-                        Text(rotuloA).font(.system(size: 16, weight: .medium))
-                        TextField(dicaA, text: $a).textFieldStyle(.roundedBorder).font(.system(size: 22, weight: .semibold))
+                        campo(rotuloA, dicaA, texto: $a, foco: .a, decimal: tipo == "weight")
                         if tipo == "bp" {
-                            Text("Número menor").font(.system(size: 16, weight: .medium))
-                            TextField("80", text: $b).textFieldStyle(.roundedBorder).font(.system(size: 22, weight: .semibold))
-                            Text("Batimentos (se o aparelho mostrar)").font(.system(size: 16, weight: .medium))
-                            TextField("70", text: $c).textFieldStyle(.roundedBorder).font(.system(size: 22, weight: .semibold))
+                            campo("Número menor", "80", texto: $b, foco: .b, decimal: false)
+                            campo("Batimentos (se o aparelho mostrar)", "70", texto: $c, foco: .c, decimal: false)
                         }
                     }
-                    if !erro.isEmpty { Text(erro).font(.system(size: 14)).foregroundStyle(aviso) }
+                    if !erro.isEmpty { Text(erro).font(.custom("Inter", size: 14)).foregroundStyle(aviso) }
                     Button(salvando ? "Salvando…" : "Salvar") { salvar() }
                         .buttonStyle(BotaoCheio())
                         .disabled(salvando)
@@ -190,6 +196,21 @@ private struct RegistrarTela: View {
                 .clipShape(RoundedRectangle(cornerRadius: 14))
                 .overlay(RoundedRectangle(cornerRadius: 14).stroke(borda, lineWidth: 1))
             }
+        }
+    }
+
+    private func campo(_ rotulo: String, _ dica: String, texto: Binding<String>, foco campoFoco: Campo, decimal: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(rotulo).font(.custom("Inter", size: 16).weight(.medium)).foregroundStyle(tinta)
+            TextField(dica, text: texto)
+                .focused($foco, equals: campoFoco)
+                .keyboardType(decimal ? .decimalPad : .numberPad)
+                .font(.custom("Inter", size: 22).weight(.semibold))
+                .padding(12)
+                .frame(minHeight: 56)
+                .background(Color.white)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(borda, lineWidth: 1))
         }
     }
 
