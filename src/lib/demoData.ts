@@ -296,7 +296,7 @@ export const DEMO_SYMPTOMS: SymptomReport[] = [
 export const DEMO_LABS: LabResult[] = [
   { id: "l0", patient_user_id: PACIENTE, marker_key: "total_cholesterol", marker_label: "Colesterol total", value_num: 190, value_text: null, unit: "mg/dL", reference_text: "< 190", status: "attention", collected_at: dataDia(25), file_url: null, created_at: diasAtras(25) },
   { id: "l1", patient_user_id: PACIENTE, marker_key: "ldl", marker_label: "LDL colesterol", value_num: 78, value_text: null, unit: "mg/dL", reference_text: "Alvo < 70 (risco alto)", status: "attention", collected_at: dataDia(25), file_url: null, created_at: diasAtras(25) },
-  { id: "l2", patient_user_id: PACIENTE, marker_key: "hdl", marker_label: "HDL colesterol", value_num: 41, value_text: null, unit: "mg/dL", reference_text: "> 40", status: "normal", collected_at: dataDia(25), file_url: null, created_at: diasAtras(25) },
+  { id: "l2", patient_user_id: PACIENTE, marker_key: "hdl", marker_label: "HDL colesterol", value_num: 41, value_text: null, unit: "mg/dL", reference_text: "> 50", status: "attention", collected_at: dataDia(25), file_url: null, created_at: diasAtras(25) },
   { id: "l3", patient_user_id: PACIENTE, marker_key: "triglycerides", marker_label: "Triglicérides", value_num: 186, value_text: null, unit: "mg/dL", reference_text: "< 150", status: "attention", collected_at: dataDia(25), file_url: null, created_at: diasAtras(25) },
   { id: "l4", patient_user_id: PACIENTE, marker_key: "creatinine", marker_label: "Creatinina", value_num: 1.18, value_text: null, unit: "mg/dL", reference_text: "0,7–1,3", status: "normal", collected_at: dataDia(25), file_url: null, created_at: diasAtras(25) },
   // "TFG estimada (CKD-EPI)" dizia ao paciente exatamente nada: TFG é sigla e
@@ -304,7 +304,7 @@ export const DEMO_LABS: LabResult[] = [
   // calcula, não de quem lê. O nome do que o exame mede vem primeiro.
   { id: "l5", patient_user_id: PACIENTE, marker_key: "egfr", marker_label: "Função dos rins (filtração)", value_num: 68, value_text: null, unit: "mL/min/1,73m²", reference_text: "> 60", status: "normal", collected_at: dataDia(25), file_url: null, created_at: diasAtras(25) },
   { id: "l6", patient_user_id: PACIENTE, marker_key: "potassium", marker_label: "Potássio", value_num: 4.6, value_text: null, unit: "mEq/L", reference_text: "3,5–5,5", status: "normal", collected_at: dataDia(25), file_url: null, created_at: diasAtras(25) },
-  { id: "l7", patient_user_id: PACIENTE, marker_key: "hba1c", marker_label: "Hemoglobina glicada", value_num: 5.9, value_text: null, unit: "%", reference_text: "< 5,7", status: "attention", collected_at: dataDia(25), file_url: null, created_at: diasAtras(25) },
+  { id: "l7", patient_user_id: PACIENTE, marker_key: "hba1c", marker_label: "Hemoglobina glicada", value_num: 5.9, value_text: null, unit: "%", reference_text: "< 5,4", status: "attention", collected_at: dataDia(25), file_url: null, created_at: diasAtras(25) },
   { id: "l9", patient_user_id: PACIENTE, marker_key: "lpa", marker_label: "Lipoproteína(a)", value_num: 88, value_text: null, unit: "nmol/L", reference_text: "< 75", status: "attention", collected_at: dataDia(200), file_url: null, created_at: diasAtras(200) },
 ];
 
