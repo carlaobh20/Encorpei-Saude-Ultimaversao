@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="fundo">#F9FAFB</color>
+    <color name="icone_fundo">#F2F5F9</color>
     <color name="tinta">#1C1F26</color>
     <color name="secundaria">#606976</color>
     <color name="mudo">#EEF0F2</color>

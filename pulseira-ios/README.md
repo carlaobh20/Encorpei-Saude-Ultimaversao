@@ -1,4 +1,4 @@
-# Encorpei Pulseira 0.8.0
+# Encorpei Pulseira 0.8.1
 
 O Android instala pelo arquivo desta release. O iPhone não tem arquivo pronto: quem tem um Mac assina o projeto e instala no aparelho.
 
@@ -6,11 +6,11 @@ O app é outra entrada da mesma conta do site, com a casca do paciente no celula
 
 ## Android
 
-O arquivo `pulseira-android-v0.8.0-debug.apk` é um APK de depuração. Em Registrar, o formulário abre no lugar da lista e o teclado não cobre o campo: a tela encolhe e a barra de baixo continua alcançável. A assinatura é a chave de debug, porque ainda não existe chave de release. O celular precisa de Android 8 ou mais novo, com Bluetooth de baixa energia.
+O arquivo `pulseira-android-v0.8.1-debug.apk` é um APK de depuração. O nome na gaveta e o ícone são os do site: **Encorpei Saúde** e o coração vermelho. Em Registrar, o formulário abre no lugar da lista e o teclado não cobre o campo: a tela encolhe e a barra de baixo continua alcançável. A assinatura é a chave de debug, porque ainda não existe chave de release. O celular precisa de Android 8 ou mais novo, com Bluetooth de baixa energia.
 
 1. Baixe o APK desta release no celular, ou passe o arquivo para ele.
 2. Abra o APK. Se o sistema pedir permissão para instalar apps desconhecidos, permita só para o app que baixou o arquivo (Chrome, Arquivos ou o gerenciador que você usou).
-3. Confirme a instalação. O nome na gaveta é **Encorpei Pulseira**.
+3. Confirme a instalação. O nome na gaveta é **Encorpei Saúde**.
 4. Na primeira abertura, aceite Bluetooth e, se o sistema pedir, as notificações. A notificação mantém a pulseira ligada com a tela fechada.
 5. Crie a conta ou entre com o e-mail e a senha do site. Para achar a pulseira, toque em **Conectar aparelho** e deixe-a perto do celular.
 
@@ -56,7 +56,7 @@ Se o Xcode disser que o identificador `saude.encorpei.pulseira` não pode ser re
 ### 5. Compilar e instalar
 
 1. No menu, **Product → Run** (ou ⌘R).
-2. Espere o Xcode terminar. O app abre no iPhone com o nome **Encorpei Pulseira**.
+2. Espere o Xcode terminar. O app abre no iPhone com o nome **Encorpei Saúde**.
 3. Na primeira abertura, o iPhone pode bloquear o app. Vá em **Ajustes → Geral → VPN e gerenciamento do dispositivo**, toque no seu e-mail de desenvolvedor e escolha **Confiar**.
 4. Abra o app de novo e permita o Bluetooth quando ele pedir.
 
